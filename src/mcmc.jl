@@ -26,7 +26,7 @@ import CSV
 - 
 """
 function mcmc_mean_fitness(
-    data::DF.DataFrame,
+    data::DF.AbstractDataFrame,
     n_walkers::Int,
     n_steps::Int,
     outputdir::String,
