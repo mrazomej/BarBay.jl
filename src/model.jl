@@ -16,7 +16,7 @@ export mean_fitness_neutrals_lognormal
 # Population Mean Fitness π(sₜ | Data)
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
-@docs raw"""
+@doc raw"""
     mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁, α̲, sₜ_prior, σₜ_prior)
 
 `Turing.jl` model to sample out of the posterior for a single population mean
