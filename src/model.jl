@@ -40,17 +40,20 @@ where
 \frac{\underline{f}_t}{\underline{f}_{t+1}} \mid \bar{s}_t, \sigma_t \sim
 \log\mathcal{N}(- \bar{s}_t, \sigma_t),
 ```
+
 ```math
-\bar{s}_t \sim \mathcal{N}(\text{\texttt{sₜ_prior}}),
+\bar{s}_t \sim \mathcal{N}(),
 ```
+
 ```math
-\sigma_t \sim \mathcal{N}(\text{\texttt{σₜ_prior}}),
+\sigma_t \sim Half-\mathcal{N}(),
 ```
 and
 ```math
 \underline{f}_t \mid \underline{r}_t \sim 
-\operatorname{Dirichlet}(\underline{\alpha}_t + \undelrine{r}_t)
+\operatorname{Dirichlet}(\underline{\alpha}_t + \underline{r}_t)
 ```
+
 ```math
 \underline{f}_{t+1} \mid \underline{r}_{t+1} \sim 
 \operatorname{Dirichlet}(\underline{\alpha}_{t+1} + \undelrine{r}_{t+1})
