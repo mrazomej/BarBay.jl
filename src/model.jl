@@ -24,8 +24,17 @@ fitness value sₜ, given the raw barcode counts.
 
 The sampled probability distribution is of the form
 
-π(sₜ, σₜ | f̲ₜ, f̲ₜ₊₁) π(f̲ₜ, f̲ₜ₊₁ | r̲ₜ, r̲ₜ₊₁) ∝ π(f̲ₜ, f̲ₜ₊₁ | sₜ, σₜ) π(sₜ) π(σₜ) π(f̲ₜ | r̲ₜ) π(f̲ₜ₊₁ |, r̲ₜ₊₁),
-
+```math
+\pi(\bar{s}_t, \sigma_t \mid \underline{f}_t, \underline{f}_{t+1})
+\pi(
+    \underline{f}_t, \underline{f}_{t+1} \mid 
+    \underline{r}_t, \underline{r}_{t+1}
+) \propto
+\pi(\underline{f}_t, \underline{f}_{t+1} \mid \bar{s}_t, \sigma_t)
+\pi(\bar{s}_t) \pi(\sigma_t)
+\pi(\underline{f}_t \mid \underline{r}_t)
+\pi(\underline{f}_{t+1} \mid \underline{r}_{t+1})
+```
 where
 
 f̲ₜ / f̲ₜ₊₁ | sₜ, σₜ ~ LogNormal(-sₜ, σₜ),
