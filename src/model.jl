@@ -4,6 +4,14 @@ import Distributions
 # Import libraries relevant for MCMC
 import Turing
 
+##
+# Export functions
+
+# Export mean fitness model
+export mean_fitness_neutrals_lognormal
+
+##
+
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 # Population Mean Fitness π(sₜ | Data)
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
