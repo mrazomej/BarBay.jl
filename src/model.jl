@@ -36,19 +36,25 @@ The sampled probability distribution is of the form
 \pi(\underline{f}_{t+1} \mid \underline{r}_{t+1})
 ```
 where
-
-f̲ₜ / f̲ₜ₊₁ | sₜ, σₜ ~ LogNormal(-sₜ, σₜ),
-
-sₜ ~ Normal(sₜ_prior...),
-
-σₜ ~ Normal(σₜ_prior...),
-
-f̲ₜ | r̲ₜ ~ Dirichlet(α̲ .+ r̲ₜ),
-
+```math
+\frac{\underline{f}_t}{\underline{f}_{t+1}} \mid \bar{s}_t, \sigma_t \sim
+\log\mathcal{N}(- \bar{s}_t, \sigma_t),
+```
+```math
+\bar{s}_t \sim \mathcal{N}(\text{\texttt{sₜ_prior}}),
+```
+```math
+\sigma_t \sim \mathcal{N}(\text{\texttt{σₜ_prior}}),
+```
 and
-
-f̲ₜ₊₁ | r̲ₜ₊₁ ~ Dirichlet(α̲ .+ r̲ₜ₊₁).
-
+```math
+\underline{f}_t \mid \underline{r}_t \sim 
+\operatorname{Dirichlet}(\underline{\alpha}_t + \undelrine{r}_t)
+```
+```math
+\underline{f}_{t+1} \mid \underline{r}_{t+1} \sim 
+\operatorname{Dirichlet}(\underline{\alpha}_{t+1} + \undelrine{r}_{t+1})
+```
 
 # Arguments
 - `r̲ₜ::Array{Int64}`: Raw counts for **neutral** lineages and the cumulative
