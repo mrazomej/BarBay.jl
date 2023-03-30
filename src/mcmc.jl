@@ -5,6 +5,9 @@ import Suppressor
 import Turing
 import MCMCChains
 
+# Import library to store output
+import JLD2
+
 # Import package to handle DataFrames
 import DataFrames as DF
 import CSV
@@ -35,8 +38,9 @@ function mcmc_mean_fitness(
     time_col::Symbol=:time,
     neutral_col::Symbol=:neutral,
     rm_T0::Bool=false,
-    suppress_output::Bool=false
-    sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65)
+    suppress_output::Bool=false,
+    sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65),
+    verbose::Bool=true
 )
     # Check number of walkers 
     if n_walkers > Threads.nthreads()
@@ -48,7 +52,9 @@ function mcmc_mean_fitness(
 
     # Remove T0 if indicated
     if rm_T0
-        println("Deleting T0 as requested...")
+        if verbose
+            println("Deleting T0 as requested...")
+        end # if 
         data = data[.!(data[timecol] .== first(timepoints)), :]
     end # if
 
@@ -119,12 +125,18 @@ function mcmc_mean_fitness(
             )
         end # if
 
-        println("Saving $(fname) chains...")
+        if verbose
+            println("Saving $(fname) chains...")
+        end # if
+
         # Write output into memory
         JLD2.jldsave(
             "$(out_dir)/$(fname)_mcmcchains.jld2",
             chain=first(chain),
         )
-        println("Done with $(fname)")
+
+        if verbose
+            println("Done with $(fname)")
+        end # if
     end # for
 end # function

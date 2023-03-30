@@ -2,10 +2,10 @@ module BayesFitness
 
 module model
 include("model.jl")
-end # model submodule
+end # submodule
 
 module mcmc
 include("mcmc.jl")
-end # model submodule
+end # submodule
 
-end # BayesFitness module
+end # module
