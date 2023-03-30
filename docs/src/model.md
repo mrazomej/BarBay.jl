@@ -1,6 +1,4 @@
-# BayesFitness.jl
-
-Documentation for BayesFitness.jl
+## BayesFitness.model.jl
 
 ```@docs
 BayesFitness.model.mean_fitness_neutrals_lognormal
