@@ -104,10 +104,6 @@ use of any prior distribution, different from the Normal and Half-Normal priors.
 
 The sampled probability distribution is of the form
 
-```math
-x + y = z
-```
-
 π(sₜ, σₜ | f̲ₜ, f̲ₜ₊₁) π(f̲ₜ, f̲ₜ₊₁ | r̲ₜ, r̲ₜ₊₁) ∝ π(f̲ₜ, f̲ₜ₊₁ | sₜ, σₜ) π(sₜ)
 π(σₜ) π(f̲ₜ | r̲ₜ) π(f̲ₜ₊₁ |, r̲ₜ₊₁),
 
