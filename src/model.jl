@@ -28,11 +28,6 @@ The sampled probability distribution is of the form
 
 where
 
-```math
-\frac{\underline{f}_t}{\underline{f}_{t+1}} \mid \bar{s}_t, \sigma_t \sim
-\log\mathcal{N}(-\bar{s}_t, \sigma_t),
-```
-
 f̲ₜ / f̲ₜ₊₁ | sₜ, σₜ ~ LogNormal(-sₜ, σₜ),
 
 sₜ ~ Normal(sₜ_prior...),
