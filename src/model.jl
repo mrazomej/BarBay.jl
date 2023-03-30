@@ -17,7 +17,9 @@ export mean_fitness_neutrals_lognormal
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁, α̲, sₜ_prior, σₜ_prior)
+    `mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁, α̲, sₜ_prior, σₜ_prior)`
+
+This is a test.
 
 `Turing.jl` model to sample out of the posterior for a single population mean
 fitness value sₜ, given the raw barcode counts.
@@ -53,7 +55,6 @@ f̲ₜ₊₁ | r̲ₜ₊₁ ~ Dirichlet(α̲ .+ r̲ₜ₊₁).
   π(sₜ).
 - `σₜ_prior::Vector{Real}`: Parameters for the nuisance standard deviation
   parameter prior distribution π(σₜ).
-
 """
 Turing.@model function mean_fitness_neutrals_lognormal(
     r̲ₜ::Vector{Int64},
@@ -97,8 +98,9 @@ Turing.@model function mean_fitness_neutrals_lognormal(
 
 end # @model function
 
+
 @doc raw"""
-mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁, α̲, sₜ_prior, σₜ_prior)
+    `mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁, α̲, sₜ_prior, σₜ_prior)`
 
 `Turing.jl` model to sample out of the posterior for a single population mean
 fitness value sₜ, given the raw barcode counts. Note: this `method` allows
@@ -133,9 +135,9 @@ f̲ₜ₊₁ | r̲ₜ₊₁ ~ Dirichlet(α̲ .+ r̲ₜ₊₁).
 - `α̲::Array{Float64}`: Parameters for Dirichlet prior distribution.
 - `sₜ_prior::Distributions.ContinuousUnivariateDistribution`: Parametrized
   univariate continuous distribution for the prior on the mean fitness π(sₜ).
-- `σₜ_prior::Vector{Real}`: Parametrized univariate continuous distribution for
-  the prior on the nuisance standard deviation of the log-normal likelihood
-  π(σₜ).
+- `σₜ_prior:::Distributions.ContinuousUnivariateDistribution`: Parametrized
+  univariate continuous distribution for the prior on the nuisance standard
+  deviation of the log-normal likelihood π(σₜ).
 """
 Turing.@model function mean_fitness_neutrals_lognormal(
     r̲ₜ::Vector{Int64},
