@@ -1,14 +1,21 @@
+# Import basic math
+import LinearAlgebra
+
 # Import libraries to define distributions
 import Distributions
 
 # Import libraries relevant for MCMC
 import Turing
 
+# Functionality for constructing arrays with identical elements efficiently
+import FillArrays
 ##
 # Export functions
 
 # Export mean fitness model
 export mean_fitness_neutrals_lognormal
+# Export mutant fitness model
+export mutant_fitness_lognormal
 
 ##
 
@@ -263,6 +270,7 @@ end # @model function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
+    mutant_fitness_lognormal(r̲⁽ᵐ⁾, R̲, α̲, μ_sₜ, σ_sₜ; s_prior, σ_prior, σ_trunc)
 
 `Turing.jl` model to sample out of the posterior distribution for a single
 mutant fitness value `s⁽ᵐ⁾`, given the raw barcode counts and the
@@ -277,12 +285,12 @@ parametrization of the population mean fitness distribution.
 - `α̲::Vector{Float64}`: Parameters for Beta prior distribution.
 - `μ_sₜ::Vector{Float64}`: Array with the time-series mean values of the
   population mean fitness. This means entry `μ_sₜ[i]` contains the inferred mean
-  value of the population mean fitness for time `i`, assuming sₜ[i] ~
-  Normal(μ_sₜ[i], σ_sₜ[i]).
+  value of the population mean fitness for time `i`, assuming `sₜ[i] ~
+  Normal(μ_sₜ[i], σ_sₜ[i])`.
 - `σ_sₜ::Vector{Float64}`: Array with the time-series values of the population
   mean fitness standard deviation. This means entry `σ_sₜ[i]` contains the
   inferred value of the standard deviation of the population mean fitness at
-  time `i`, assuming sₜ[i] ~ Normal(μ_sₜ[i], σ_sₜ[i]).
+  time `i`, assuming `sₜ[i] ~ Normal(μ_sₜ[i], σ_sₜ[i])`.
 
 ## Optional arguments
 - `s_prior::Vector{Real}=[0.0, 2.0]`: Parameters for the mutant fitness prior
