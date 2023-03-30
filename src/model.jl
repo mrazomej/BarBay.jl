@@ -19,70 +19,97 @@ export mean_fitness_neutrals_lognormal
 @doc raw"""
     mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁, α̲, sₜ_prior, σₜ_prior)
 
-`Turing.jl` model to sample out of the posterior for a single population mean
-fitness value sₜ, given the raw barcode counts.
+`Turing.jl` model to sample the posterior for a single population mean fitness
+value sₜ, given the raw barcode counts. 
 
-The sampled probability distribution is of the form
+# Model 
+For this inference, we can write Bayes theorem as
 
 ```math
-\pi(\bar{s}_t, \sigma_t \mid \underline{f}_t, \underline{f}_{t+1})
 \pi(
-    \underline{f}_t, \underline{f}_{t+1} \mid 
+    \bar{s}_t, \sigma_t, \underline{f}_t, \underline{f}_{t+1} \mid
     \underline{r}_t, \underline{r}_{t+1}
 ) \propto
-\pi(\underline{f}_t, \underline{f}_{t+1} \mid \bar{s}_t, \sigma_t)
+\prod_{n=1}^N \left[
+        \pi(f_t^{(n)} \mid \gamma_t^{(n)}) 
+        \pi(\gamma_t^{(n)} \mid \bar{s}_t, \sigma_t)
+\right]
 \pi(\bar{s}_t) \pi(\sigma_t)
 \pi(\underline{f}_t \mid \underline{r}_t)
 \pi(\underline{f}_{t+1} \mid \underline{r}_{t+1})
 ```
 where
 ```math
-\frac{\underline{f}_t}{\underline{f}_{t+1}} \mid \bar{s}_t, \sigma_t \sim
-\log\mathcal{N}(- \bar{s}_t, \sigma_t),
+\gamma_t^{(n)} \equiv \frac{f_{t+1}^{(n)}}{f_t^{n}}.
+```
+
+The parametric distributions assumed in this model are of the form
+```math
+f_t^{(n)} \mid \gamma_t^{(n)} \sim 
+\operatorname{Uniform} \left(0, \frac{1}{\gamma_t^{(n)}} \right),
 ```
 
 ```math
-\bar{s}_t \sim \mathcal{N}(),
+\gamma_t^{(n)} \mid \bar{s}_t, \sigma_t \sim 
+\log\mathcal{N}(\bar{s}_t, \sigma_t),
 ```
 
 ```math
-\sigma_t \sim Half-\mathcal{N}(),
+\bar{s}_t \sim \mathcal{N}(\mu_{\bar{s}_t}, \sigma_{\bar{s}_t}),
+```
+
+```math
+\sigma_t \sim 
+\operatorname{Half}-\mathcal{N}(\mu_{\sigma_t}, \sigma_{\sigma_t}),
+```
+
+```math
+\underline{f}_t \mid \underline{r}_t \sim 
+\operatorname{Dirichlet}(\underline{\alpha}_t + \underline{r}_t),
 ```
 and
 ```math
-\underline{f}_t \mid \underline{r}_t \sim 
-\operatorname{Dirichlet}(\underline{\alpha}_t + \underline{r}_t)
+\underline{f}_{t+1} \mid \underline{r}_{t+1} \sim 
+\operatorname{Dirichlet}(\underline{\alpha}_{t+1} + \underline{r}_{t+1}).
 ```
 
-```math
-\underline{f}_{t+1} \mid \underline{r}_{t+1} \sim 
-\operatorname{Dirichlet}(\underline{\alpha}_{t+1} + \undelrine{r}_{t+1})
-```
+For this inference, we enforce all frequencies to be > 0 (even for barcodes
+with zero reads) to compute ``\gamma_t^{(n)}``.
+
+The user defines the distribution parameters as:
+- ``\underline{\alpha}_t``: `α̲`.
+- ``[\mu_{\bar{s}_t}, \sigma_{\bar{s}_t}]``: `sₜ_prior`.
+- ``[\mu_{\sigma_t}, \sigma_{\sigma_t}]``: `σₜ_prior`.
 
 # Arguments
-- `r̲ₜ::Array{Int64}`: Raw counts for **neutral** lineages and the cumulative
+- `r̲ₜ::Vector{Int64}`: Raw counts for **neutral** lineages and the cumulative
   counts for mutant lineages at time `t`. NOTE: The last entry of the array must
   be the sum of all of the counts from mutant lineages.
-- `r̲ₜ₊₁::Array{Int64}`: Raw counts for **neutral** lineages and the cumulative
+- `r̲ₜ₊₁::Vector{Int64}`: Raw counts for **neutral** lineages and the cumulative
   counts for mutant lineages at time `t + 1`. NOTE: The last entry of the array
   must be the sum of all of the counts from mutant lineages.
-- `α̲::Array{Float64}`: Parameters for Dirichlet prior distribution.
-- `sₜ_prior::Vector{Real}`: Parameters for the mean fitness prior distribution
-  π(sₜ).
-- `σₜ_prior::Vector{Real}`: Parameters for the nuisance standard deviation
-  parameter prior distribution π(σₜ).
+- `α̲::Vector{Float64}`: Parameters for Dirichlet prior distribution.
+
+## Optional arguments
+- `sₜ_prior::Vector{Real}=[0.0, 2.0]`: Parameters for the mean fitness prior
+  distribution π(sₜ).
+- `σₜ_prior::Vector{Real}=[0.0, 1.0]`: Parameters for the nuisance standard
+  deviation parameter prior distribution π(σₜ).
+- `σₜ_trunc::Real=0.0`: Value at which truncate the normal distribution to
+  define it as a half-normal.
 """
 Turing.@model function mean_fitness_neutrals_lognormal(
     r̲ₜ::Vector{Int64},
     r̲ₜ₊₁::Vector{Int64},
-    α̲::Vector{Float64},
-    sₜ_prior::Vector{Real},
-    σₜ_prior::Vector{Real};
+    α̲::Vector{Float64};
+    sₜ_prior::Vector{Real}=[0.0, 2.0],
+    σₜ_prior::Vector{Real}=[0.0, 1.0],
+    σₜ_trunc::Real=0.0
 )
     # Prior on mean fitness sₜ
     sₜ ~ Turing.Normal(sₜ_prior...)
     # Prior on LogNormal error σₜ
-    σₜ ~ Turing.truncated(Turing.Normal(σₜ_prior...); lower=0.0)
+    σₜ ~ Turing.truncated(Turing.Normal(σₜ_prior...); lower=σₜ_trunc)
 
     # Frequency distribution from Multinomial-Dirichlet model
     f̲ₜ ~ Turing.Dirichlet(α̲ .+ r̲ₜ)
@@ -120,24 +147,61 @@ end # @model function
 fitness value sₜ, given the raw barcode counts. Note: this `method` allows the
 use of any prior distribution, different from the Normal and Half-Normal priors.
 
-The sampled probability distribution is of the form
+# Model 
+For this inference, we can write Bayes theorem as
 
-π(sₜ, σₜ | f̲ₜ, f̲ₜ₊₁) π(f̲ₜ, f̲ₜ₊₁ | r̲ₜ, r̲ₜ₊₁) ∝ π(f̲ₜ, f̲ₜ₊₁ | sₜ, σₜ) π(sₜ)
-π(σₜ) π(f̲ₜ | r̲ₜ) π(f̲ₜ₊₁ |, r̲ₜ₊₁),
-
+```math
+\pi(
+    \bar{s}_t, \sigma_t, \underline{f}_t, \underline{f}_{t+1} \mid
+    \underline{r}_t, \underline{r}_{t+1}
+) \propto
+\prod_{n=1}^N \left[
+        \pi(f_t^{(n)} \mid \gamma_t^{(n)}) 
+        \pi(\gamma_t^{(n)} \mid \bar{s}_t, \sigma_t)
+\right]
+\pi(\bar{s}_t) \pi(\sigma_t)
+\pi(\underline{f}_t \mid \underline{r}_t)
+\pi(\underline{f}_{t+1} \mid \underline{r}_{t+1})
+```
 where
+```math
+\gamma_t^{(n)} \equiv \frac{f_{t+1}^{(n)}}{f_t^{n}}.
+```
 
-f̲ₜ / f̲ₜ₊₁ | sₜ, σₜ ~ LogNormal(-sₜ, σₜ),
+The parametric distributions assumed in this model are of the form
+```math
+f_t^{(n)} \mid \gamma_t^{(n)} \sim 
+\operatorname{Uniform} \left(0, \frac{1}{\gamma_t^{(n)}} \right),
+```
 
-sₜ ~ sₜ_prior,
+```math
+\gamma_t^{(n)} \mid \bar{s}_t, \sigma_t \sim 
+\log\mathcal{N}(\bar{s}_t, \sigma_t),
+```
 
-σₜ ~ σₜ_prior,
+```math
+\bar{s}_t \sim \operatorname{User-defined},
+```
 
-f̲ₜ | r̲ₜ ~ Dirichlet(α̲ .+ r̲ₜ),
+```math
+\sigma_t \sim  \operatorname{User-defined},
+```
 
+```math
+\underline{f}_t \mid \underline{r}_t \sim 
+\operatorname{Dirichlet}(\underline{\alpha}_t + \underline{r}_t),
+```
 and
+```math
+\underline{f}_{t+1} \mid \underline{r}_{t+1} \sim 
+\operatorname{Dirichlet}(\underline{\alpha}_{t+1} + \underline{r}_{t+1}).
+```
 
-f̲ₜ₊₁ | r̲ₜ₊₁ ~ Dirichlet(α̲ .+ r̲ₜ₊₁).
+For this inference, we enforce all frequencies to be > 0 (even for barcodes
+with zero reads) to compute ``\gamma_t^{(n)}``.
+
+The user defines the distribution parameters as:
+- ``\underline{\alpha}_t``: `α̲`.
 
 # Arguments
 - `r̲ₜ::Array{Int64}`: Raw counts for **neutral** lineages and the cumulative
