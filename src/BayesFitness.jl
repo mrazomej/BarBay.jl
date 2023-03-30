@@ -1,5 +1,7 @@
 module BayesFitness
 
-# Write your package code here.
+module model
+include("model.jl")
+end # model submodule
 
-end
+end # BayesFitness module
