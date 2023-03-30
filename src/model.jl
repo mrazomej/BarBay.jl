@@ -9,11 +9,7 @@ import Turing
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    ```
-    mean_fitness_neutrals_lognormal(
-        r̲ₜ, r̲ₜ₊₁, α̲, sₜ_prior, σₜ_prior
-    )
-    ```
+    mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁, α̲, sₜ_prior, σₜ_prior)
 
 `Turing.jl` model to sample out of the posterior for a single population mean
 fitness value sₜ, given the raw barcode counts.
@@ -94,14 +90,11 @@ Turing.@model function mean_fitness_neutrals_lognormal(
 end # @model function
 
 @doc raw"""
-    ```
-    mean_fitness_neutrals_lognormal(
-        r̲ₜ, r̲ₜ₊₁, α̲, sₜ_prior, σₜ_prior
-    )
-    ```
+mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁, α̲, sₜ_prior, σₜ_prior)
 
 `Turing.jl` model to sample out of the posterior for a single population mean
-fitness value sₜ, given the raw barcode counts.
+fitness value sₜ, given the raw barcode counts. Note: this `method` allows
+non-standard priors on the parameters.
 
 The sampled probability distribution is of the form
 
@@ -121,8 +114,6 @@ f̲ₜ | r̲ₜ ~ Dirichlet(α̲ .+ r̲ₜ),
 and
 
 f̲ₜ₊₁ | r̲ₜ₊₁ ~ Dirichlet(α̲ .+ r̲ₜ₊₁).
-
-Note that this `method` allows non-standard priors on the parameters.
 
 # Arguments
 - `r̲ₜ::Array{Int64}`: Raw counts for **neutral** lineages and the cumulative
