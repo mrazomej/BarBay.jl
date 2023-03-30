@@ -95,14 +95,18 @@ Turing.@model function mean_fitness_neutrals_lognormal(
     )
 end # @model function
 
-"""
+@doc raw"""
     mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁, α̲, sₜ_prior, σₜ_prior)
 
 `Turing.jl` model to sample out of the posterior for a single population mean
-fitness value sₜ, given the raw barcode counts. Note: this `method` allos the
+fitness value sₜ, given the raw barcode counts. Note: this `method` allows the
 use of any prior distribution, different from the Normal and Half-Normal priors.
 
 The sampled probability distribution is of the form
+
+```math
+x + y = z
+```
 
 π(sₜ, σₜ | f̲ₜ, f̲ₜ₊₁) π(f̲ₜ, f̲ₜ₊₁ | r̲ₜ, r̲ₜ₊₁) ∝ π(f̲ₜ, f̲ₜ₊₁ | sₜ, σₜ) π(sₜ)
 π(σₜ) π(f̲ₜ | r̲ₜ) π(f̲ₜ₊₁ |, r̲ₜ₊₁),
