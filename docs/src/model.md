@@ -1,5 +1,5 @@
 ## BayesFitness.model.jl
 
-```@docs
+<!-- ```@docs
 BayesFitness.model.mean_fitness_neutrals_lognormal
-```
+``` -->
