@@ -1,7 +1,11 @@
 # BayesFitness.jl
 
-Documentation for BayesFitness.jl
+## Contents
 
-```@docs
-BayesFitness.model.mean_fitness_neutrals_lognormal
+```@contents
+```
+
+## Index
+
+```@index
 ```

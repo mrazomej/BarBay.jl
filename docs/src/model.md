@@ -1,5 +1,6 @@
-## BayesFitness.model.jl
+# model
 
-<!-- ```@docs
-BayesFitness.model.mean_fitness_neutrals_lognormal
-``` -->
+```@autodocs
+Modules = [BayesFitness.model]
+Order   = [:function, :type]
+```
