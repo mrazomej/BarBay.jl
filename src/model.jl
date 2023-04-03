@@ -14,6 +14,8 @@ import FillArrays
 
 # Export mean fitness model
 export mean_fitness_neutrals_lognormal
+export mean_fitness_neutrals_lognormal_priors
+
 # Export mutant fitness model
 export mutant_fitness_lognormal
 
@@ -24,7 +26,7 @@ export mutant_fitness_lognormal
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁, α̲, s_prior, σ_prior)
+    mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁; α, s_prior, σ_prior, σ_trunc)
 
 `Turing.jl` model to sample the posterior for a single population mean fitness
 value `sₜ`, given the raw barcode counts. 
@@ -84,7 +86,7 @@ For this inference, we enforce all frequencies to be > 0 (even for barcodes
 with zero reads) to compute ``\gamma_t^{(n)}``.
 
 The user defines the distribution parameters as:
-- ``\underline{\alpha}_t``: `α̲`.
+- ``\underline{\alpha}_t``: `α`.
 - ``[\mu_{\bar{s}_t}, \sigma_{\bar{s}_t}]``: `s_prior`.
 - ``[\mu_{\sigma_t}, \sigma_{\sigma_t}]``: `σ_prior`.
 
@@ -95,7 +97,7 @@ The user defines the distribution parameters as:
 - `r̲ₜ₊₁::Vector{Int64}`: Raw counts for **neutral** lineages and the cumulative
   counts for mutant lineages at time `t + 1`. NOTE: The last entry of the array
   must be the sum of all of the counts from mutant lineages.
-- `α̲::Vector{Float64}`: Parameters for Dirichlet prior distribution.
+- `α::Vector{Float64}`: Parameters for Dirichlet prior distribution.
 
 ## Optional arguments
 - `s_prior::Vector{Real}=[0.0, 2.0]`: Parameters for the mean fitness prior
@@ -107,10 +109,10 @@ The user defines the distribution parameters as:
 """
 Turing.@model function mean_fitness_neutrals_lognormal(
     r̲ₜ::Vector{Int64},
-    r̲ₜ₊₁::Vector{Int64},
-    α̲::Vector{Float64};
-    s_prior::Vector{Real}=[0.0, 2.0],
-    σ_prior::Vector{Real}=[0.0, 1.0],
+    r̲ₜ₊₁::Vector{Int64};
+    α::Vector{Float64},
+    s_prior::Vector{<:Real}=[0.0, 2.0],
+    σ_prior::Vector{<:Real}=[0.0, 1.0],
     σ_trunc::Real=0.0
 )
     # Prior on mean fitness sₜ
@@ -119,8 +121,8 @@ Turing.@model function mean_fitness_neutrals_lognormal(
     σₜ ~ Turing.truncated(Turing.Normal(σ_prior...); lower=σ_trunc)
 
     # Frequency distribution from Multinomial-Dirichlet model
-    f̲ₜ ~ Turing.Dirichlet(α̲ .+ r̲ₜ)
-    f̲ₜ₊₁ ~ Turing.Dirichlet(α̲ .+ r̲ₜ₊₁)
+    f̲ₜ ~ Turing.Dirichlet(α .+ r̲ₜ)
+    f̲ₜ₊₁ ~ Turing.Dirichlet(α .+ r̲ₜ₊₁)
 
     # Check that all distributions are greater than zero. Although the counts
     # could be zero, we assume that the real frequencies are non-zero always.
@@ -148,7 +150,7 @@ Turing.@model function mean_fitness_neutrals_lognormal(
 end # @model function
 
 @doc raw"""
-    mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁, α̲, s_prior, σ_prior)
+    mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁; α, s_prior, σ_prior)
 
 `Turing.jl` model to sample out of the posterior for a single population mean
 fitness value `sₜ`, given the raw barcode counts. Note: this `method` allows the
@@ -208,7 +210,7 @@ For this inference, we enforce all frequencies to be > 0 (even for barcodes
 with zero reads) to compute ``\gamma_t^{(n)}``.
 
 The user defines the distribution parameters as:
-- ``\underline{\alpha}_t``: `α̲`.
+- ``\underline{\alpha}_t``: `α`.
 
 # Arguments
 - `r̲ₜ::Vector{Int64}`: Raw counts for **neutral** lineages and the cumulative
@@ -217,7 +219,7 @@ The user defines the distribution parameters as:
 - `r̲ₜ₊₁::Vector{Int64}`: Raw counts for **neutral** lineages and the cumulative
   counts for mutant lineages at time `t + 1`. NOTE: The last entry of the array
   must be the sum of all of the counts from mutant lineages.
-- `α̲::Vector{Float64}`: Parameters for Dirichlet prior distribution.
+- `α::Vector{Float64}`: Parameters for Dirichlet prior distribution.
 - `s_prior::Distributions.ContinuousUnivariateDistribution`: Parametrized
   univariate continuous distribution for the prior on the mean fitness π(sₜ).
 - `σ_prior:::Distributions.ContinuousUnivariateDistribution`: Parametrized
@@ -226,10 +228,10 @@ The user defines the distribution parameters as:
 """
 Turing.@model function mean_fitness_neutrals_lognormal(
     r̲ₜ::Vector{Int64},
-    r̲ₜ₊₁::Vector{Int64},
-    α̲::Vector{Float64},
+    r̲ₜ₊₁::Vector{Int64};
+    α::Vector{Float64},
     s_prior::Distributions.ContinuousUnivariateDistribution,
-    σ_prior::Distributions.ContinuousUnivariateDistribution;
+    σ_prior::Distributions.ContinuousUnivariateDistribution
 )
     # Prior on mean fitness sₜ
     sₜ ~ s_prior
@@ -237,8 +239,8 @@ Turing.@model function mean_fitness_neutrals_lognormal(
     σₜ ~ σ_prior
 
     # Frequency distribution from Multinomial-Dirichlet model
-    f̲ₜ ~ Turing.Dirichlet(α̲ .+ r̲ₜ)
-    f̲ₜ₊₁ ~ Turing.Dirichlet(α̲ .+ r̲ₜ₊₁)
+    f̲ₜ ~ Turing.Dirichlet(α .+ r̲ₜ)
+    f̲ₜ₊₁ ~ Turing.Dirichlet(α .+ r̲ₜ₊₁)
 
     # Check that all distributions are greater than zero. Although the counts
     # could be zero, we assume that the real frequencies are non-zero always.
@@ -270,7 +272,7 @@ end # @model function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    mutant_fitness_lognormal(r̲⁽ᵐ⁾, R̲, α̲, μ_sₜ, σ_sₜ; s_prior, σ_prior, σ_trunc)
+    mutant_fitness_lognormal(r̲⁽ᵐ⁾, R̲, α, μ_sₜ, σ_sₜ; s_prior, σ_prior, σ_trunc)
 
 `Turing.jl` model to sample out of the posterior distribution for a single
 mutant fitness value `s⁽ᵐ⁾`, given the raw barcode counts and the
@@ -282,7 +284,7 @@ parametrization of the population mean fitness distribution.
   `r̲⁽ᵐ⁾[i]` contains the number of reads from barcode `m` at time `i`.
 - `R̲::Vector{Int64}`: time-series of Raw **total** reads. This means that entry
   `R̲[i]` contains the total number of reads obtained at time `i`.
-- `α̲::Vector{Float64}`: Parameters for Beta prior distribution.
+- `α::Vector{Float64}`: Parameters for Beta prior distribution.
 - `μ_sₜ::Vector{Float64}`: Array with the time-series mean values of the
   population mean fitness. This means entry `μ_sₜ[i]` contains the inferred mean
   value of the population mean fitness for time `i`, assuming `sₜ[i] ~
@@ -302,10 +304,10 @@ parametrization of the population mean fitness distribution.
 """
 Turing.@model function mutant_fitness_lognormal(
     r̲⁽ᵐ⁾::Vector{Int64},
-    R̲::Vector{Int64},
-    α̲::Vector{Float64},
+    R̲::Vector{Int64};
+    α::Vector{Float64},
     μ_sₜ::Vector{Float64},
-    σ_sₜ::Vector{Float64};
+    σ_sₜ::Vector{Float64},
     s_prior::Vector{Real}=[0.0, 2.0],
     σ_prior::Vector{Real}=[0.0, 1.0],
     σ_trunc::Real=0.0
@@ -323,7 +325,7 @@ Turing.@model function mutant_fitness_lognormal(
 
     # Frequency distribution for each time point
     for i in eachindex(r̲⁽ᵐ⁾)
-        f̲⁽ᵐ⁾[i] ~ Turing.Beta(α̲[1] + r̲⁽ᵐ⁾[i], α̲[2] + (R̲[i] - r̲⁽ᵐ⁾[i]))
+        f̲⁽ᵐ⁾[i] ~ Turing.Beta(α[1] + r̲⁽ᵐ⁾[i], α[2] + (R̲[i] - r̲⁽ᵐ⁾[i]))
     end # for
 
     # Compute frequency ratios
