@@ -129,6 +129,7 @@ Turing.@model function mean_fitness_neutrals_lognormal(
     # could be zero, we assume that the real frequencies are non-zero always.
     if any(iszero.(f̲ₜ)) | any(iszero.(f̲ₜ₊₁))
         Turing.@addlogprob! -Inf
+        # Exit the model evaluation early
         return
     end
 
@@ -148,6 +149,7 @@ Turing.@model function mean_fitness_neutrals_lognormal(
         ),
         γₜ
     )
+    return
 end # @model function
 
 @doc raw"""
@@ -248,6 +250,7 @@ Turing.@model function mean_fitness_neutrals_lognormal_priors(
     # could be zero, we assume that the real frequencies are non-zero always.
     if any(iszero.(f̲ₜ)) | any(iszero.(f̲ₜ₊₁))
         Turing.@addlogprob! -Inf
+        # Exit the model evaluation early
         return
     end
 
@@ -267,6 +270,7 @@ Turing.@model function mean_fitness_neutrals_lognormal_priors(
         ),
         γₜ
     )
+    return
 end # @model function
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
@@ -308,10 +312,10 @@ Turing.@model function mutant_fitness_lognormal(
     r̲⁽ᵐ⁾::Vector{Int64},
     R̲::Vector{Int64};
     α::Vector{Float64},
-    μ_sₜ::Vector{Float64},
-    σ_sₜ::Vector{Float64},
-    s_prior::Vector{Real}=[0.0, 2.0],
-    σ_prior::Vector{Real}=[0.0, 1.0],
+    μ_s̄::Vector{Float64},
+    σ_s̄::Vector{Float64},
+    s_prior::Vector{<:Real}=[0.0, 2.0],
+    σ_prior::Vector{<:Real}=[0.0, 1.0],
     σ_trunc::Real=0.0
 )
     # Prior on mutant fitness s⁽ᵐ⁾
@@ -320,7 +324,7 @@ Turing.@model function mutant_fitness_lognormal(
     σ⁽ᵐ⁾ ~ Turing.truncated(Turing.Normal(σ_prior...); lower=σ_trunc)
 
     # Population mean fitness values
-    s̲ₜ ~ Turing.MvNormal(μ_sₜ, LinearAlgebra.Diagonal(σ_sₜ .^ 2))
+    s̲ₜ ~ Turing.MvNormal(μ_s̄, LinearAlgebra.Diagonal(σ_s̄ .^ 2))
 
     # Initialize array to store frequencies
     f̲⁽ᵐ⁾ = Vector{Float64}(undef, length(r̲⁽ᵐ⁾))
@@ -329,6 +333,14 @@ Turing.@model function mutant_fitness_lognormal(
     for i in eachindex(r̲⁽ᵐ⁾)
         f̲⁽ᵐ⁾[i] ~ Turing.Beta(α[1] + r̲⁽ᵐ⁾[i], α[2] + (R̲[i] - r̲⁽ᵐ⁾[i]))
     end # for
+
+    # Check that all distributions are greater than zero. Although the counts
+    # could be zero, we assume that the real frequencies are non-zero always.
+    if any(iszero.(f̲⁽ᵐ⁾))
+        Turing.@addlogprob! -Inf
+        # Exit the model evaluation early
+        return
+    end
 
     # Compute frequency ratios
     γ̲⁽ᵐ⁾ = f̲⁽ᵐ⁾[2:end] ./ f̲⁽ᵐ⁾[1:end-1]
@@ -342,6 +354,7 @@ Turing.@model function mutant_fitness_lognormal(
         ),
         γ̲⁽ᵐ⁾
     )
+    return
 end # @model function
 
 @doc raw"""
@@ -400,6 +413,14 @@ Turing.@model function mutant_fitness_lognormal_priors(
         f̲⁽ᵐ⁾[i] ~ Turing.Beta(α[1] + r̲⁽ᵐ⁾[i], α[2] + (R̲[i] - r̲⁽ᵐ⁾[i]))
     end # for
 
+    # Check that all distributions are greater than zero. Although the counts
+    # could be zero, we assume that the real frequencies are non-zero always.
+    if any(iszero.(f̲⁽ᵐ⁾))
+        Turing.@addlogprob! -Inf
+        # Exit the model evaluation early
+        return
+    end
+
     # Compute frequency ratios
     γ̲⁽ᵐ⁾ = f̲⁽ᵐ⁾[2:end] ./ f̲⁽ᵐ⁾[1:end-1]
 
@@ -412,4 +433,5 @@ Turing.@model function mutant_fitness_lognormal_priors(
         ),
         γ̲⁽ᵐ⁾
     )
+    return
 end # @model function
