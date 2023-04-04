@@ -150,11 +150,12 @@ Turing.@model function mean_fitness_neutrals_lognormal(
 end # @model function
 
 @doc raw"""
-    mean_fitness_neutrals_lognormal(r̲ₜ, r̲ₜ₊₁; α, s_prior, σ_prior)
+    mean_fitness_neutrals_lognormal_priors(r̲ₜ, r̲ₜ₊₁; α, s_prior, σ_prior)
 
 `Turing.jl` model to sample out of the posterior for a single population mean
-fitness value `sₜ`, given the raw barcode counts. Note: this `method` allows the
-use of any prior distribution, different from the Normal and Half-Normal priors.
+fitness value `sₜ`, given the raw barcode counts. Note: this function allows for
+the definition of any prior distributions on the mean fitness and the nuisance
+standard deviation parameter for the log-likelihood function.
 
 # Model 
 For this inference, we can write Bayes theorem as
@@ -206,8 +207,8 @@ and
 \operatorname{Dirichlet}(\underline{\alpha}_{t+1} + \underline{r}_{t+1}).
 ```
 
-For this inference, we enforce all frequencies to be > 0 (even for barcodes
-with zero reads) to compute ``\gamma_t^{(n)}``.
+For this inference, we enforce all frequencies to be > 0 (even for barcodes with
+zero reads) to compute ``\gamma_t^{(n)}``.
 
 The user defines the distribution parameters as:
 - ``\underline{\alpha}_t``: `α`.
@@ -226,7 +227,7 @@ The user defines the distribution parameters as:
   univariate continuous distribution for the prior on the nuisance standard
   deviation of the log-normal likelihood π(σₜ).
 """
-Turing.@model function mean_fitness_neutrals_lognormal(
+Turing.@model function mean_fitness_neutrals_lognormal_priors(
     r̲ₜ::Vector{Int64},
     r̲ₜ₊₁::Vector{Int64};
     α::Vector{Float64},
