@@ -23,13 +23,70 @@ export mcmc_mean_fitness
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
+    mcmc_mean_fitness(; kwargs)
 
-# Arguments
+Function to sample the posterior distribution of the population mean fitness for
+a series of pairs of time points. This function expects the data in a **tidy**
+format. This means that every row represents **a single observation**. For
+example, if we measure barcode `i` in 4 different time points, each of these
+four measurements gets an individual row. Furthermore, measurements of barcode
+`j` over time also get their own individual rows.
+
+The `DataFrame` must contain at least the following columns:
+- `id_col`: Column identifying the ID of the barcode. This can the barcode
+  sequence, for example.
+- `time_col`: Column defining the measurement time point.
+- `count_col`: Column with the raw barcode count.
+- `neutral_col`: Column indicating whether the barcode is from a neutral lineage
+  or not.
 
 # Keyword Arguments
+- `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
+  used to sample from the population mean fitness posterior distribution.
+- `n_walkers::Int`: Number of walkers (chains) for the MCMC sample.
+- `n_steps::Int`: Number of steps to take.
+- `outputdir::String`: Directory where the output `.jld2` files containing the
+  MCMC chains should be stored.
+- `outputname::String`: Common pattern for all `.jld2` output files. The output
+  files of this function will be named as
+```
+$(outputdir)/$(outputname)_$(t)-$(t+1)_meanfitness_mcmcchains.jld
+```
+where `t` and `t+1` indicate the time points used during the inference.
+- `model::Function`: `Turing.jl` model defining the posterior distribution from
+  which to sample (see [BayesFitness.model](model) module). This function must
+  take as the first two inputs the following:
+    - `r̲ₜ::Vector{Int64}`: Raw counts for **neutral** lineages and the
+      cumulative counts for mutant lineages at time `t`. NOTE: The last entry of
+      the array must be the sum of all of the counts from mutant lineages.
+    - `r̲ₜ₊₁::Vector{Int64}`: Raw counts for **neutral** lineages and the
+      cumulative counts for mutant lineages at time `t + 1`. NOTE: The last
+      entry of the array must be the sum of all of the counts from mutant
+      lineages. 
 
 ## Optional Arguments
-- 
+- `modele_kwargs::Dict=Dict()`: Extra keyword arguments to be passed to the
+  `model` function.
+- `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
+    identifyer. The column may contain any type of entry.
+- `time_col::Symbol=:time`: Name of the column in `data` defining the time point
+  at which measurements were done. The column may contain any type of entry as
+  long as `sort` will resulted in time-ordered names.
+- `count_col::Symbol=:count`: Name of the column in `data` containing the raw
+  barcode count. The column must contain entries of type `Int64`.
+- `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
+  the barcode belongs to a neutral lineage or not. The column must contain
+  entries of type `Bool`.
+- `rm_T0::Bool=false`: Optional argument to remove the first time point from the
+  inference. Commonly, the data from this first time point is of much lower
+  quality. Therefore, removing this first time point might result in a better
+  inference.
+- `suppress_output::Bool=false`: Boolean indicating if the screen output of
+  `Turing.jl` must be actively suppressed.
+- `sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65)`: MCMC sampler
+  to be used.
+- `verbose::Bool=true`: Boolean indicating if the function should print partial
+  progress to the screen or not.
 """
 function mcmc_mean_fitness(;
     data::DF.AbstractDataFrame,
