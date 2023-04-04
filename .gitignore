@@ -85,5 +85,8 @@ deps/src/
 # environment.
 Manifest.toml
 
+# Ignore datatypes
+**/*.jld2
+
 # Ignore directories in repo
 test/data/
