@@ -18,6 +18,7 @@ export mean_fitness_neutrals_lognormal_priors
 
 # Export mutant fitness model
 export mutant_fitness_lognormal
+export mutant_fitness_lognormal_priors
 
 ##
 
@@ -273,7 +274,7 @@ end # @model function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    mutant_fitness_lognormal(r̲⁽ᵐ⁾, R̲, α, μ_sₜ, σ_sₜ; s_prior, σ_prior, σ_trunc)
+    mutant_fitness_lognormal(r̲⁽ᵐ⁾, R̲; α, μ_sₜ, σ_sₜ, s_prior, σ_prior, σ_trunc)
 
 `Turing.jl` model to sample out of the posterior distribution for a single
 mutant fitness value `s⁽ᵐ⁾`, given the raw barcode counts and the
@@ -320,6 +321,76 @@ Turing.@model function mutant_fitness_lognormal(
 
     # Population mean fitness values
     s̲ₜ ~ Turing.MvNormal(μ_sₜ, LinearAlgebra.Diagonal(σ_sₜ .^ 2))
+
+    # Initialize array to store frequencies
+    f̲⁽ᵐ⁾ = Vector{Float64}(undef, length(r̲⁽ᵐ⁾))
+
+    # Frequency distribution for each time point
+    for i in eachindex(r̲⁽ᵐ⁾)
+        f̲⁽ᵐ⁾[i] ~ Turing.Beta(α[1] + r̲⁽ᵐ⁾[i], α[2] + (R̲[i] - r̲⁽ᵐ⁾[i]))
+    end # for
+
+    # Compute frequency ratios
+    γ̲⁽ᵐ⁾ = f̲⁽ᵐ⁾[2:end] ./ f̲⁽ᵐ⁾[1:end-1]
+
+    # Sample posterior for frequency ratio. Since it is a sample over a
+    # generated quantity, we must use the @addlogprob! macro
+    Turing.@addlogprob! Turing.logpdf(
+        Turing.MvLogNormal(
+            s⁽ᵐ⁾ .- s̲ₜ,
+            LinearAlgebra.I(length(s̲ₜ)) .* σ⁽ᵐ⁾^2
+        ),
+        γ̲⁽ᵐ⁾
+    )
+end # @model function
+
+@doc raw"""
+    mutant_fitness_lognormal_priors(r̲⁽ᵐ⁾, R̲; α, s_mean_priors, s_prior, σ_prior, σ_trunc)
+
+`Turing.jl` model to sample out of the posterior distribution for a single
+mutant fitness value `s⁽ᵐ⁾`, given the raw barcode counts and the
+parametrization of the population mean fitness distribution. Note: this function
+allows for the definition of any prior distributions on the population mean
+fitness, the nuisance standard deviation parameter for the log-likelihood
+function, and the mutant mean fitness.
+
+# Arguments
+- `r̲⁽ᵐ⁾::Vector{Int64}`: Mutant `m` raw barcode counts time-series. Note: this
+  vector must be the same length as `r̲⁽ᶜ⁾`. This means that each entry
+  `r̲⁽ᵐ⁾[i]` contains the number of reads from barcode `m` at time `i`.
+- `R̲::Vector{Int64}`: time-series of Raw **total** reads. This means that entry
+  `R̲[i]` contains the total number of reads obtained at time `i`.
+- `α::Vector{Float64}`: Parameters for Beta prior distribution.
+- `s_mean_priors::Vector{<:Distributions.ContinuousUnivariateDistribution}`:
+  Vector of univariate distributions defining the prior distribution for each
+  population mean fitness value.
+- `s_prior::Distributions.ContinuousUnivariateDistribution`: Parametrized
+  univariate continuous distribution for the prior on the mean fitness π(sₜ).
+- `σ_prior:::Distributions.ContinuousUnivariateDistribution`: Parametrized
+  univariate continuous distribution for the prior on the nuisance standard
+  deviation of the log-normal likelihood π(σₜ).
+"""
+Turing.@model function mutant_fitness_lognormal_priors(
+    r̲⁽ᵐ⁾::Vector{Int64},
+    R̲::Vector{Int64};
+    α::Vector{Float64},
+    s_mean_priors::Vector{<:Distributions.ContinuousUnivariateDistribution},
+    s_prior::Distributions.ContinuousUnivariateDistribution,
+    σ_prior::Distributions.ContinuousUnivariateDistribution
+)
+    # Prior on mutant fitness s⁽ᵐ⁾
+    s⁽ᵐ⁾ ~ s_prior
+    # Prior on LogNormal error σ⁽ᵐ⁾ 
+    σ⁽ᵐ⁾ ~ σ_prior
+
+    # Initialize array to save mean fitness priors
+    s̲ₜ = Vector{Float64}(undef, length(s_mean_prior))
+
+    # Loop through population mean fitness priors
+    for i in eachindex(s_mean_priors)
+        # Sample population mean fitness prior
+        s̲ₜ[i] ~ s_mean_priors[i]
+    end # for
 
     # Initialize array to store frequencies
     f̲⁽ᵐ⁾ = Vector{Float64}(undef, length(r̲⁽ᵐ⁾))
