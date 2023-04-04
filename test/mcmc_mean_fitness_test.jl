@@ -1,6 +1,7 @@
 ##
-println("hello, world!")
-##
+
+# Activate environment
+@load_pkg(".")
 
 # Import package to revise package
 import Revise
@@ -12,8 +13,6 @@ import BayesFitness
 import DataFrames as DF
 import CSV
 
-# Import library for Bayesian inference
-import Turing
 ##
 
 # Import data
@@ -25,7 +24,7 @@ data = CSV.read("$(git_root())/test/data/data_example_01.csv", DF.DataFrame)
 
 param = Dict(
     :data => data,
-    :n_walkers => 1,
+    :n_walkers => 3,
     :n_steps => 10,
     :outputdir => "./",
     :outputname => "test_mcmc",
@@ -41,20 +40,4 @@ param = Dict(
 # Run inference
 BayesFitness.mcmc.mcmc_mean_fitness(; param...)
 
-
 ##
-
-data::DF.AbstractDataFrame,
-n_walkers::Int,
-n_steps::Int,
-outputdir::String,
-outputname::String,
-model::Function,
-model_kwargs::Dict = Dict(),
-id_col::Symbol = :barcode,
-time_col::Symbol = :time,
-neutral_col::Symbol = :neutral,
-rm_T0::Bool = false,
-suppress_output::Bool = false,
-sampler::Turing.Inference.InferenceAlgorithm = Turing.NUTS(0.65),
-verbose::Bool = true
