@@ -25,12 +25,12 @@ data = CSV.read("$(git_root())/test/data/data_example_01.csv", DF.DataFrame)
 param = Dict(
     :data => data,
     :n_walkers => 3,
-    :n_steps => 10,
-    :outputdir => "./",
+    :n_steps => 1_000,
+    :outputdir => "./output/",
     :outputname => "test_mcmc",
     :model => BayesFitness.model.mean_fitness_neutrals_lognormal,
     :model_kwargs => Dict(
-        :α => BayesFitness.stats.dirichlet_uniform_prior_neutral(
+        :α => BayesFitness.stats.dirichlet_prior_neutral(
             data[data.time.==0, :neutral],
         )
     )
