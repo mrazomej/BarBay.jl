@@ -441,6 +441,7 @@ The `DataFrame` must contain at least the following columns:
 # Keyword Arguments
 - `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
   used to sample from the population mean fitness posterior distribution.
+- `n_walkers::Int`: Number of walkers (chains) for the MCMC sample.
 - `n_steps::Int`: Number of steps to take.
 - `outputdir::String`: Directory where the output `.jld2` files containing the
   MCMC chains should be stored.
@@ -487,6 +488,7 @@ where `t` and `t+1` indicate the time points used during the inference.
 """
 function mcmc_mutant_fitness_multithread(;
     data::DF.AbstractDataFrame,
+    n_walkers::Int=1,
     n_steps::Int,
     outputdir::String,
     outputname::String,
@@ -575,20 +577,36 @@ function mcmc_mutant_fitness_multithread(;
             # Suppress warning outputs
             Suppressor.@suppress begin
                 # Sample
-                chain[1] = Turing.sample(
-                    mcmc_model,
-                    sampler,
-                    n_steps,
-                    progress=false
+                chain[1] = mapreduce(
+                    c -> Turing.sample(
+                        mcmc_model, sampler, n_steps, progress=false
+                    ),
+                    Turing.chainscat,
+                    1:n_walkers
                 )
+                # # Sample
+                # chain[1] = Turing.sample(
+                #     mcmc_model,
+                #     sampler,
+                #     n_steps,
+                #     progress=false
+                # )
             end # suppress
         else
-            chain[1] = Turing.sample(
-                mcmc_model,
-                sampler,
-                n_steps,
-                progress=true
+            # Sample
+            chain[1] = mapreduce(
+                c -> Turing.sample(
+                    mcmc_model, sampler, n_steps, progress=true
+                ),
+                Turing.chainscat,
+                1:n_walkers
             )
+            # chain[1] = Turing.sample(
+            #     mcmc_model,
+            #     sampler,
+            #     n_steps,
+            #     progress=true
+            # )
         end # if
 
         if verbose
