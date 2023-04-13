@@ -3,11 +3,14 @@ using Measures, CairoMakie
 import Makie
 import ColorSchemes
 
+# Import library to handle dataframes
+import DataFrames as DF
+
 # Import library to handle MCMCChains
 import MCMCChains
 
 # Import function from stats module
-import BayesFitness.stats: freq_mutant_ppc_quantile
+import BayesFitness.stats: freq_mutant_ppc_quantile, logfreqratio_neutral_ppc_quantile
 
 @doc raw"""
     mcmc_trace_density!(fig::Figure, chain::MCMCChains.Chains; colors, labels)
@@ -90,7 +93,7 @@ function mcmc_trace_density!(
 end # function
 
 @doc raw"""
-    freq_mutant_ppc!(fig, quantile, chain, varname_mut, varname_mean, freq_mut)
+    freq_mutant_ppc!(fig, quantile, chain; colors, alpha, varname_mut, varname_mean, freq_mut)
 
 Function to plot the **posterior predictive checks** quantiles for the barcode
 frequency for adaptive mutants.
@@ -106,8 +109,8 @@ frequency for adaptive mutants.
 - `colors=ColorSchemes.Blues_9`: List of colors to use for each quantile.
 - `alpha::AbstractFloat=0.75`: Level of transparency for band representing each
   quantile.
-- `varname_mut::Symbol=Symbol("s⁽ᵐ⁾")`: Variable name for the mutant relative fitness
-    in the `chain` object.
+- `varname_mut::Symbol=Symbol("s⁽ᵐ⁾")`: Variable name for the mutant relative
+    fitness in the `chain` object.
 - `varname_mean::Symbol=Symbol("s̲ₜ")`: Variable name for *all* population mean
     fitness.
 - `freq_mut::Symbol=Symbol("f̲⁽ᵐ⁾")`: Variable name for *all* mutant barcode
@@ -128,12 +131,21 @@ function freq_mutant_ppc!(
         error("There are not enough colors listed for all quantiles")
     end # if
 
+    # Tell user that quantiles will be sorted
+    if quantile != sort(quantile)
+        println("Notice that we sort the quantiles to properly display the intervals")
+    end # if
+
     # Sort quantiles
     sort!(quantile)
 
     # Compute posterior predictive checks
     f_quant = freq_mutant_ppc_quantile(
-        quantile, chain; varname_mut=varname_mut, varname_mean=varname_mean, freq_mut=freq_mut
+        quantile,
+        chain;
+        varname_mut=varname_mut,
+        varname_mean=varname_mean,
+        freq_mut=freq_mut
     )
 
     # Loop through quantiles
@@ -144,6 +156,62 @@ function freq_mutant_ppc!(
             1:size(f_quant, 1),
             f_quant[:, i, 1],
             f_quant[:, i, 2],
+            color=(colors[i], alpha)
+        )
+    end # for
+end # function
+
+@doc raw"""
+    logfreqratio_neutral_ppc!(fig, quantile, df; colors, alpha,)
+
+Function to plot the **posterior predictive checks** quantiles for the log
+frequency ratio for neutral lineages
+
+# Arguments
+- `fig::Makie.Axis`: Axis object to be populated with plot. 
+- `quantile::Vector{<:AbstractFloat}`: List of quantiles to extract from the
+    posterior predictive checks.
+-`df::DataFrames.DataFrame`: DataFrame containing all population mean fitness
+samples⸺multiple chains must be collapsed into a single column⸺one time point
+per column. Note: we recommend using the `var_jld2_to_df` from the `utils`
+module to build this dataframe.
+
+## Optional arguments
+- `colors=ColorSchemes.Blues_9`: List of colors to use for each quantile.
+- `alpha::AbstractFloat=0.75`: Level of transparency for band representing each
+  quantile.
+"""
+function logfreqratio_neutral_ppc!(
+    ax::Makie.Axis,
+    quantile::Vector{<:AbstractFloat},
+    df::DF.AbstractDataFrame;
+    colors=reverse(ColorSchemes.Blues_9),
+    alpha::AbstractFloat=0.75
+)
+    # Make sure there are enough colors for each quant
+    if length(colors) < length(quantile)
+        error("There are not enough colors listed for all quantiles")
+    end # if
+
+    # Tell user that quantiles will be sorted
+    if any(quantile .!= sort(quantile))
+        println("Notice that we sort the quantiles to properly display the intervals")
+    end # if
+
+    # Sort quantiles
+    sort!(quantile)
+
+    # Compute the posterior predictive checks
+    logf_quant = -1 .* logfreqratio_neutral_ppc_quantile(quantile, df)
+
+    # Loop through quantiles
+    for i in eachindex(quantile)
+        # Add confidence interval for observation
+        band!(
+            ax,
+            1:size(logf_quant, 1),
+            logf_quant[:, i, 1],
+            logf_quant[:, i, 2],
             color=(colors[i], alpha)
         )
     end # for

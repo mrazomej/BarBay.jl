@@ -207,8 +207,8 @@ quantiles from these posterior predictive checks.
     mutant.
 
 ## Optional arguments
-- `varname_mut::Symbol=Symbol("s⁽ᵐ⁾")`: Variable name for the mutant relative fitness
-    in the `chain` object.
+- `varname_mut::Symbol=Symbol("s⁽ᵐ⁾")`: Variable name for the mutant relative
+    fitness in the `chain` object.
 - `varname_mean::Symbol=Symbol("s̲ₜ")`: Variable name for *all* population mean
     fitness.
 - `freq_mut::Symbol=Symbol("f̲⁽ᵐ⁾")`: Variable name for *all* mutant barcode
@@ -216,7 +216,11 @@ quantiles from these posterior predictive checks.
 
 # Returns
 - `fₜ₊₁ = fₜ × exp(s⁽ᵐ⁾ - s̅ₜ)::Array{Float64}`: Evaluation of the frequency
-  posterior predictive check quantiles at all times for each MCMC sample.
+  posterior predictive check quantiles at all times for each MCMC sample. The
+  dimensions of the output are (n_time × n_quantile × 2), where the last
+  dimension is used to store the lower and upper bound of the quantile. For
+  example, if the quantile is 0.95, the third dimension stores the 0.025 and the
+  0.975 quantile that encompass the requested 0.95 quantile.
 """
 function freq_mutant_ppc_quantile(
     quantile::Vector{<:AbstractFloat},
@@ -276,41 +280,44 @@ This function computes the quantiles of the log frequency ration for the neutral
 lineages, given the MCMC samples of the population mean fitness.
 
 # Arguments
-
+- `quantile::Vector{<:AbstractFloat}`: List of quantiles to extract from the
+  posterior predictive checks. 
+-`df::DataFrames.DataFrame`: DataFrame containing all population mean fitness
+samples⸺multiple chains must be collapsed into a single column⸺one time point
+per column. Note: we recommend using the `var_jld2_to_df` from the `utils`
+module to build this dataframe.
 
 # Returns
-- `log(fₜ₊₁ / fₜ) = - s̅ₜ::Array{Float64}`: Evaluation of the log frequency ratio
-  posterior predictive checks at all times for each MCMC sample. The dimensions
-  of the output are (n_samples × n_time × n_chains)
+- `log(fₜ₊₁ / fₜ) = - s̅ₜ::Array{Float64}`: Evaluation of the log frequency
+  ratio posterior predictive checks at all times for each MCMC sample. The
+  dimensions of the output are (n_time × n_quantile × 2), where the last
+  dimension is used to store the lower and upper bound of the quantile. For
+  example, if the quantile is 0.95, the third dimension stores the 0.025 and the
+  0.975 quantile that encompass the requested 0.95 quantile.
 """
 function logfreqratio_neutral_ppc_quantile(
     quantile::Vector{<:AbstractFloat},
-    chain::MCMCChains.Chains;
-    varname_mean::Symbol=Symbol("sₜ")
+    df::DF.AbstractDataFrame
 )
     # Check that all quantiles are within bounds
     if any(.![0.0 ≤ x ≤ 1 for x in quantile])
         error("All quantiles must be between zero and one")
     end # if
 
-    # Extract variable names
-    varnames = MCMCChains.names(chain)
+    # Initialize matrix to save quantiles
+    logf_quant = Array{Float64}(undef, size(df, 2), length(quantile), 2)
 
-    # Check that names match pattern given by varname_mean
-    if any(.!occursin.(String(varname_mean), String.(varnames)))
-        error("The name of the variables in the chain do not match the pattern in varname_mean")
-    end # if
+    # Loop through quantile
+    for (i, q) in enumerate(quantile)
+        # Lower bound
+        logf_quant[:, i, 1] = StatsBase.quantile.(
+            eachcol(df), (1.0 - q) / 2.0
+        )
+        # Upper bound
+        logf_quant[:, i, 2] = StatsBase.quantile.(
+            eachcol(df), 1.0 - (1.0 - q) / 2.0
+        )
+    end # for
 
-    # Extract values
-    logfreqratio = [vec(Matrix(chain[n])) for n in varnames]
-
-
-
-
-    # Extract number of chains
-    n_chains = length(MCMCChains.chains(chain))
-    # Extract number of steps per chain
-    n_samples = length(chain)
-
-
+    return logf_quant
 end # function
