@@ -10,7 +10,7 @@ import DataFrames as DF
 import MCMCChains
 
 # Import function from stats module
-import BayesFitness.stats: freq_mutant_ppc_quantile, logfreqratio_neutral_ppc_quantile
+import BayesFitness.stats: matrix_quantile_range, freq_mutant_ppc_quantile, logfreqratio_neutral_ppc_quantile
 
 @doc raw"""
     mcmc_trace_density!(fig::Figure, chain::MCMCChains.Chains; colors, labels)
@@ -162,17 +162,15 @@ function freq_mutant_ppc!(
 end # function
 
 @doc raw"""
-    freq_mutant_ppc!(fig, quantile, df, varname_mut, varname_mean, varname_freq; colors, alpha)
+    freq_mutant_ppc!(ax, quantile, df, varname_mut, varname_mean, varname_freq; colors, alpha)
 
 Function to plot the **posterior predictive checks** quantiles for the barcode
 frequency for adaptive mutants.
 
 # Arguments
-- `fig::Makie.Axis`: Axis object to be populated with plot. 
+- `ax::Makie.Axis`: Axis object to be populated with plot. 
 - `quantile::Vector{<:AbstractFloat}`: List of quantiles to extract from the
     posterior predictive checks.
-- `chain::MCMCChains.Chains`: `Turing.jl` MCMC chain for the fitness of a single
-    mutant.
 - `df::DataFrames.DataFrame`: Dataframe containing the MCMC samples for the
 variables needed to compute the posterior predictive checks. The dataframe
 should have MCMC samples for
@@ -287,6 +285,55 @@ function logfreqratio_neutral_ppc!(
             1:size(logf_quant, 1),
             logf_quant[:, i, 1],
             logf_quant[:, i, 2],
+            color=(colors[i], alpha)
+        )
+    end # for
+end # function
+
+@doc raw"""
+    time_vs_freq_ppc!(ax, quantile, ppc_mat; colors, alpha)
+
+Function to plot the posterior predictive checks quantiles for the barcode
+frequency time trajectories.
+
+# Arguments
+- `fig::Makie.Axis`: Axis object to be populated with plot. 
+- `quantile::Vector{<:AbstractFloat}`: List of quantiles to extract from the
+    posterior predictive checks.
+- `ppc_mat::Matrix{<:AbstractFloat}`: Matrix containing the posterior predictive
+  samples. Rows are assumed to contain the samples, columns the time points.
+
+## Optional arguments
+- `colors=ColorSchemes.Blues_9`: List of colors to use for each quantile.
+- `alpha::AbstractFloat=0.75`: Level of transparency for band representing each
+quantile.
+"""
+function time_vs_freq_ppc!(
+    ax::Makie.Axis,
+    quantile::Vector{<:AbstractFloat},
+    ppc_mat::Matrix{<:AbstractFloat};
+    colors=ColorSchemes.Blues_9,
+    alpha::AbstractFloat=0.75
+)
+    # Tell user that quantiles will be sorted
+    if quantile != sort(quantile, rev=true)
+        println("Notice that we sort the quantiles to properly display the intervals")
+    end # if
+
+    # Sort quantiles
+    sort!(quantile, rev=true)
+
+    # Compute quantiles
+    ppc_quant = matrix_quantile_range(quantile, ppc_mat)
+
+    # Loop through quantiles
+    for i in eachindex(quantile)
+        # Add confidence interval for observation
+        band!(
+            ax,
+            1:size(ppc_quant, 1),
+            ppc_quant[:, i, 1],
+            ppc_quant[:, i, 2],
             color=(colors[i], alpha)
         )
     end # for

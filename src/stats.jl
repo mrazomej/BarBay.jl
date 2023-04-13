@@ -2,7 +2,11 @@
 # Import package to handle dataframes
 import DataFrames as DF
 
+# Import basic mathematical operations
+import LinearAlgebra
+
 # Import statistical libraries
+import Random
 import Distributions
 import StatsBase
 
@@ -10,6 +14,62 @@ import StatsBase
 import MCMCChains
 
 ##
+
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Basic statistical functions
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+@doc raw"""
+    matrix_quantile_range(quantile, matrix; dim=2)
+
+Function to compute the quantile ranges of matrix `mat` over dimension `dim`.
+For example, if `quantile[1] = 0.95`, This function returns the `0.025` and
+`0.975` quantiles that capture 95 percent of the entires on the matrix.
+
+# Arguments
+- `quantile::Vector{<:AbstractFloat}`: List of quantiles to extract from the
+  posterior predictive checks.
+- `matrix::Matrix{<:Real}`: Array over which to compute quantile ranges.
+
+# Optional arguments
+- `dim::Int=2`: Dimension over which to compute quantiles. Defualt = 1, i.e.,
+  columns.
+"""
+function matrix_quantile_range(
+    quantile::Vector{<:AbstractFloat}, matrix::Matrix{T}; dims::Int=2
+) where {T<:Real}
+    # Check that all quantiles are within bounds
+    if any(.![0.0 ≤ x ≤ 1 for x in quantile])
+        error("All quantiles must be between zero and one")
+    end # if
+
+    # Check that dim corresponds to a matrix
+    if (dims != 1) & (dims != 2)
+        error("Dimensions should match a Matrix dimensiosn, i.e., 1 or 2")
+    end # if
+
+    # Get opposite dimension   
+    op_dims = first([1, 2][[1, 2].∈Set(dims)])
+
+    # Initialize array to save quantiles
+    array_quantile = Array{T}(undef, size(matrix, op_dims), length(quantile), 2)
+
+    # Loop through quantile
+    for (i, q) in enumerate(quantile)
+        # Lower bound
+        array_quantile[:, i, 1] = StatsBase.quantile.(
+            eachslice(matrix, dims=dims), (1.0 - q) / 2.0
+        )
+        # Upper bound
+        array_quantile[:, i, 2] = StatsBase.quantile.(
+            eachslice(matrix, dims=dims), 1.0 - (1.0 - q) / 2.0
+        )
+    end # for
+
+    return array_quantile
+
+end # function
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 # Setting priors
@@ -460,4 +520,83 @@ function freq_mutant_ppc_quantile(
     end # for
 
     return f_quant
+end # function
+
+@doc raw"""
+    loglikelihood_freq_mutant_ppc(n_ppc, df, varname_mut, varname_mean, varname_freq)
+
+Function to compute the **posterior predictive checks** for the barcode
+frequency for adaptive mutants. Our model predicts the frequency at time ``t+1``
+based on the frequency at time ``t`` as
+
+```math
+    f_{t+1}^{(m)} = f_{t}^{(m)} 
+    \exp\left[ \left( s^{(m)} - \bar{s}_t \right) \tau \right],
+```
+where ``s^{(m)}`` is the mutant relative fitness, ``\bar{s}_t`` is the
+population mean fitness between time ``t`` and ``t+1``, and ``\tau`` is the time
+interval between time ``t`` and ``t+1``. Our inference model assumes that
+```math
+    \frac{f_{t+1}^{(m)}}{f_{t}^{(m)}} \sim 
+    \log-\mathcal{N}\left( s^{(m)} - \bar{s}_t, \sigma^{(m)} \right),
+```
+where ``\sigma^{(m)}`` is the inferred standard deviation for the model. This
+function generates samples out of this distribution.
+
+# Arguments
+- `n_ppc::Int`: Number of samples to generate per set of parameters.
+- `df::DataFrames.DataFrame`: Dataframe containing the MCMC samples for the
+  variables needed to compute the posterior predictive checks. The dataframe
+  should have MCMC samples for
+  - mutant relative fitness values.
+  - population mean fitness values. NOTE: The number of columns containing
+    population mean fitness values determines the number of datapoints where the
+    ppc are evaluated.
+  - log-normal likelihood standard deviation.
+  - mutant initial frequency.
+- `varname_mut::Union{Symbol, AbstractString}`: Variable name for the mutant
+    relative fitness in the data frame.
+- `varname_mean::Union{Symbol, AbstractString}`: Variable name pattern for *all*
+  population mean fitness. All columns in the dataframe should contain this
+  pattern and the sorting of these names must correspond to the sorting of the
+  time points.
+- `varname_std::Union{Symbol,AbstractString}` VAriable name for the log-normal
+  distribution standard deviation.
+- `varname_freq::Union{Symbol, AbstractString}`: Variable name for initial
+  mutant barcode frequencies.
+
+# Returns
+- `fₜ₊₁ = fₜ × exp(s⁽ᵐ⁾ - s̅ₜ)::Array{Float64}`: Evaluation of the frequency
+  posterior predictive checks at all times for each MCMC sample.
+"""
+function freq_mutant_ppc(
+    n_ppc::Int,
+    df::DF.AbstractDataFrame,
+    varname_mut::Union{Symbol,AbstractString},
+    varname_mean::Union{Symbol,AbstractString},
+    varname_std::Union{Symbol,AbstractString},
+    varname_freq::Union{Symbol,AbstractString}
+)
+    # Extract variable names for mean fitness
+    mean_vars = DF.names(df)[occursin.(String(varname_mean), DF.names(df))]
+
+    # Initialize matrix to save PPC
+    f_ppc = Array{Float64}(undef, size(df, 1), length(mean_vars) + 1, n_ppc)
+
+    # Set initial frequency
+    f_ppc[:, 1, :] = hcat(repeat([df[:, varname_freq]], n_ppc)...)
+
+    # Loop through time points
+    for (i, var) in enumerate(mean_vars)
+        # Sample out of posterior distribution
+        f_ppc[:, i+1, :] = f_ppc[:, i, :] .* Random.rand(
+            Distributions.MvLogNormal(
+                df[:, varname_mut] .- df[:, var],
+                LinearAlgebra.Diagonal(df[:, varname_std] .^ 2)
+            ),
+            n_ppc
+        )
+    end # for
+
+    return f_ppc
 end # function
