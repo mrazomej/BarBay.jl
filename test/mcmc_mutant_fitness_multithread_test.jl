@@ -12,7 +12,17 @@ import BayesFitness
 # Import libraries to manipulate data
 import DataFrames as DF
 import CSV
+import MCMCChains
 
+# Import library to save and load native julia objects
+import JLD2
+
+# Import library to list files
+import Glob
+
+# Import plotting libraries
+using CairoMakie
+import ColorSchemes
 ##
 
 # Import data
@@ -48,5 +58,49 @@ param = Dict(
 
 # Run inference
 BayesFitness.mcmc.mcmc_mutant_fitness_multithread(; param...)
+
+##
+
+# Find barcode with maximum count
+bc = data[first(argmax(data.count, dims=1)), :barcode]
+
+# Select file to process
+file = first(Glob.glob("$(param[:outputdir])/$(param[:outputname])*$(bc)*"))
+
+# Extract data
+data_bc = data[data.barcode.==bc, :]
+
+# Sort data by time
+DF.sort!(data_bc, :time)
+
+# Load one of the files as an example
+mcmc_chain = JLD2.load(file)["chain"]
+
+##
+
+# Define quantiles to compute
+qs = [0.95, 0.675, 0.02]
+
+# Define colors
+colors = reverse(get(ColorSchemes.Blues_9, LinRange(0.5, 1, length(qs))))
+
+# Initialize figure
+fig = Figure(resolution=(350, 350))
+
+# Add axis
+ax = Axis(
+    fig[1, 1],
+    xlabel="time point",
+    ylabel="barcode frequency",
+    yscale=log10
+)
+
+# Plot posterior predictive checks 
+BayesFitness.viz.freq_mutant_ppc!(ax, qs, mcmc_chain; colors=colors)
+
+# Add scatter of data
+scatterlines!(ax, data_bc.count ./ data_bc.count_sum, color=:black)
+
+fig
 
 ##
