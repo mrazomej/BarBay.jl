@@ -90,7 +90,7 @@ function mcmc_trace_density!(
 end # function
 
 @doc raw"""
-    freq_mutant_ppc!(fig, quantile, chain, s_mut, s_pop, freq_mut)
+    freq_mutant_ppc!(fig, quantile, chain, varname_mut, varname_mean, freq_mut)
 
 Function to plot the **posterior predictive checks** quantiles for the barcode
 frequency for adaptive mutants.
@@ -106,9 +106,9 @@ frequency for adaptive mutants.
 - `colors=ColorSchemes.Blues_9`: List of colors to use for each quantile.
 - `alpha::AbstractFloat=0.75`: Level of transparency for band representing each
   quantile.
-- `s_mut::Symbol=Symbol("s⁽ᵐ⁾")`: Variable name for the mutant relative fitness
+- `varname_mut::Symbol=Symbol("s⁽ᵐ⁾")`: Variable name for the mutant relative fitness
     in the `chain` object.
-- `s_pop::Symbol=Symbol("s̲ₜ")`: Variable name for *all* population mean
+- `varname_mean::Symbol=Symbol("s̲ₜ")`: Variable name for *all* population mean
     fitness.
 - `freq_mut::Symbol=Symbol("f̲⁽ᵐ⁾")`: Variable name for *all* mutant barcode
     frequencies.
@@ -119,8 +119,8 @@ function freq_mutant_ppc!(
     chain::MCMCChains.Chains;
     colors=reverse(ColorSchemes.Blues_9),
     alpha::AbstractFloat=0.75,
-    s_mut::Symbol=Symbol("s⁽ᵐ⁾"),
-    s_pop::Symbol=Symbol("s̲ₜ"),
+    varname_mut::Symbol=Symbol("s⁽ᵐ⁾"),
+    varname_mean::Symbol=Symbol("s̲ₜ"),
     freq_mut::Symbol=Symbol("f̲⁽ᵐ⁾")
 )
     # Make sure there are enough colors for each quant
@@ -133,7 +133,7 @@ function freq_mutant_ppc!(
 
     # Compute posterior predictive checks
     f_quant = freq_mutant_ppc_quantile(
-        quantile, chain; s_mut=s_mut, s_pop=s_pop, freq_mut=freq_mut
+        quantile, chain; varname_mut=varname_mut, varname_mean=varname_mean, freq_mut=freq_mut
     )
 
     # Loop through quantiles

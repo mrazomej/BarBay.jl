@@ -11,6 +11,10 @@ import MCMCChains
 
 ##
 
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Setting priors
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
 @doc raw"""
     dirichlet_prior_neutral(neutrals)
 
@@ -89,8 +93,12 @@ function gaussian_prior_mean_fitness(data::DF.AbstractDataFrame)
     return µ, σ
 end # function
 
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Posterior predictive checks
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
 @doc raw"""
-    freq_mutant_ppc(chain, s_mut, s_pop)
+    freq_mutant_ppc(chain, varname_mut, varname_mean)
 
 Function to compute the **posterior predictive checks** for the barcode
 frequency for adaptive mutants. Our model predicts the frequency at time ``t+1``
@@ -110,9 +118,9 @@ for each of the MCMC samples in the `chain` object.
   mutant.
 
 ## Optional arguments
-- `s_mut::Symbol=Symbol("s⁽ᵐ⁾")`: Variable name for the mutant relative fitness
+- `varname_mut::Symbol=Symbol("s⁽ᵐ⁾")`: Variable name for the mutant relative fitness
     in the `chain` object.
-- `s_pop::Symbol=Symbol("s̲ₜ")`: Variable name for *all* population mean
+- `varname_mean::Symbol=Symbol("s̲ₜ")`: Variable name for *all* population mean
   fitness.
 - `freq_mut::Symbol=Symbol("f̲⁽ᵐ⁾")`: Variable name for *all* mutant barcode
   frequencies.
@@ -124,8 +132,8 @@ for each of the MCMC samples in the `chain` object.
 """
 function freq_mutant_ppc(
     chain::MCMCChains.Chains;
-    s_mut::Symbol=Symbol("s⁽ᵐ⁾"),
-    s_pop::Symbol=Symbol("s̲ₜ"),
+    varname_mut::Symbol=Symbol("s⁽ᵐ⁾"),
+    varname_mean::Symbol=Symbol("s̲ₜ"),
     freq_mut::Symbol=Symbol("f̲⁽ᵐ⁾")
 )
     # Extract number of chains
@@ -133,13 +141,11 @@ function freq_mutant_ppc(
     # Extract number of steps per chain
     n_samples = length(chain)
     # Extract number of timepoints
-    n_time = size(MCMCChains.group(chain, s_pop), 2)
-    # Extract parameter names
-    par_names = names(chain, :parameters)
+    n_time = size(MCMCChains.group(chain, varname_mean), 2)
 
     # Extract relevant parameters
     # 1. Mutant fitness
-    s⁽ᵐ⁾_chain = first(MCMCChains.get(chain, s_mut))
+    s⁽ᵐ⁾_chain = first(MCMCChains.get(chain, varname_mut))
 
     # 2. Population mean fitness chain. This is collected into a Tensor where
     #    each face are the samples corresponding to a time point.
@@ -148,7 +154,7 @@ function freq_mutant_ppc(
     # Extract and sort chain variable names for population mean fitness
     sₜ_names = sort(
         collect(
-            keys(MCMCChains.get(chain, MCMCChains.namesingroup(chain, s_pop)))
+            keys(MCMCChains.get(chain, MCMCChains.namesingroup(chain, varname_mean)))
         )
     )
     # Loop through time points
@@ -178,7 +184,7 @@ function freq_mutant_ppc(
 end # function
 
 @doc raw"""
-    freq_mut_ppc_quantile(quantile, chain, s_mut, s_pop, freq_mut)
+    freq_mut_ppc_quantile(quantile, chain, varname_mut, varname_mean, freq_mut)
 
 Function to compute the **posterior predictive checks** quantiles for the
 barcode frequency for adaptive mutants. Our model predicts the frequency at time
@@ -201,9 +207,9 @@ quantiles from these posterior predictive checks.
     mutant.
 
 ## Optional arguments
-- `s_mut::Symbol=Symbol("s⁽ᵐ⁾")`: Variable name for the mutant relative fitness
+- `varname_mut::Symbol=Symbol("s⁽ᵐ⁾")`: Variable name for the mutant relative fitness
     in the `chain` object.
-- `s_pop::Symbol=Symbol("s̲ₜ")`: Variable name for *all* population mean
+- `varname_mean::Symbol=Symbol("s̲ₜ")`: Variable name for *all* population mean
     fitness.
 - `freq_mut::Symbol=Symbol("f̲⁽ᵐ⁾")`: Variable name for *all* mutant barcode
     frequencies.
@@ -215,8 +221,8 @@ quantiles from these posterior predictive checks.
 function freq_mutant_ppc_quantile(
     quantile::Vector{<:AbstractFloat},
     chain::MCMCChains.Chains;
-    s_mut::Symbol=Symbol("s⁽ᵐ⁾"),
-    s_pop::Symbol=Symbol("s̲ₜ"),
+    varname_mut::Symbol=Symbol("s⁽ᵐ⁾"),
+    varname_mean::Symbol=Symbol("s̲ₜ"),
     freq_mut::Symbol=Symbol("f̲⁽ᵐ⁾")
 )
     # Check that all quantiles are within bounds
@@ -225,7 +231,7 @@ function freq_mutant_ppc_quantile(
     end # if
 
     # Compute posterior predictive checks for a particular chain
-    f_ppc = freq_mutant_ppc(chain; s_mut=s_mut, s_pop=s_pop, freq_mut=freq_mut)
+    f_ppc = freq_mutant_ppc(chain; varname_mut=varname_mut, varname_mean=varname_mean, freq_mut=freq_mut)
 
     # Compact multiple chains into single long chain
     f_ppc = vcat([f_ppc[:, :, i] for i = 1:size(f_ppc, 3)]...)
@@ -246,4 +252,65 @@ function freq_mutant_ppc_quantile(
     end # for
 
     return f_quant
+end # function
+
+@doc raw"""
+    logfreqratio_neutral_ppc_quantile(quantile, df)
+
+Function to compute the **posterior predictive checks** for the barcode log
+frequency ratio for neutral lineages. Our model predicts the frequency for
+neutral lineages at time ``t+1`` based on the frequency at time ``t`` as
+
+```math
+    f_{t+1}^{(n)} = f_{t}^{(n)} 
+    \exp\left[  - \bar{s}_t \tau \right],
+```
+where ``\bar{s}_t`` is the population mean fitness between time ``t`` and
+``t+1``, and ``\tau`` is the time interval between time ``t`` and ``t+1``.
+Solving for the mean fitness results in
+```math
+    \frac{1}{\tau} \log \frac{f_{t+1}^{(n)}}{f_{t}^{(n)}} = - \bar{s}_t.
+```
+
+This function computes the quantiles of the log frequency ration for the neutral
+lineages, given the MCMC samples of the population mean fitness.
+
+# Arguments
+
+
+# Returns
+- `log(fₜ₊₁ / fₜ) = - s̅ₜ::Array{Float64}`: Evaluation of the log frequency ratio
+  posterior predictive checks at all times for each MCMC sample. The dimensions
+  of the output are (n_samples × n_time × n_chains)
+"""
+function logfreqratio_neutral_ppc_quantile(
+    quantile::Vector{<:AbstractFloat},
+    chain::MCMCChains.Chains;
+    varname_mean::Symbol=Symbol("sₜ")
+)
+    # Check that all quantiles are within bounds
+    if any(.![0.0 ≤ x ≤ 1 for x in quantile])
+        error("All quantiles must be between zero and one")
+    end # if
+
+    # Extract variable names
+    varnames = MCMCChains.names(chain)
+
+    # Check that names match pattern given by varname_mean
+    if any(.!occursin.(String(varname_mean), String.(varnames)))
+        error("The name of the variables in the chain do not match the pattern in varname_mean")
+    end # if
+
+    # Extract values
+    logfreqratio = [vec(Matrix(chain[n])) for n in varnames]
+
+
+
+
+    # Extract number of chains
+    n_chains = length(MCMCChains.chains(chain))
+    # Extract number of steps per chain
+    n_samples = length(chain)
+
+
 end # function
