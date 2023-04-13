@@ -321,3 +321,143 @@ function logfreqratio_neutral_ppc_quantile(
 
     return logf_quant
 end # function
+
+@doc raw"""
+    freq_mutant_ppc(df, varname_mut, varname_mean, varname_freq)
+
+Function to compute the **posterior predictive checks** for the barcode
+frequency for adaptive mutants. Our model predicts the frequency at time ``t+1``
+based on the frequency at time ``t`` as
+
+```math
+    f_{t+1}^{(m)} = f_{t}^{(m)} 
+    \exp\left[ \left( s^{(m)} - \bar{s}_t \right) \tau \right],
+```
+where ``s^{(m)}`` is the mutant relative fitness, ``\bar{s}_t`` is the
+population mean fitness between time ``t`` and ``t+1``, and ``\tau`` is the time
+interval between time ``t`` and ``t+1``. This funciton computes the frequency
+for each of the MCMC samples in the `chain` object.
+
+# Arguments
+- `df::DataFrames.DataFrame`: Dataframe containing the MCMC samples for the
+  variables needed to compute the posterior predictive checks. The dataframe
+  should have MCMC samples for
+  - mutant relative fitness values.
+  - population mean fitness values. NOTE: The number of columns containing
+    population mean fitness values determines the number of datapoints where the
+    ppc are evaluated.
+  - mutant initial frequency.
+- `varname_mut::Union{Symbol, AbstractString}`: Variable name for the mutant
+    relative fitness in the data frame.
+- `varname_mean::Union{Symbol, AbstractString}`: Variable name pattern for *all*
+  population mean fitness. All columns in the dataframe should contain this
+  pattern and the sorting of these names must correspond to the sorting of the
+  time points.
+- `varname_freq::Union{Symbol, AbstractString}`: Variable name for initial mutant
+  barcode frequencies.
+
+# Returns
+- `fₜ₊₁ = fₜ × exp(s⁽ᵐ⁾ - s̅ₜ)::Array{Float64}`: Evaluation of the frequency
+  posterior predictive checks at all times for each MCMC sample. The dimensions
+  of the output are (n_samples × n_time × n_chains)
+"""
+function freq_mutant_ppc(
+    df::DF.AbstractDataFrame,
+    varname_mut::Union{Symbol,AbstractString},
+    varname_mean::Union{Symbol,AbstractString},
+    varname_freq::Union{Symbol,AbstractString}
+)
+    # Extract variable names for mean fitness
+    mean_vars = DF.names(df)[occursin.(String(varname_mean), DF.names(df))]
+
+    # Initialize matrix to save PPC
+    f_ppc = Matrix{Float64}(undef, size(df, 1), length(mean_vars) + 1)
+
+    # Set initial frequency
+    f_ppc[:, 1] = df[:, varname_freq]
+
+    # Loop through time points
+    for (i, var) in enumerate(mean_vars)
+        f_ppc[:, i+1] = f_ppc[:, i] .* exp.(df[:, varname_mut] .- df[:, var])
+    end # for
+
+    return f_ppc
+end # function
+
+@doc raw"""
+    freq_mut_ppc_quantile(quantile, df, varname_mut, varname_mean, varname_freq)
+
+Function to compute the **posterior predictive checks** quantiles for the
+barcode frequency for adaptive mutants. Our model predicts the frequency at time
+``t+1`` based on the frequency at time ``t`` as
+    
+```math
+    f_{t+1}^{(m)} = f_{t}^{(m)} 
+    \exp\left[ \left( s^{(m)} - \bar{s}_t \right) \tau \right],
+```
+where ``s^{(m)}`` is the mutant relative fitness, ``\bar{s}_t`` is the
+population mean fitness between time ``t`` and ``t+1``, and ``\tau`` is the time
+interval between time ``t`` and ``t+1``. This funciton computes the frequency
+for each of the MCMC samples in the `chain` object, and then extracts the
+quantiles from these posterior predictive checks.
+
+# Arguments
+- `quantile::Vector{<:AbstractFloat}`: List of quantiles to extract from the
+  posterior predictive checks.
+- `df::DataFrames.DataFrame`: Dataframe containing the MCMC samples for the
+variables needed to compute the posterior predictive checks. The dataframe
+should have MCMC samples for
+  - mutant relative fitness values.
+  - population mean fitness values. NOTE: The number of columns containing
+    population mean fitness values determines the number of datapoints where the
+    ppc are evaluated.
+  - mutant initial frequency.
+- `varname_mut::Union{Symbol, AbstractString}`: Variable name for the mutant
+    relative fitness in the data frame.
+- `varname_mean::Union{Symbol, AbstractString}`: Variable name pattern for *all*
+  population mean fitness. All columns in the dataframe should contain this
+  pattern and the sorting of these names must correspond to the sorting of the
+  time points.
+- `varname_freq::Union{Symbol, AbstractString}`: Variable name for initial mutant
+  barcode frequencies.
+
+# Returns
+- `fₜ₊₁ = fₜ × exp(s⁽ᵐ⁾ - s̅ₜ)::Array{Float64}`: Evaluation of the frequency
+  posterior predictive check quantiles at all times for each MCMC sample. The
+  dimensions of the output are (n_time × n_quantile × 2), where the last
+  dimension is used to store the lower and upper bound of the quantile. For
+  example, if the quantile is 0.95, the third dimension stores the 0.025 and the
+  0.975 quantile that encompass the requested 0.95 quantile.
+"""
+function freq_mutant_ppc_quantile(
+    quantile::Vector{<:AbstractFloat},
+    df::DF.AbstractDataFrame,
+    varname_mut::Union{Symbol,AbstractString},
+    varname_mean::Union{Symbol,AbstractString},
+    varname_freq::Union{Symbol,AbstractString}
+)
+    # Check that all quantiles are within bounds
+    if any(.![0.0 ≤ x ≤ 1 for x in quantile])
+        error("All quantiles must be between zero and one")
+    end # if
+
+    # Compute posterior predictive checks for a particular chain
+    f_ppc = freq_mutant_ppc(df, varname_mut, varname_mean, varname_freq)
+
+    # Initialize matrix to save quantiles
+    f_quant = Array{Float64}(undef, size(f_ppc, 2), length(quantile), 2)
+
+    # Loop through quantile
+    for (i, q) in enumerate(quantile)
+        # Lower bound
+        f_quant[:, i, 1] = StatsBase.quantile.(
+            eachcol(f_ppc), (1.0 - q) / 2.0
+        )
+        # Upper bound
+        f_quant[:, i, 2] = StatsBase.quantile.(
+            eachcol(f_ppc), 1.0 - (1.0 - q) / 2.0
+        )
+    end # for
+
+    return f_quant
+end # function

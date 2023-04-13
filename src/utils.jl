@@ -65,7 +65,9 @@ end # function
     var_jld2_concat(dir, pattern, varname)
 
 Function that takes `.jld2` files in `dir` with `pattern` and extracts a single
-variable to concatentate into a single chain object
+variable to concatentate into a single chain object. This function is useful to
+extract variables with the same name on multiple `.jld2` files and compile them
+into a single `MCMCChains.Chains` object.
 
 NOTE: All chains from which samples will be extracted must have the same number
 of samples.
@@ -104,4 +106,60 @@ function var_jld2_concat(
         permutedims(cat(chains..., dims=3), [1, 3, 2]),
         [Symbol(String(varname) * "[$x]") for x = 1:length(chains)]
     )
+end # function
+
+@doc raw"""
+    chain_to_df(chain, varnames)
+
+Function that extracts the variables in `varnames` from the `chain` object and
+concatenates them into a `DataFrame`. Multiple chains are piled on top of each
+other.
+
+# Arguments
+- `chain::MCMCChains.Chains`: Chain with variables to be converted to dataframe
+
+# Optional arguments
+- `varnames::Union{Vector{Symbol}, Nothing}=nothing`: Names of the variables in
+  the chain to be extracted. These can be either the full variable name or
+  patterns to extract multi-dimensional variables. If `nothing` is given, all
+  parameters are extracted into a dataframe.
+
+# Returns
+`DataFrames.DataFrame`: Data frame where each column represents all the MCMC
+samples for a single variable (multiple chains are stack on top of each other)
+"""
+function chain_to_df(
+    chain::MCMCChains.Chains, varnames::Union{Vector{Symbol},Nothing}=nothing
+)
+    # Extract parameter names
+    chain_param = MCMCChains.names(chain, :parameters)
+
+    # Check if varnames were given
+    if typeof(varnames) == Nothing
+        # Extract and return selected variables in dataframe
+        return DF.DataFrame(
+            [vec(Matrix(chain[var])) for var in chain_param],
+            chain_param
+        )
+    else
+        # Convert chain_param into string
+        chain_str = String.(chain_param)
+
+        # Initialize list of variables to extract
+        vars = Symbol[]
+        # Loop through varnames
+        for v in varnames
+            # Search and append parameters that match pattern
+            push!(
+                vars,
+                chain_param[occursin.(String(v), chain_str)]...
+            )
+        end # for
+
+        # Extract and return selected variables in dataframe
+        return DF.DataFrame(
+            [vec(Matrix(chain[var])) for var in unique(vars)],
+            vars
+        )
+    end # if
 end # function

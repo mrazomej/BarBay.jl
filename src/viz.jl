@@ -120,7 +120,7 @@ function freq_mutant_ppc!(
     ax::Makie.Axis,
     quantile::Vector{<:AbstractFloat},
     chain::MCMCChains.Chains;
-    colors=reverse(ColorSchemes.Blues_9),
+    colors=ColorSchemes.Blues_9,
     alpha::AbstractFloat=0.75,
     varname_mut::Symbol=Symbol("s⁽ᵐ⁾"),
     varname_mean::Symbol=Symbol("s̲ₜ"),
@@ -132,12 +132,12 @@ function freq_mutant_ppc!(
     end # if
 
     # Tell user that quantiles will be sorted
-    if quantile != sort(quantile)
+    if quantile != sort(quantile, rev=true)
         println("Notice that we sort the quantiles to properly display the intervals")
     end # if
 
     # Sort quantiles
-    sort!(quantile)
+    sort!(quantile, rev=true)
 
     # Compute posterior predictive checks
     f_quant = freq_mutant_ppc_quantile(
@@ -146,6 +146,81 @@ function freq_mutant_ppc!(
         varname_mut=varname_mut,
         varname_mean=varname_mean,
         freq_mut=freq_mut
+    )
+
+    # Loop through quantiles
+    for i in eachindex(quantile)
+        # Add confidence interval for observation
+        band!(
+            ax,
+            1:size(f_quant, 1),
+            f_quant[:, i, 1],
+            f_quant[:, i, 2],
+            color=(colors[i], alpha)
+        )
+    end # for
+end # function
+
+@doc raw"""
+    freq_mutant_ppc!(fig, quantile, df, varname_mut, varname_mean, varname_freq; colors, alpha)
+
+Function to plot the **posterior predictive checks** quantiles for the barcode
+frequency for adaptive mutants.
+
+# Arguments
+- `fig::Makie.Axis`: Axis object to be populated with plot. 
+- `quantile::Vector{<:AbstractFloat}`: List of quantiles to extract from the
+    posterior predictive checks.
+- `chain::MCMCChains.Chains`: `Turing.jl` MCMC chain for the fitness of a single
+    mutant.
+- `df::DataFrames.DataFrame`: Dataframe containing the MCMC samples for the
+variables needed to compute the posterior predictive checks. The dataframe
+should have MCMC samples for
+    - mutant relative fitness values.
+    - population mean fitness values. NOTE: The number of columns containing
+      population mean fitness values determines the number of datapoints where the
+      ppc are evaluated.
+    - mutant initial frequency.
+  - `varname_mut::Union{Symbol, AbstractString}`: Variable name for the mutant
+      relative fitness in the data frame.
+  - `varname_mean::Union{Symbol, AbstractString}`: Variable name pattern for *all*
+    population mean fitness. All columns in the dataframe should contain this
+    pattern and the sorting of these names must correspond to the sorting of the
+    time points.
+  - `varname_freq::Union{Symbol, AbstractString}`: Variable name for initial mutant
+    barcode frequencies.
+
+## Optional arguments
+- `colors=ColorSchemes.Blues_9`: List of colors to use for each quantile.
+- `alpha::AbstractFloat=0.75`: Level of transparency for band representing each
+  quantile.
+"""
+function freq_mutant_ppc!(
+    ax::Makie.Axis,
+    quantile::Vector{<:AbstractFloat},
+    df::DF.AbstractDataFrame,
+    varname_mut::Union{Symbol,AbstractString},
+    varname_mean::Union{Symbol,AbstractString},
+    varname_freq::Union{Symbol,AbstractString};
+    colors=ColorSchemes.Blues_9,
+    alpha::AbstractFloat=0.75
+)
+    # Make sure there are enough colors for each quant
+    if length(colors) < length(quantile)
+        error("There are not enough colors listed for all quantiles")
+    end # if
+
+    # Tell user that quantiles will be sorted
+    if quantile != sort(quantile, rev=true)
+        println("Notice that we sort the quantiles to properly display the intervals")
+    end # if
+
+    # Sort quantiles
+    sort!(quantile, rev=true)
+
+    # Compute posterior predictive checks
+    f_quant = freq_mutant_ppc_quantile(
+        quantile, df, varname_mut, varname_mean, varname_freq
     )
 
     # Loop through quantiles
@@ -194,12 +269,12 @@ function logfreqratio_neutral_ppc!(
     end # if
 
     # Tell user that quantiles will be sorted
-    if any(quantile .!= sort(quantile))
+    if any(quantile .!= sort(quantile, rev=true))
         println("Notice that we sort the quantiles to properly display the intervals")
     end # if
 
     # Sort quantiles
-    sort!(quantile)
+    sort!(quantile, rev=true)
 
     # Compute the posterior predictive checks
     logf_quant = -1 .* logfreqratio_neutral_ppc_quantile(quantile, df)
