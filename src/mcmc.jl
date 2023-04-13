@@ -584,13 +584,6 @@ function mcmc_mutant_fitness_multithread(;
                     Turing.chainscat,
                     1:n_walkers
                 )
-                # # Sample
-                # chain[1] = Turing.sample(
-                #     mcmc_model,
-                #     sampler,
-                #     n_steps,
-                #     progress=false
-                # )
             end # suppress
         else
             # Sample
