@@ -134,10 +134,10 @@ function mcmc_mean_fitness(;
         end # if
 
         # Define output file name
-        fname = "$(outputname)_$(timepoints[t])-$(timepoints[t+1])_meanfitness"
+        fname = "$(outputname)_$(timepoints[t])-$(timepoints[t+1])"
 
         # Check that file hasn't been processed
-        if isfile("$(outputdir)/$(fname)")
+        if isfile("$(outputdir)/$(fname).jld2")
             if verbose
                 # Print if barcode was already processed
                 println("$(fname) was already processed")
@@ -243,7 +243,7 @@ function mcmc_mean_fitness(;
 
         # Write output into memory
         JLD2.jldsave(
-            "$(outputdir)/$(fname)_mcmcchains.jld2",
+            "$(outputdir)/$(fname).jld2",
             chain=first(chain),
         )
 
@@ -398,9 +398,9 @@ function mcmc_mutant_fitness(;
     # Loop through barcodes
     for j = 1:size(r⁽ᵐ⁾_array, 1)
         # Define output_name
-        fname = "$(outputname)_$(data_keys[j])_mcmcchains.jld2"
+        fname = "$(outputname)_$(data_keys[j])"
         # Check that file hasn't been processed
-        if isfile("$(outputdir)/$(fname)")
+        if isfile("$(outputdir)/$(fname).jld2")
             if verbose
                 # Print if barcode was already processed
                 println("$(data_keys[j]) was already processed")
@@ -463,7 +463,7 @@ function mcmc_mutant_fitness(;
             println("Saving $(fname) chains...")
         end # if
         # Write output into memory
-        JLD2.jldsave("$(outputdir)/$(fname)", chain=first(chain))
+        JLD2.jldsave("$(outputdir)/$(fname).jld2", chain=first(chain))
     end # for
 
     if verbose
