@@ -322,8 +322,11 @@ where `t` and `t+1` indicate the time points used during the inference.
   `Turing.jl` must be actively suppressed.
 - `sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65)`: MCMC sampler
   to be used.
-- `multithread::Bool=true`: Boolean indicating if the chains should be run in
-  parallel.
+- `multithread_chain::Bool=false`: Boolean indicating if the chains should be
+  run in parallel.
+- `multithread_mutant::Bool=false`: Boolean indicating if the chains should be
+  run in parallel. NOTE: Only one `multithread_` option can be true at any
+  point.
 - `verbose::Bool=true`: Boolean indicating if the function should print partial
   progress to the screen or not.
 """
@@ -342,9 +345,15 @@ function mcmc_mutant_fitness(;
     rm_T0::Bool=false,
     suppress_output::Bool=false,
     sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65),
-    multithread::Bool=true,
+    multithread_chain::Bool=false,
+    multithread_mutant::Bool=false,
     verbose::Bool=true
 )
+    # Check multithread options
+    if multithread_chain & multithread_mutant
+        error("Only one multithread option can be true.")
+    end # if
+
     # Extract unique time points
     timepoints = sort(unique(data[:, time_col]))
 
@@ -395,40 +404,106 @@ function mcmc_mutant_fitness(;
     if verbose
         println("Initialize MCMC sampling...")
     end # if
-    # Loop through barcodes
-    for j = 1:size(r⁽ᵐ⁾_array, 1)
-        # Define output_name
-        fname = "$(outputname)_$(data_keys[j])"
-        # Check that file hasn't been processed
-        if isfile("$(outputdir)/$(fname).jld2")
-            if verbose
-                # Print if barcode was already processed
-                println("$(data_keys[j]) was already processed")
+
+
+    # Run when multithread_mutant is FALSE
+    if !multithread_mutant
+        # Loop through barcodes
+        for j = 1:size(r⁽ᵐ⁾_array, 1)
+            # Define output_name
+            fname = "$(outputname)_$(data_keys[j])"
+            # Check that file hasn't been processed
+            if isfile("$(outputdir)/$(fname).jld2")
+                if verbose
+                    # Print if barcode was already processed
+                    println("$(data_keys[j]) was already processed")
+                end # if
+                # Skip cycle for already-processed barcodes
+                continue
             end # if
-            # Skip cycle for already-processed barcodes
-            continue
-        end # if
 
-        # Initialize object where to save chains
-        chain = Vector{MCMCChains.Chains}(undef, 1)
+            # Initialize object where to save chains
+            chain = Vector{MCMCChains.Chains}(undef, 1)
 
-        # Define model
-        mcmc_model = model(r⁽ᵐ⁾_array[j, :], R̲; model_kwargs...)
+            # Define model
+            mcmc_model = model(r⁽ᵐ⁾_array[j, :], R̲; model_kwargs...)
 
-        if suppress_output
-            # Suppress warning outputs
-            Suppressor.@suppress begin
-                if multithread
-                    # Sample
+            if suppress_output
+                # Suppress warning outputs
+                Suppressor.@suppress begin
+                    if multithread_chain
+                        # Sample
+                        chain[1] = Turing.sample(
+                            mcmc_model,
+                            sampler,
+                            Turing.MCMCThreads(),
+                            n_steps,
+                            n_walkers,
+                            progress=false
+                        )
+                    else
+                        chain[1] = mapreduce(
+                            c -> Turing.sample(
+                                mcmc_model, sampler, n_steps, progress=false
+                            ),
+                            Turing.chainscat,
+                            1:n_walkers
+                        )
+                    end # if
+                end # suppress
+            else
+                if multithread_chain
                     chain[1] = Turing.sample(
                         mcmc_model,
                         sampler,
                         Turing.MCMCThreads(),
                         n_steps,
                         n_walkers,
-                        progress=false
+                        progress=true
                     )
                 else
+                    chain[1] = mapreduce(
+                        c -> Turing.sample(
+                            mcmc_model, sampler, n_steps, progress=true
+                        ),
+                        Turing.chainscat,
+                        1:n_walkers
+                    )
+                end # if
+            end # if
+
+            if verbose
+                println("Saving $(fname) chains...")
+            end # if
+            # Write output into memory
+            JLD2.jldsave("$(outputdir)/$(fname).jld2", chain=first(chain))
+        end # for
+
+    # Run when multithread_mutant is TRUE
+    elseif multithread_mutant
+        # Loop through barcodes
+        Threads.@threads for j = 1:size(r⁽ᵐ⁾_array, 1)
+            # Define output_name
+            fname = "$(outputname)_$(data_keys[j])"
+            # Check that file hasn't been processed
+            if isfile("$(outputdir)/$(fname).jld2")
+                if verbose
+                    # Print if barcode was already processed
+                    println("$(data_keys[j]) was already processed")
+                end # if
+                # Skip cycle for already-processed barcodes
+                continue
+            end # if
+
+            # Initialize object where to save chains
+            chain = Vector{MCMCChains.Chains}(undef, 1)
+
+            # Define model
+            mcmc_model = model(r⁽ᵐ⁾_array[j, :], R̲; model_kwargs...)
+
+            if suppress_output
+                # Suppress warning outputs
+                Suppressor.@suppress begin
                     chain[1] = mapreduce(
                         c -> Turing.sample(
                             mcmc_model, sampler, n_steps, progress=false
@@ -436,18 +511,7 @@ function mcmc_mutant_fitness(;
                         Turing.chainscat,
                         1:n_walkers
                     )
-                end # if
-            end # suppress
-        else
-            if multithread
-                chain[1] = Turing.sample(
-                    mcmc_model,
-                    sampler,
-                    Turing.MCMCThreads(),
-                    n_steps,
-                    n_walkers,
-                    progress=true
-                )
+                end # suppress
             else
                 chain[1] = mapreduce(
                     c -> Turing.sample(
@@ -457,14 +521,15 @@ function mcmc_mutant_fitness(;
                     1:n_walkers
                 )
             end # if
-        end # if
 
-        if verbose
-            println("Saving $(fname) chains...")
-        end # if
-        # Write output into memory
-        JLD2.jldsave("$(outputdir)/$(fname).jld2", chain=first(chain))
-    end # for
+            if verbose
+                println("Saving $(fname) chains...")
+            end # if
+            # Write output into memory
+            JLD2.jldsave("$(outputdir)/$(fname).jld2", chain=first(chain))
+        end # for
+
+    end # if
 
     if verbose
         println("Done!")
