@@ -136,6 +136,16 @@ function mcmc_mean_fitness(;
         # Define output file name
         fname = "$(outputname)_$(timepoints[t])-$(timepoints[t+1])_meanfitness"
 
+        # Check that file hasn't been processed
+        if isfile("$(outputdir)/$(fname)")
+            if verbose
+                # Print if barcode was already processed
+                println("$(fname) was already processed")
+            end # if
+            # Skip cycle for already-processed barcodes
+            continue
+        end # if
+
         # Select correspoinding data for the pair of timepoints
         data_pair = data[
             (data[:, time_col].==timepoints[t]).|(data[:, time_col].==timepoints[t+1]),
