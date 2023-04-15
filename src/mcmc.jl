@@ -289,6 +289,8 @@ where `t` and `t+1` indicate the time points used during the inference.
   `Turing.jl` must be actively suppressed.
 - `sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65)`: MCMC sampler
   to be used.
+- `multithread::Bool=true`: Boolean indicating if the chains should be run in
+  parallel.
 - `verbose::Bool=true`: Boolean indicating if the function should print partial
   progress to the screen or not.
 """
@@ -307,6 +309,7 @@ function mcmc_mutant_fitness(;
     rm_T0::Bool=false,
     suppress_output::Bool=false,
     sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65),
+    multithread::Bool=true,
     verbose::Bool=true
 )
     # Extract unique time points
@@ -382,25 +385,45 @@ function mcmc_mutant_fitness(;
         if suppress_output
             # Suppress warning outputs
             Suppressor.@suppress begin
-                # Sample
+                if multithread
+                    # Sample
+                    chain[1] = Turing.sample(
+                        mcmc_model,
+                        sampler,
+                        Turing.MCMCThreads(),
+                        n_steps,
+                        n_walkers,
+                        progress=false
+                    )
+                else
+                    chain[1] = mapreduce(
+                        c -> Turing.sample(
+                            mcmc_model, sampler, n_steps, progress=false
+                        ),
+                        Turing.chainscat,
+                        1:n_walkers
+                    )
+                end # if
+            end # suppress
+        else
+            if multithread
                 chain[1] = Turing.sample(
                     mcmc_model,
                     sampler,
                     Turing.MCMCThreads(),
                     n_steps,
                     n_walkers,
-                    progress=false
+                    progress=true
                 )
-            end # suppress
-        else
-            chain[1] = Turing.sample(
-                mcmc_model,
-                sampler,
-                Turing.MCMCThreads(),
-                n_steps,
-                n_walkers,
-                progress=true
-            )
+            else
+                chain[1] = mapreduce(
+                    c -> Turing.sample(
+                        mcmc_model, sampler, n_steps, progress=true
+                    ),
+                    Turing.chainscat,
+                    1:n_walkers
+                )
+            end # if
         end # if
 
         if verbose
