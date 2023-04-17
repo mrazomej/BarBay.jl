@@ -62,6 +62,48 @@ function var_jld2_to_df(
 end # function
 
 @doc raw"""
+    var_jld2_to_df(files, varname, chainname)
+
+Function that takes `.jld2` files in `dir` with `pattern` and extracts a single
+variable into a dataframe. This function is useful to extract, for example, the
+chains for each inference of the population mean fitness over multiple time
+points.
+
+NOTE: All chains from which samples will be extracted must have the same number
+of samples.
+
+# Arguments
+- `files::Vectlr{String}`: List of `jld2` files form which to extract the MCMC
+  chain.
+- `varname::Symbol`: Name of variable in chain object to extract.
+
+## Optional Arguments
+- `chainname::String="chain"`: String defining the dictionary key on the `.jld2`
+  file to extract the MCMC chain.
+
+# Returns
+- `DataFrames.DataFrame`: DataFrame containing all variable samples⸺multiple
+  chains are collapsed into a single column⸺one variable per column.
+"""
+function var_jld2_to_df(
+    files::Vector{String}, varname::Symbol, chainname::String="chain",
+)
+    # Extract variable chains
+    chains = [vec(Matrix(JLD2.load(f)[chainname][varname])) for f in files]
+
+    # Check that all chains have the same number of samples
+    if length(unique(length.(chains))) > 1
+        error("All chains must have the same number of samples")
+    end # if
+
+    # concatenate chains into DataFrame
+    return DF.DataFrame(
+        hcat(chains...),
+        ["$(varname)_$(i)" for i in eachindex(files)]
+    )
+end # function
+
+@doc raw"""
     var_jld2_concat(dir, pattern, varname)
 
 Function that takes `.jld2` files in `dir` with `pattern` and extracts a single
