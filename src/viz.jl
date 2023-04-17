@@ -29,13 +29,23 @@ parametres in the `MCMCChains.Chains` object.
 - `labels`: List of labels for each of the parameters. If not given, the default
   will be to use the names stored in the MCMCChains.Chains object.
 - `alpha::AbstractFloat=1`: Level of transparency for plots.
+- `title::Union{String,Nothing}=nothing`: Plot title.
+- `title_valign::Symbol=:bottom`: Vertical alignment for title label,
+- `title_font::Symbol=:bold`: Type of font to be used in plot.
+- `title_fontsize::Real=20`: Font size for title.
+- `title_padding::Vector{<:Real}=(0, 0, 5, 0)`: Padding for plot text.
 """
 function mcmc_trace_density!(
     fig::Figure,
     chain::MCMCChains.Chains;
     colors=ColorSchemes.seaborn_colorblind,
     labels=[],
-    alpha::AbstractFloat=1.0
+    alpha::AbstractFloat=1.0,
+    title::Union{String,Nothing}=nothing,
+    title_valign::Symbol=:bottom,
+    title_font::Symbol=:bold,
+    title_fontsize::Real=20,
+    title_padding::Vector{<:Real}=(0, 0, 5, 0)
 )
     # Extract parameters
     params = names(chain, :parameters)
@@ -54,6 +64,9 @@ function mcmc_trace_density!(
         error("Please give at least as many colors as chains in the MCMC")
     end # if
 
+    # Add GridLayout to give more control over figure
+    gl = fig[1, 1] = GridLayout()
+
     # Loop through parameters
     for (i, param) in enumerate(params)
         # Check if labels were given
@@ -63,9 +76,9 @@ function mcmc_trace_density!(
             lab = string(param)
         end # if
         # Add axis for chain iteration
-        ax_trace = Axis(fig[i, 1]; ylabel=lab)
+        ax_trace = Axis(gl[i, 1]; ylabel=lab)
         # Inititalize axis for density plot
-        ax_density = Axis(fig[i, 2]; ylabel=lab)
+        ax_density = Axis(gl[i, 2]; ylabel=lab)
         # Loop through chains
         for chn in 1:n_chains
             # Extract values
@@ -90,6 +103,18 @@ function mcmc_trace_density!(
             ax_density.xlabel = "parameter estimate"
         end # if
     end # for
+
+    # Check if title should be added
+    if typeof(title) == String
+        Label(
+            gl[1, 1:2, Top()],
+            title,
+            valign=title_valign,
+            font=title_font,
+            fontsize=title_fontsize,
+            padding=title_padding,
+        )
+    end # if
 end # function
 
 @doc raw"""
