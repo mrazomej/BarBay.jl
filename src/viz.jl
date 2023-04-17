@@ -45,7 +45,7 @@ function mcmc_trace_density!(
     title_valign::Symbol=:bottom,
     title_font::Symbol=:bold,
     title_fontsize::Real=20,
-    title_padding::Vector{<:Real}=(0, 0, 5, 0)
+    title_padding::NTuple{4,<:Real}=(0, 0, 5, 0)
 )
     # Extract parameters
     params = names(chain, :parameters)
