@@ -14,17 +14,32 @@ what each module is intended for.
 
 - `utils`: Series of miscellaneous functions that make the data wrangling and
   processing much simpler.
+- `viz`: [`Makie.jl`](https://docs.makie.org/stable/)-based module with useful
+  plotting functions to display the data and the MCMC results for visual
+  diagnostics.
 - `stats`: Statistical functions used in the inference problem.
-- `model`: `Turing.jl`-based Bayesian models used to infer the population mean
-  fitness via the neutral lineages as well as the mutants' relative fitness.
-- `mcmc`: Package main module with which to perform the Markov-Chain Monte Carlo
+- `model`: [`Turing.jl`](https://turing.ml)-based Bayesian models used to infer
+  the population mean fitness via the neutral lineages as well as the mutants'
+  relative fitness.
+- `mcmc`: The main module with which to perform the Markov-Chain Monte Carlo
   sampling of the posterior distributions.
   
 ## Example inference
 
 To get you going with the package, let's walk through a basic inference pipeline
-for one competition assay. The first step consists of importing the necessary
-packages. 
+for one competition assay. Our ultimate goal consists of inferring the relative
+fitness for each of the mutant barcodes. To that end, we assume that the
+frequency time-series obeys the following equation
+```math
+f_{t+1}^{(b)} = f_{t}^{(b)} \mathrm{e}^{\left(s^{(b)} - \bar{s}_t \right)\tau},
+\tag{1}
+```
+where ``f_{t}^{(b)}`` is the frequency of barcode ``b`` at time ``t``,
+``s^{(b)}`` is the relative fitness of this barcode, ``\bar{s}_t`` is the
+population mean fitness at time ``t``, and ``\tau`` is the time interval between
+time ``t`` and ``t+1``.
+
+The first step consists of importing the necessary packages. 
 
 !!! note 
     We use `import` rather than the more common `using` command. We find it
@@ -51,17 +66,17 @@ Here you will replace `"~/git/BayesFitness/test/data"` with the directory where
 your data is stored, and `"data_example_01.csv"` with the name of the file
 containing the data. The resulting `DataFrame` looks something like this:
 ```
-| BCID_x | barcode                                               | name                    | count | time | neutral | count_sum  |   |   |   |
-|--------|-------------------------------------------------------|-------------------------|-------|------|---------|------------|---|---|---|
-| 0      | TGATCAATCTACAAAAATATTTAATG_GAGTGAAACATGAATGGTATTCATCA | Batch1_1Day-T0_combined | 53    | 0    | FALSE   | 543947     |   |   |   |
-| 1      | CCGCCAATCCCGAACCCCGTTTCGCC_ACTCTAACGTGTAACTAATTTTGAGT | Batch1_1Day-T0_combined | 1213  | 0    | FALSE   | 543947     |   |   |   |
-| 2      | GACAGAAAAGCCAAATGGATTTACCG_ATGGGAACACGGAATGATCTTTTATT | Batch1_1Day-T0_combined | 17    | 0    | FALSE   | 543947     |   |   |   |
-| 3      | CCAACAAAACACAAATCTGTTGTGTA_TACTAAATAAGTAAGGGAATTCTGTT | Batch1_1Day-T0_combined | 19    | 0    | FALSE   | 543947     |   |   |   |
-| 4      | TATCGAAACCCAAAGAGATTTAATCG_ATGACAAACTTTAAATAATTTAATTG | Batch1_1Day-T0_combined | 23    | 0    | FALSE   | 543947     |   |   |   |
-| 5      | TATCGAAACCCAAAGAGATTTAATCG_CGATCAAAGACTAACTTATTTTGTGG | Batch1_1Day-T0_combined | 16    | 0    | FALSE   | 543947     |   |   |   |
-| 6      | TATCGAAACCCAAAGAGATTTAATCG_TTGCCAAGCTGGAAAGCTTTTTATGA | Batch1_1Day-T0_combined | 12    | 0    | FALSE   | 543947     |   |   |   |
-| 7      | ATCACAATAACTAAACTGATTCTTCA_CTCATAACATCAAAAAAAATTCAAAT | Batch1_1Day-T0_combined | 161   | 0    | FALSE   | 543947     |   |   |   |
-| 8      | TATCGAAACCCAAAGAGATTTAATCG_GTTTAAACCATTAATTATATTAGATC | Batch1_1Day-T0_combined | 19    | 0    | FALSE   | 543947     |   |   |   |
+| BCID_x | barcode                                               | name                    | count | time | neutral | count_sum  |
+|--------|-------------------------------------------------------|-------------------------|-------|------|---------|------------|
+| 0      | TGATCAATCTACAAAAATATTTAATG_GAGTGAAACATGAATGGTATTCATCA | Batch1_1Day-T0_combined | 53    | 0    | FALSE   | 543947     |
+| 1      | CCGCCAATCCCGAACCCCGTTTCGCC_ACTCTAACGTGTAACTAATTTTGAGT | Batch1_1Day-T0_combined | 1213  | 0    | FALSE   | 543947     |
+| 2      | GACAGAAAAGCCAAATGGATTTACCG_ATGGGAACACGGAATGATCTTTTATT | Batch1_1Day-T0_combined | 17    | 0    | FALSE   | 543947     |
+| 3      | CCAACAAAACACAAATCTGTTGTGTA_TACTAAATAAGTAAGGGAATTCTGTT | Batch1_1Day-T0_combined | 19    | 0    | FALSE   | 543947     |
+| 4      | TATCGAAACCCAAAGAGATTTAATCG_ATGACAAACTTTAAATAATTTAATTG | Batch1_1Day-T0_combined | 23    | 0    | FALSE   | 543947     |
+| 5      | TATCGAAACCCAAAGAGATTTAATCG_CGATCAAAGACTAACTTATTTTGTGG | Batch1_1Day-T0_combined | 16    | 0    | FALSE   | 543947     |
+| 6      | TATCGAAACCCAAAGAGATTTAATCG_TTGCCAAGCTGGAAAGCTTTTTATGA | Batch1_1Day-T0_combined | 12    | 0    | FALSE   | 543947     |
+| 7      | ATCACAATAACTAAACTGATTCTTCA_CTCATAACATCAAAAAAAATTCAAAT | Batch1_1Day-T0_combined | 161   | 0    | FALSE   | 543947     |
+| 8      | TATCGAAACCCAAAGAGATTTAATCG_GTTTAAACCATTAATTATATTAGATC | Batch1_1Day-T0_combined | 19    | 0    | FALSE   | 543947     |
 ```
 The relevant columns in this data frame are:
 - `barcode`: The unique ID that identifies the barcode.
@@ -69,6 +84,108 @@ The relevant columns in this data frame are:
 - `time`: The time point ID indicating the order in which samples were taken.
 - `neutral`: Indicator of whether the barcode belongs to a neutral lineage or
   not.
+
+Let's take a look at the data. The [`BayesFitness.viz`](./viz.md) module has
+several [`Makie.jl`](https://docs.makie.org/stable/)-based functions to easily
+display the data. Let's import the necessary plotting libraries
+
+```julia
+# Import plotting libraries
+using CairoMakie
+import ColorSchemes
+```
+
+First, we plot the barcode frequency trajectories. For this, we use the
+convenient [`BayesFitness.viz.bc_time_series!`](@ref) function.
+
+```julia
+# Initialize figure
+fig = Figure(resolution=(450, 350))
+
+# Add axis
+ax = Axis(
+    fig[1, 1],
+    xlabel="time point",
+    ylabel="barcode frequency",
+    yscale=log10,
+    title="frequency trajectories"
+)
+
+# Plot Mutant barcode trajectories with varying colors
+BayesFitness.viz.bc_time_series!(
+    ax,
+    data[.!data.neutral, :];
+    quant_col=:freq,
+    zero_lim=1E-9,
+    zero_label="extinct",
+    alpha=0.25,
+    linewidth=2
+)
+
+# Plot Neutral barcode trajectories with a single dark blue color
+BayesFitness.viz.bc_time_series!(
+    ax,
+    data[data.neutral, :];
+    quant_col=:freq,
+    zero_lim=1E-9,
+    color=ColorSchemes.Blues_9[end],
+    alpha=0.9,
+    linewidth=2
+)
+```
+
+We highlight the neutral barcodes⸺defined to have relative fitness
+``s^{(n)}=0``⸺with dark blue lines. The rest of the light-color lines correspond
+to individual barcodes.
+
+![](./figs/fig01.svg)
+
+We can rewrite Eq. (1) as
+```math
+\frac{1}{\tau} \ln \frac{f_{t+1}^{(b)}}{f_{t}^{(b)}} = 
+\left(s^{(b)} - \bar{s}_t \right).
+\tag{2}
+```
+In this form, we can se that the relevant quantity we need to infer the values
+of the population mean fitness ``\bar{s}_t`` and the barcode relative fitness
+``s^{(b)}`` are not the frequencies themselves, but the log ratio of these
+frequencies between two adjacent time points. Let's plot this log frequency
+ratio using the [`BayesFitness.viz.logfreq_ratio_time_series!`](@ref) function.
+```julia
+# Initialize figure
+fig = Figure(resolution=(450, 350))
+
+# Add axis
+ax = Axis(
+    fig[1, 1],
+    xlabel="time point",
+    ylabel="ln(fₜ₊₁/fₜ)",
+    title="log-frequency ratio"
+)
+
+# Plot log-frequency ratio of mutants with different colors
+BayesFitness.viz.logfreq_ratio_time_series!(
+    ax,
+    data[.!data.neutral, :];
+    freq_col=:freq,
+    alpha=0.25,
+    linewidth=2
+)
+
+# Plot log-frequency ratio of neutrals with a single dark blue color
+BayesFitness.viz.logfreq_ratio_time_series!(
+    ax,
+    data[data.neutral, :];
+    freq_col=:freq,
+    color=ColorSchemes.Blues_9[end],
+    alpha=1.0,
+    linewidth=2
+)
+```
+From this, we can see that the neutral lineages follow very similar
+log-frequency ratio trajectories as expected.
+
+![](./figs/fig02.svg)
 
 ### Inferring the population mean fitness
 
@@ -109,21 +226,37 @@ param = Dict(
 ```
 
 We are now ready to sample the posterior distribution for the population mean
-fitness. `BayesFitness.jl` makes this very easy by using the
-[`Bayes.mcmc.mcmc_mean_fitness`](@ref) function from the `mcmc` module. All we
-have to do is run
+fitness. [`BayesFitness.mcmc`](./mcmc.md) makes this extremely easy by using the
+[`BayesFitness.mcmc.mcmc_mean_fitness`](@ref) function. All we have to do is run
 ```julia
 # Run inference
 BayesFitness.mcmc.mcmc_mean_fitness(; param...)
 ```
 The output of this function are [`jld2`](https://github.com/JuliaIO/JLD2.jl)
 files that save the native data structure. To extract the MCMC samples of the
-variable we care about---equivalent to marginalizing out all the nuisance
-variables---we can use the [`BayesFitness.utils.var_jld2_to_df`](@ref) from the
-`utils` module, indicating the name of the variable we want to extract.
+variable we care about⸺equivalent to marginalizing out all the nuisance
+variables⸺we can use the [`BayesFitness.utils.var_jld2_to_df`](@ref) from the
+[`BayesFitness.utils`](./utils.md) module, indicating the name of the variable
+we want to extract.
 ```julia
 BayesFitness.utils.var_jld2_to_df("./output/", "data_01_meanfitness", :sₜ)
 ```
+
+To diagnose the inference of this mean fitness value, it is useful to plot
+```julia
+# Concatenate population mean fitness chains into single chain
+chains = BayesFitness.utils.var_jld2_concat(
+    param[:outputdir], param[:outputname], :sₜ
+)
+
+# Initialize figure
+fig = Figure(resolution=(600, 600))
+
+# Generate mcmc_trace_density! plot
+BayesFitness.viz.mcmc_trace_density!(fig, chains; alpha=0.5)
+```
+
+![](./figs/fig03.svg)
 
 ### Inferring mutants' relative fitness
 Once we make sure that the mutants relative fitness looks okay, we can tackle
@@ -183,9 +316,4 @@ BayesFitness.mcmc.mcmc_mutant_fitness_multithread(; param...)
 ## Contents
 
 ```@contents
-```
-
-## Index
-
-```@index
 ```

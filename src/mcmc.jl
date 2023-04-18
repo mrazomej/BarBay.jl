@@ -50,12 +50,12 @@ The `DataFrame` must contain at least the following columns:
 - `outputname::String`: Common pattern for all `.jld2` output files. The output
   files of this function will be named as
 ```
-$(outputdir)/$(outputname)_$(t)-$(t+1)_meanfitness_mcmcchains.jld
+$(outputdir)/$(outputname)_$(t)-$(t+1).jld
 ```
 where `t` and `t+1` indicate the time points used during the inference.
 - `model::Function`: `Turing.jl` model defining the posterior distribution from
-  which to sample (see [BayesFitness.model](model) module). This function must
-  take as the first two inputs the following:
+  which to sample (see `BayesFitness.model` module). This function must take as
+  the first two inputs the following:
     - `r̲ₜ::Vector{Int64}`: Raw counts for **neutral** lineages and the
       cumulative counts for mutant lineages at time `t`. NOTE: The last entry of
       the array must be the sum of all of the counts from mutant lineages.
@@ -65,7 +65,7 @@ where `t` and `t+1` indicate the time points used during the inference.
       lineages. 
 
 ## Optional Arguments
-- `modele_kwargs::Dict=Dict()`: Extra keyword arguments to be passed to the
+- `model_kwargs::Dict=Dict()`: Extra keyword arguments to be passed to the
   `model` function.
 - `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
     identifier. The column may contain any type of entry.
@@ -287,12 +287,12 @@ The `DataFrame` must contain at least the following columns:
 - `outputname::String`: Common pattern for all `.jld2` output files. The output
   files of this function will be named as
 ```
-$(outputdir)/$(outputname)_$(mutant_id)_mcmcchains.jld
+$(outputdir)/$(outputname)_$(mutant_id).jld
 ```
 where `t` and `t+1` indicate the time points used during the inference.
 - `model::Function`: `Turing.jl` model defining the posterior distribution from
-  which to sample (see [BayesFitness.model](model) module). This function must
-  take as the first two inputs the following:
+  which to sample (see `BayesFitness.model` module). This function must take as
+  the first two inputs the following:
     - `r̲ₜ::Vector{Int64}`: Raw counts for **neutral** lineages and the
       cumulative counts for mutant lineages at time `t`. NOTE: The last entry of
       the array must be the sum of all of the counts from mutant lineages.
@@ -302,7 +302,7 @@ where `t` and `t+1` indicate the time points used during the inference.
       lineages. 
 
 ## Optional Arguments
-- `modele_kwargs::Dict=Dict()`: Extra keyword arguments to be passed to the
+- `model_kwargs::Dict=Dict()`: Extra keyword arguments to be passed to the
   `model` function.
 - `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
     identifier. The column may contain any type of entry.

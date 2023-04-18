@@ -30,7 +30,7 @@ The `DataFrame` must contain at least the following columns:
 - `id_col`: Column identifying the ID of the barcode. This can the barcode
     sequence, for example.
 - `time_col`: Column defining the measurement time point.
-- `trajectory_col`: Column with the raw barcode count.
+- `quant_col`: Column with the quantity to be plot over time.
 
 # Arguments
 - `ax::Makie.Axis`: Axis object to be populated with plot.
@@ -44,7 +44,7 @@ The `DataFrame` must contain at least the following columns:
 at which measurements were done. The column may contain any type of entry as
 long as `sort` will resulted in time-ordered names.
 - `quant_col::Symbol=:count`: Name of the column in `data` containing the raw
-barcode count.
+  barcode count.
 - `zero_lim::Real=1E-8`: Number defining under which value `quant_col` should be
   considered as zero. These plots are mostly displayed in log scale, thus having
   a minimum threshold helps with undetermined values.
@@ -52,10 +52,11 @@ barcode count.
   limit. If `nothing`, nothing is added to the plot.
 - `n_ticks::Int`: Ideal number of ticks to add to plot. See
   `Makie.WilkinsonTicks`.
-- `color::Union{ColorSchemes.ColorScheme,Symbol,ColorTypes.Colorant{Float64, 3}}=ColorSchemes.glasbey_hv_n256`:
-  Single color or list of colors from `ColorSchemes.jl` to be used in plot.
-  Note: when a color list is provided, colors are randomnly assigned to each
-  barcode by sampling from the list of colors.
+- `color::Union{ColorSchemes.ColorScheme,Symbol,ColorTypes.Colorant{Float64,
+  3}}=ColorSchemes.glasbey_hv_n256`: Single color or list of colors from
+  `ColorSchemes.jl` to be used in plot. Note: when a color list is provided,
+  colors are randomnly assigned to each barcode by sampling from the list of
+  colors.
 - `alpha::AbstractFloat=1.0`: Level of transparency for plots.
 - `linewidth::Real=5`: Trajectory linewidth.
 """
@@ -77,13 +78,19 @@ function bc_time_series!(
 
     # Loop through trajectories
     for bc in data_group
+        # Modify barcode values below zero_lim
+        bc[bc[:, quant_col].<zero_lim, quant_col] .= zero_lim
+
+        # Sort data by time
+        DF.sort!(bc, time_col)
+
         # Check if unique color was assigned to each barcode
         if typeof(color) <: ColorSchemes.ColorScheme
             # Plot trajectory
             lines!(
                 ax,
                 bc[:, time_col],
-                bc[:, quant_col] .+ zero_lim,
+                bc[:, quant_col],
                 color=(color[StatsBase.sample(1:length(color))], alpha),
                 linewidth=linewidth,
             )
@@ -92,7 +99,7 @@ function bc_time_series!(
             lines!(
                 ax,
                 bc[:, time_col],
-                bc[:, quant_col] .+ zero_lim,
+                bc[:, quant_col],
                 color=(color, alpha),
                 linewidth=linewidth,
             )
@@ -106,7 +113,7 @@ function bc_time_series!(
             Makie.LogTicks(Makie.WilkinsonTicks(n_ticks)),
             log10,
             Makie.automatic,
-            minimum(data[:, quant_col] .+ zero_lim),
+            zero_lim,
             maximum(data[:, quant_col]),
         )
         # Set tick values. This is done by appending the zero_lim value with the
@@ -120,6 +127,87 @@ function bc_time_series!(
         # Modify y-axis ticks.
         ax.yticks = (tickval, ticklabel)
     end # if
+end # function
+
+@doc raw"""
+    logfreq_ratio_time_series!((ax, data; color, alpha, id_col, time_col, freq_col)
+
+Function to plot the time series of the log frequency ratiofor a set of
+barcodes. This function expects the data in a **tidy** format. This means that
+every row represents **a single observation**. For example, if we measure
+barcode `i` in 4 different time points, each of these four measurements gets an
+individual row. Furthermore, measurements of barcode `j` over time also get
+their own individual rows.
+    
+The `DataFrame` must contain at least the following columns:
+- `id_col`: Column identifying the ID of the barcode. This can the barcode
+    sequence, for example.
+- `time_col`: Column defining the measurement time point.
+- `freq_col`: Column with the frequency from which to compute the log ratio.
+
+# Arguments
+- `ax::Makie.Axis`: Axis object to be populated with plot.
+- `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
+    used to sample from the population mean fitness posterior distribution.
+
+## Optional Arguments
+- `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
+    identifier. The column may contain any type of entry.
+- `time_col::Symbol=:time`: Name of the column in `data` defining the time point
+at which measurements were done. The column may contain any type of entry as
+long as `sort` will resulted in time-ordered names.
+- `freq_col::Symbol=:count`: Name of the column in `data` containing the barcode
+  frequency.
+- `color::Union{ColorSchemes.ColorScheme,Symbol,ColorTypes.Colorant{Float64,
+3}}=ColorSchemes.glasbey_hv_n256`: Single color or list of colors from
+`ColorSchemes.jl` to be used in plot. Note: when a color list is provided,
+colors are randomnly assigned to each barcode by sampling from the list of
+colors.
+- `alpha::AbstractFloat=1.0`: Level of transparency for plots.
+- `linewidth::Real=5`: Trajectory linewidth.
+- `log_fn::Union{typeof(log), typeof(log10), typeof(log2)}=log`: Log function
+  to be used in plot.
+"""
+function logfreq_ratio_time_series!(
+    ax::Makie.Axis,
+    data::DF.AbstractDataFrame;
+    id_col::Symbol=:barcode,
+    time_col::Symbol=:time,
+    freq_col::Symbol=:count,
+    color::Union{ColorSchemes.ColorScheme,Symbol,ColorTypes.Colorant{Float64,3}}=ColorSchemes.glasbey_hv_n256,
+    alpha::AbstractFloat=1.0,
+    linewidth::Real=2,
+    log_fn::Union{typeof(log),typeof(log10),typeof(log2)}=log
+)
+    # Group data by id_col
+    data_group = DF.groupby(data, id_col)
+
+    # Loop through trajectories
+    for bc in data_group
+        # Sort data by time
+        DF.sort!(bc, time_col)
+
+        # Check if unique color was assigned to each barcode
+        if typeof(color) <: ColorSchemes.ColorScheme
+            # Plot trajectory
+            lines!(
+                ax,
+                bc[1:end-1, time_col],
+                diff(log_fn.(bc[:, freq_col])),
+                color=(color[StatsBase.sample(1:length(color))], alpha),
+                linewidth=linewidth,
+            )
+        else
+            # Plot trajectory
+            lines!(
+                ax,
+                bc[1:end-1, time_col],
+                diff(log_fn.(bc[:, freq_col])),
+                color=(color, alpha),
+                linewidth=linewidth,
+            )
+        end # if
+    end # for
 end # function
 
 @doc raw"""
