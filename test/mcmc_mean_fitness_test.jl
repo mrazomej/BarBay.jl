@@ -25,7 +25,88 @@ import ColorSchemes
 ##
 
 # Import data
-data = CSV.read("$(git_root())/test/data/data_example_01.csv", DF.DataFrame)
+data = CSV.read("$(git_root())/test/data/data_example_02.csv", DF.DataFrame)
+
+# Add frequency column to dataframe
+data[!, :freq] = data.count ./ data.count_sum
+
+##
+
+# Plot trajectories
+
+# Initialize figure
+fig = Figure(resolution=(450, 350))
+
+# Add axis
+ax = Axis(
+    fig[1, 1],
+    xlabel="time point",
+    ylabel="barcode frequency",
+    yscale=log10,
+    title="frequency trajectories"
+)
+
+# Plot Mutant barcode trajectories
+BayesFitness.viz.bc_time_series!(
+    ax,
+    data[.!data.neutral, :];
+    quant_col=:freq,
+    zero_lim=1E-9,
+    zero_label="extinct",
+    alpha=0.25,
+    linewidth=2
+)
+
+# Plot Neutral barcode trajectories
+BayesFitness.viz.bc_time_series!(
+    ax,
+    data[data.neutral, :];
+    quant_col=:freq,
+    zero_lim=1E-9,
+    color=ColorSchemes.Blues_9[end],
+    alpha=0.9,
+    linewidth=2
+)
+
+save("../docs/src/figs/fig01.svg", fig)
+
+fig
+
+##
+
+# Initialize figure
+fig = Figure(resolution=(450, 350))
+
+# Add axis
+ax = Axis(
+    fig[1, 1],
+    xlabel="time point",
+    ylabel="ln(fₜ₊₁/fₜ)",
+    title="log-frequency ratio"
+)
+
+# Plot log-frequency ratio of mutants
+BayesFitness.viz.logfreq_ratio_time_series!(
+    ax,
+    data[.!data.neutral, :];
+    freq_col=:freq,
+    alpha=0.25,
+    linewidth=2
+)
+
+# Plot log-frequency ratio of neutrals
+BayesFitness.viz.logfreq_ratio_time_series!(
+    ax,
+    data[data.neutral, :];
+    freq_col=:freq,
+    color=ColorSchemes.Blues_9[end],
+    alpha=1.0,
+    linewidth=2
+)
+
+save("../docs/src/figs/fig02.svg", fig)
+
+fig
 
 ##
 
@@ -36,7 +117,7 @@ param = Dict(
     :n_walkers => 3,
     :n_steps => 1_000,
     :outputdir => "./output/",
-    :outputname => "data_01_meanfitness",
+    :outputname => "data_02_meanfitness",
     :model => BayesFitness.model.mean_fitness_neutrals_lognormal,
     :model_kwargs => Dict(
         :α => BayesFitness.stats.dirichlet_prior_neutral(
@@ -62,6 +143,8 @@ fig = Figure(resolution=(600, 600))
 # Generate mcmc_trace_density! plot
 BayesFitness.viz.mcmc_trace_density!(fig, chains; alpha=0.5)
 
+save("../docs/src/figs/fig03.svg", fig)
+
 fig
 
 ##
@@ -75,7 +158,7 @@ df_meanfit = BayesFitness.utils.var_jld2_to_df(
 )
 
 # Define colors
-colors = reverse(get(ColorSchemes.Blues_9, LinRange(0.5, 1, length(qs))))
+colors = get(ColorSchemes.Blues_9, LinRange(0.5, 1, length(qs)))
 
 # Initialize figure
 fig = Figure(resolution=(400, 300))
