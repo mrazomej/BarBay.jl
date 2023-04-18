@@ -2,15 +2,125 @@
 using Measures, CairoMakie
 import Makie
 import ColorSchemes
+import ColorTypes
 
 # Import library to handle dataframes
 import DataFrames as DF
+
+# Import library to sample random
+import StatsBase
 
 # Import library to handle MCMCChains
 import MCMCChains
 
 # Import function from stats module
 import BayesFitness.stats: matrix_quantile_range, freq_mutant_ppc_quantile, logfreqratio_neutral_ppc_quantile
+
+@doc raw"""
+    bc_time_series!(ax, data; color, alpha, id_col, time_col, quant_col)
+
+Function to plot the time series of a quantity (frequency or raw counts, for
+example) for a set of barcodes. This function expects the data in a **tidy**
+format. This means that every row represents **a single observation**. For
+example, if we measure barcode `i` in 4 different time points, each of these
+four measurements gets an individual row. Furthermore, measurements of barcode
+`j` over time also get their own individual rows.
+    
+The `DataFrame` must contain at least the following columns:
+- `id_col`: Column identifying the ID of the barcode. This can the barcode
+    sequence, for example.
+- `time_col`: Column defining the measurement time point.
+- `trajectory_col`: Column with the raw barcode count.
+
+# Arguments
+- `ax::Makie.Axis`: Axis object to be populated with plot.
+- `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
+  used to sample from the population mean fitness posterior distribution.
+
+## Optional Arguments
+- `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
+    identifier. The column may contain any type of entry.
+- `time_col::Symbol=:time`: Name of the column in `data` defining the time point
+at which measurements were done. The column may contain any type of entry as
+long as `sort` will resulted in time-ordered names.
+- `quant_col::Symbol=:count`: Name of the column in `data` containing the raw
+barcode count.
+- `zero_lim::Real=1E-8`: Number defining under which value `quant_col` should be
+  considered as zero. These plots are mostly displayed in log scale, thus having
+  a minimum threshold helps with undetermined values.
+- `zero_label::Union{String, Nothing}`: Label to be added to the detection
+  limit. If `nothing`, nothing is added to the plot.
+- `n_ticks::Int`: Ideal number of ticks to add to plot. See
+  `Makie.WilkinsonTicks`.
+- `color::Union{ColorSchemes.ColorScheme,Symbol,ColorTypes.Colorant{Float64, 3}}=ColorSchemes.glasbey_hv_n256`:
+  Single color or list of colors from `ColorSchemes.jl` to be used in plot.
+  Note: when a color list is provided, colors are randomnly assigned to each
+  barcode by sampling from the list of colors.
+- `alpha::AbstractFloat=1.0`: Level of transparency for plots.
+- `linewidth::Real=5`: Trajectory linewidth.
+"""
+function bc_time_series!(
+    ax::Makie.Axis,
+    data::DF.AbstractDataFrame;
+    id_col::Symbol=:barcode,
+    time_col::Symbol=:time,
+    quant_col::Symbol=:count,
+    zero_lim::Real=1E-8,
+    zero_label::Union{String,Nothing}=nothing,
+    n_ticks::Int=4,
+    color::Union{ColorSchemes.ColorScheme,Symbol,ColorTypes.Colorant{Float64,3}}=ColorSchemes.glasbey_hv_n256,
+    alpha::AbstractFloat=1.0,
+    linewidth::Real=2
+)
+    # Group data by id_col
+    data_group = DF.groupby(data, id_col)
+
+    # Loop through trajectories
+    for bc in data_group
+        # Check if unique color was assigned to each barcode
+        if typeof(color) <: ColorSchemes.ColorScheme
+            # Plot trajectory
+            lines!(
+                ax,
+                bc[:, time_col],
+                bc[:, quant_col] .+ zero_lim,
+                color=(color[StatsBase.sample(1:length(color))], alpha),
+                linewidth=linewidth,
+            )
+        else
+            # Plot trajectory
+            lines!(
+                ax,
+                bc[:, time_col],
+                bc[:, quant_col] .+ zero_lim,
+                color=(color, alpha),
+                linewidth=linewidth,
+            )
+        end # if
+    end # for
+
+    # Check if extra label should be added
+    if typeof(zero_label) <: String
+        # Generate Automatic yticks
+        yticks_auto = Makie.get_ticks(
+            Makie.LogTicks(Makie.WilkinsonTicks(n_ticks)),
+            log10,
+            Makie.automatic,
+            minimum(data[:, quant_col] .+ zero_lim),
+            maximum(data[:, quant_col]),
+        )
+        # Set tick values. This is done by appending the zero_lim value with the
+        # automatically-generated log ticks Makie creates.
+        tickval = [zero_lim; yticks_auto[1]...]
+
+        # Set tick labels. This is done by taking the "RichText" Makie generates
+        # and appending the value of zero_label
+        ticklabel = [zero_label; yticks_auto[2]...]
+
+        # Modify y-axis ticks.
+        ax.yticks = (tickval, ticklabel)
+    end # if
+end # function
 
 @doc raw"""
     mcmc_trace_density!(fig::Figure, chain::MCMCChains.Chains; colors, labels)
@@ -118,13 +228,116 @@ function mcmc_trace_density!(
 end # function
 
 @doc raw"""
-    freq_mutant_ppc!(fig, quantile, chain; colors, alpha, varname_mut, varname_mean, freq_mut)
+    mcmc_trace_density!(gl::GridLayout, chain::MCMCChains.Chains; colors, labels)
+
+Function to plot the traces and density estimates side-to-side for each of the
+parametres in the `MCMCChains.Chains` object.
+
+# Arguments
+- `gl::Makie.GridLayout`: GridLayout object to be populated with plot. This
+  allows the user to have more flexibility on whether they want to embed this
+  plot within other subplots.
+- `chain::MCMCChains.Chains`: Samples from the MCMC run generated with
+  Turing.jl.
+
+## Optional arguments
+- `colors=ColorSchemes.seaborn_colorblind`: List of colors to be used in plot.
+- `labels`: List of labels for each of the parameters. If not given, the default
+  will be to use the names stored in the MCMCChains.Chains object.
+- `alpha::AbstractFloat=1`: Level of transparency for plots.
+- `title::Union{String,Nothing}=nothing`: Plot title.
+- `title_valign::Symbol=:bottom`: Vertical alignment for title label,
+- `title_font::Symbol=:bold`: Type of font to be used in plot.
+- `title_fontsize::Real=20`: Font size for title.
+- `title_padding::Vector{<:Real}=(0, 0, 5, 0)`: Padding for plot text.
+"""
+function mcmc_trace_density!(
+    gl::GridLayout,
+    chain::MCMCChains.Chains;
+    colors=ColorSchemes.seaborn_colorblind,
+    labels=[],
+    alpha::AbstractFloat=1.0,
+    title::Union{String,Nothing}=nothing,
+    title_valign::Symbol=:bottom,
+    title_font::Symbol=:bold,
+    title_fontsize::Real=20,
+    title_padding::NTuple{4,<:Real}=(0, 0, 5, 0)
+)
+    # Extract parameters
+    params = names(chain, :parameters)
+    # Extract number of chains
+    n_chains = length(MCMCChains.chains(chain))
+    # Extract number of parameters
+    n_samples = length(chain)
+
+    # Check that the number of given labels is correct
+    if (length(labels) > 0) & (length(labels) != length(params))
+        error("The number of lables must match number of parameters")
+    end # if
+
+    # Check that the number of given colors is correct
+    if length(colors) < n_chains
+        error("Please give at least as many colors as chains in the MCMC")
+    end # if
+
+    # Loop through parameters
+    for (i, param) in enumerate(params)
+        # Check if labels were given
+        if length(labels) > 0
+            lab = labels[i]
+        else
+            lab = string(param)
+        end # if
+        # Add axis for chain iteration
+        ax_trace = Axis(gl[i, 1]; ylabel=lab)
+        # Inititalize axis for density plot
+        ax_density = Axis(gl[i, 2]; ylabel=lab)
+        # Loop through chains
+        for chn in 1:n_chains
+            # Extract values
+            values = chain[:, param, chn]
+            # Plot traces of walker
+            lines!(ax_trace, 1:n_samples, values, color=(colors[chn], alpha))
+            # Plot density
+            density!(ax_density, values, color=(colors[chn], alpha))
+        end # for
+
+        # Hide y-axis decorations
+        hideydecorations!(ax_trace; label=false)
+        hideydecorations!(ax_density; label=false)
+
+        # Check if it is bottom plot
+        if i < length(params)
+            # hide x-axis decoratiosn
+            hidexdecorations!(ax_trace; grid=false)
+        else
+            # add x-label
+            ax_trace.xlabel = "iteration"
+            ax_density.xlabel = "parameter estimate"
+        end # if
+    end # for
+
+    # Check if title should be added
+    if typeof(title) == String
+        Label(
+            gl[1, 1:2, Top()],
+            title,
+            valign=title_valign,
+            font=title_font,
+            fontsize=title_fontsize,
+            padding=title_padding,
+        )
+    end # if
+end # function
+
+@doc raw"""
+    freq_mutant_ppc!(ax, quantile, chain; colors, alpha, varname_mut, varname_mean, freq_mut)
 
 Function to plot the **posterior predictive checks** quantiles for the barcode
 frequency for adaptive mutants.
 
 # Arguments
-- `fig::Makie.Axis`: Axis object to be populated with plot. 
+- `ax::Makie.Axis`: Axis object to be populated with plot. 
 - `quantile::Vector{<:AbstractFloat}`: List of quantiles to extract from the
     posterior predictive checks.
 - `chain::MCMCChains.Chains`: `Turing.jl` MCMC chain for the fitness of a single
@@ -221,7 +434,7 @@ should have MCMC samples for
 function freq_mutant_ppc!(
     ax::Makie.Axis,
     quantile::Vector{<:AbstractFloat},
-    df::DF.AbstractDataFrame,
+    data::DF.AbstractDataFrame,
     varname_mut::Union{Symbol,AbstractString},
     varname_mean::Union{Symbol,AbstractString},
     varname_freq::Union{Symbol,AbstractString};
@@ -260,13 +473,13 @@ function freq_mutant_ppc!(
 end # function
 
 @doc raw"""
-    logfreqratio_neutral_ppc!(fig, quantile, df; colors, alpha,)
+    logfreqratio_neutral_ppc!(ax, quantile, df; colors, alpha,)
 
 Function to plot the **posterior predictive checks** quantiles for the log
 frequency ratio for neutral lineages
 
 # Arguments
-- `fig::Makie.Axis`: Axis object to be populated with plot. 
+- `ax::Makie.Axis`: Axis object to be populated with plot. 
 - `quantile::Vector{<:AbstractFloat}`: List of quantiles to extract from the
     posterior predictive checks.
 -`df::DataFrames.DataFrame`: DataFrame containing all population mean fitness
@@ -282,7 +495,7 @@ module to build this dataframe.
 function logfreqratio_neutral_ppc!(
     ax::Makie.Axis,
     quantile::Vector{<:AbstractFloat},
-    df::DF.AbstractDataFrame;
+    data::DF.AbstractDataFrame;
     colors=reverse(ColorSchemes.Blues_9),
     alpha::AbstractFloat=0.75
 )
@@ -322,7 +535,7 @@ Function to plot the posterior predictive checks quantiles for the barcode
 frequency time trajectories.
 
 # Arguments
-- `fig::Makie.Axis`: Axis object to be populated with plot. 
+- `ax::Makie.Axis`: Axis object to be populated with plot. 
 - `quantile::Vector{<:AbstractFloat}`: List of quantiles to extract from the
     posterior predictive checks.
 - `ppc_mat::Matrix{<:AbstractFloat}`: Matrix containing the posterior predictive
