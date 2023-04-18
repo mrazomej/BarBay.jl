@@ -448,11 +448,16 @@ quantile.
 function ppc_time_series!(
     ax::Makie.Axis,
     quantile::Vector{<:AbstractFloat},
-    ppc_mat::Matrix{<:AbstractFloat};
+    ppc_mat::Matrix{<:Real};
     time::Union{Vector{<:Real},Nothing}=nothing,
     colors::Union{ColorSchemes.ColorScheme,Vector{<:ColorTypes.Colorant{Float64,3}}}=ColorSchemes.Blues_9,
     alpha::AbstractFloat=0.75
 )
+    # Check that all quantiles are within bounds
+    if any(.![0.0 ≤ x ≤ 1.0 for x in quantile])
+        error("All quantiles must be between zero and one")
+    end # if
+
     # Tell user that quantiles will be sorted
     if quantile != sort(quantile, rev=true)
         println("Notice that we sort the quantiles to properly display the intervals")
@@ -471,7 +476,7 @@ function ppc_time_series!(
 
     # Check if time is provided
     if typeof(time) <: Nothing
-        time = collect(1:size(ppc_quant), 1)
+        time = collect(1:size(ppc_quant, 1))
     end # if
 
     # Loop through quantiles
