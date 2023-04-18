@@ -178,23 +178,26 @@ for each of the MCMC samples in the `chain` object.
   mutant.
 
 ## Optional arguments
-- `varname_mut::Symbol=Symbol("s⁽ᵐ⁾")`: Variable name for the mutant relative fitness
-    in the `chain` object.
+- `varname_mut::Symbol=Symbol("s⁽ᵐ⁾")`: Variable name for the mutant relative
+    fitness in the `chain` object.
 - `varname_mean::Symbol=Symbol("s̲ₜ")`: Variable name for *all* population mean
   fitness.
 - `freq_mut::Symbol=Symbol("f̲⁽ᵐ⁾")`: Variable name for *all* mutant barcode
   frequencies.
+- `return_df::Bool=true`: Boolean indicating if the output should be returned as
+  a dataframe, where each column represents a time point, or an
+  `MCMCChains.Chain` with dimensions (n_samples × n_time × n_chains)
 
 # Returns
 - `fₜ₊₁ = fₜ × exp(s⁽ᵐ⁾ - s̅ₜ)::Array{Float64}`: Evaluation of the frequency
-  posterior predictive checks at all times for each MCMC sample. The dimensions
-  of the output are (n_samples × n_time × n_chains)
+  posterior predictive checks at all times for each MCMC sample. 
 """
 function freq_mutant_ppc(
     chain::MCMCChains.Chains;
     varname_mut::Symbol=Symbol("s⁽ᵐ⁾"),
     varname_mean::Symbol=Symbol("s̲ₜ"),
-    freq_mut::Symbol=Symbol("f̲⁽ᵐ⁾")
+    freq_mut::Symbol=Symbol("f̲⁽ᵐ⁾"),
+    return_df::Bool=true
 )
     # Extract number of chains
     n_chains = length(MCMCChains.chains(chain))
@@ -214,7 +217,11 @@ function freq_mutant_ppc(
     # Extract and sort chain variable names for population mean fitness
     sₜ_names = sort(
         collect(
-            keys(MCMCChains.get(chain, MCMCChains.namesingroup(chain, varname_mean)))
+            keys(
+                MCMCChains.get(
+                    chain, MCMCChains.namesingroup(chain, varname_mean)
+                )
+            )
         )
     )
     # Loop through time points
@@ -240,7 +247,20 @@ function freq_mutant_ppc(
         f̲⁽ᵐ⁾[:, :, t] = f̲⁽ᵐ⁾[:, :, t-1] .* γ⁽ᵐ⁾[:, :, t-1]
     end # for
 
-    return permutedims(f̲⁽ᵐ⁾, [1, 3, 2])
+    # Permute dimensions to the right order to match the MCMCChains format
+    permutedims!(f̲⁽ᵐ⁾, [1, 3, 2])
+
+    # Check if a DF should be returned
+    if return_df
+        # Compact multiple chains into single long chain on a dataframe
+        return DF.DataFrame(
+            vcat([f̲⁽ᵐ⁾[:, :, i] for i = 1:size(f̲⁽ᵐ⁾, 3)]...),
+            ["$(String(freq_mut))[$(x)]" for x = 1:size(f̲⁽ᵐ⁾, 2)]
+        )
+    else
+        # If not return_df, return the native MCMCChains.Chain
+        return f̲⁽ᵐ⁾
+    end # if
 end # function
 
 @doc raw"""
