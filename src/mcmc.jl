@@ -68,7 +68,7 @@ where `t` and `t+1` indicate the time points used during the inference.
 - `modele_kwargs::Dict=Dict()`: Extra keyword arguments to be passed to the
   `model` function.
 - `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
-    identifyer. The column may contain any type of entry.
+    identifier. The column may contain any type of entry.
 - `time_col::Symbol=:time`: Name of the column in `data` defining the time point
   at which measurements were done. The column may contain any type of entry as
   long as `sort` will resulted in time-ordered names.
@@ -305,7 +305,7 @@ where `t` and `t+1` indicate the time points used during the inference.
 - `modele_kwargs::Dict=Dict()`: Extra keyword arguments to be passed to the
   `model` function.
 - `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
-    identifyer. The column may contain any type of entry.
+    identifier. The column may contain any type of entry.
 - `time_col::Symbol=:time`: Name of the column in `data` defining the time point
   at which measurements were done. The column may contain any type of entry as
   long as `sort` will resulted in time-ordered names.
