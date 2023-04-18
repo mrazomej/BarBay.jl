@@ -116,14 +116,24 @@ function bc_time_series!(
             zero_lim,
             maximum(data[:, quant_col]),
         )
-        # Set tick values. This is done by appending the zero_lim value with the
-        # automatically-generated log ticks Makie creates.
-        tickval = [zero_lim; yticks_auto[1]...]
+        # Check that the automatically-generated ticks don't match with the
+        # zero_lim value Set tick values. This is done by appending the zero_lim
+        if yticks_auto[1][1] ≈ zero_lim
+            # value with the automatically-generated log ticks Makie creates.
+            tickval = [zero_lim; yticks_auto[1][2:end]...]
 
-        # Set tick labels. This is done by taking the "RichText" Makie generates
-        # and appending the value of zero_label
-        ticklabel = [zero_label; yticks_auto[2]...]
+            # Set tick labels. This is done by taking the "RichText" Makie generates
+            # and appending the value of zero_label
+            ticklabel = [zero_label; yticks_auto[2][2:end]...]
+        else
+            # value with the automatically-generated log ticks Makie creates.
+            tickval = [zero_lim; yticks_auto[1]...]
 
+            # Set tick labels. This is done by taking the "RichText" Makie generates
+            # and appending the value of zero_label
+            ticklabel = [zero_label; yticks_auto[2]...]
+
+        end # if
         # Modify y-axis ticks.
         ax.yticks = (tickval, ticklabel)
     end # if
