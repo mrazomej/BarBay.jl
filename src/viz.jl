@@ -7,14 +7,15 @@ import ColorTypes
 # Import library to handle dataframes
 import DataFrames as DF
 
-# Import library to sample random
+# Import statistical libraries
 import StatsBase
+import Distributions
 
 # Import library to handle MCMCChains
 import MCMCChains
 
 # Import function from stats module
-import BayesFitness.stats: matrix_quantile_range, freq_mutant_ppc_quantile, logfreqratio_neutral_ppc_quantile
+import BayesFitness.stats: matrix_quantile_range, freq_mutant_ppc_quantile, logfreqratio_neutral_ppc_quantile, gaussian_prior_mean_fitness
 
 @doc raw"""
     bc_time_series!(ax, data; color, alpha, id_col, time_col, quant_col)
@@ -202,7 +203,7 @@ function logfreq_ratio_time_series!(
             # Plot trajectory
             lines!(
                 ax,
-                bc[1:end-1, time_col],
+                bc[2:end, time_col],
                 diff(log_fn.(bc[:, freq_col])),
                 color=(color[StatsBase.sample(1:length(color))], alpha),
                 linewidth=linewidth,
@@ -211,7 +212,7 @@ function logfreq_ratio_time_series!(
             # Plot trajectory
             lines!(
                 ax,
-                bc[1:end-1, time_col],
+                bc[2:end, time_col],
                 diff(log_fn.(bc[:, freq_col])),
                 color=(color, alpha),
                 linewidth=linewidth,
@@ -425,6 +426,83 @@ function mcmc_trace_density!(
             fontsize=title_fontsize,
             padding=title_padding,
         )
+    end # if
+end # function
+
+@doc raw"""
+    mcmc_fitdist_cdf!(ax, chain, dist; n_points, range, ecdf_label, cdf_label, ecdf_kwargs, cdf_kwargs, legend, legend_kwargs)
+
+Function to plot the ECDF produced from an MCMC chain along with a fitn
+distribution. This plot serves to compare if the parametrized distribution
+matches the density of MCMC samples.
+
+NOTE: For this function `ecdf` refers to the empirical cumulative distribution
+function build from the MCMC chain, and `cdf` refers to the parametric
+cumulative distribution function from the fit distribution.
+
+# Arguments
+- `ax::Makie.Axis`: Axis object to be populated with plot.
+- `chain::Vectors{<:Real}`: Vector with the MCMC samples from which to build the
+  ECDF plot.
+- `dist::Distributions.ContinuousUnivariateDistribution`: Parametric
+  distribution to be compared with the ECDF.
+
+## Optional Arguments
+- `npoints::Int=1000`: Number of points to evaluate the parametric CDF.
+- `range::Union{Nothing,NTuple{2,<:Real}}=nothing`: Range on which to evaluate
+  the parametric CDF. If `nothing` is provided (default), the range is inferred
+  from the range of MCMC samples.
+- `ecdf_label::String="mcmc"`: Legend label for the ECDF plot.
+- `cdf_label::String="fit"`: Legend label for the CDF plot.
+- `ecdf_kwargs::Dict`: Extra keyword arguments for the `Makie.ecdfplot!`
+  function.
+- `cdf_kwargs::Dict`: Extra keyword arguments for the `Makie.lines!` function.
+- `legend::Bool=true`: Boolean indicating if a legend should be added to the
+  plot.
+- `legend_kwargs:Dict()`: Extra keyword arguments for the `Makie.axislegend`
+  function.
+"""
+function mcmc_fitdist_cdf!(
+    ax::Makie.Axis,
+    chain::Vector{<:Real},
+    dist::Distributions.ContinuousUnivariateDistribution;
+    npoints::Int=1000,
+    range::Union{Nothing,NTuple{2,<:Real}}=nothing,
+    ecdf_label::String="mcmc",
+    cdf_label::String="fit",
+    ecdf_kwargs::Dict=Dict(:linewidth => 2.5),
+    cdf_kwargs::Dict=Dict(
+        :color => :black, :linewidth => 2.5, :linestyle => :dot
+    ),
+    legend::Bool=true,
+    legend_kwargs::Dict=Dict(:position => :rb)
+)
+    # Plot ECDF
+    ecdfplot!(
+        ax,
+        chain,
+        npoints=length(chain);
+        label=ecdf_label,
+        ecdf_kwargs...
+    )
+
+    # Define range if not given
+    if typeof(range) <: Nothing
+        range = (minimum(chain), maximum(chain))
+    end # if
+
+    # Plot CDF
+    lines!(
+        ax,
+        LinRange(range..., npoints),
+        Distributions.cdf(dist, LinRange(range..., npoints));
+        label=cdf_label,
+        cdf_kwargs...
+    )
+
+    # Check if legend should be added
+    if legend
+        axislegend(ax; legend_kwargs...)
     end # if
 end # function
 
