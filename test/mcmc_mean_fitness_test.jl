@@ -24,16 +24,15 @@ using CairoMakie
 import ColorSchemes
 ##
 
+println("Loading data...\n")
 # Import data
-data = CSV.read("$(git_root())/test/data/data_example_02.csv", DF.DataFrame)
-
-# Add frequency column to dataframe
-data[!, :freq] = data.count ./ data.count_sum
+data = CSV.read("$(git_root())/test/data/data_example_01.csv", DF.DataFrame)
 
 ##
 
 # Plot trajectories
 
+println("Plotting frequency trajectories...\n")
 # Initialize figure
 fig = Figure(resolution=(450, 350))
 
@@ -74,6 +73,7 @@ fig
 
 ##
 
+println("Plotting log-frequency ratio trajectories...\n")
 # Initialize figure
 fig = Figure(resolution=(450, 350))
 
@@ -114,10 +114,10 @@ fig
 
 param = Dict(
     :data => data,
-    :n_walkers => 3,
-    :n_steps => 1_000,
-    :outputdir => "./output/",
-    :outputname => "data_02_meanfitness",
+    :n_walkers => 4,
+    :n_steps => 4_000,
+    :outputdir => "./output",
+    :outputname => "data_01_meanfitness",
     :model => BayesFitness.model.mean_fitness_neutrals_lognormal,
     :model_kwargs => Dict(
         :α => BayesFitness.stats.dirichlet_prior_neutral(
@@ -127,14 +127,21 @@ param = Dict(
 )
 ##
 
+# Create output directory
+if !isdir("./output/")
+    mkdir("./output/")
+end # if
+
 # Run inference
+println("Running Inference...")
 BayesFitness.mcmc.mcmc_mean_fitness(; param...)
 
 ##
 
+println("Plotting trances and densities...\n")
 # Concatenate population mean fitness chains into single chain
-chains = BayesFitness.utils.var_jld2_concat(
-    param[:outputdir], param[:outputname], :sₜ
+chains = BayesFitness.utils.jld2_concat_chains(
+    param[:outputdir], param[:outputname], [:sₜ]; id_str=""
 )
 
 # Initialize figure
@@ -149,46 +156,67 @@ fig
 
 ##
 
-# Define quantiles to compute
-qs = [0.95, 0.675, 0.02]
+# Name variables to be extracted from chains
+chain_vars = [:sₜ, :σₜ]
 
-# Generate dataframe with mean fitness samples
-df_meanfit = BayesFitness.utils.var_jld2_to_df(
-    param[:outputdir], param[:outputname], :sₜ
+# Extract variables into single chain object
+chains = BayesFitness.utils.jld2_concat_chains(
+    param[:outputdir], param[:outputname], chain_vars; id_str=""
 )
 
-# Define colors
-colors = get(ColorSchemes.Blues_9, LinRange(0.5, 1, length(qs)))
+# Extract chain variables into dataframe
+df_chain = DF.DataFrame(chains)
+
+# Define number of posterior predictive check samples
+n_ppc = 5_000
+
+# Compute posterior predictive checks
+ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
+    n_ppc, df_chain, chain_vars...
+)
+
+##
 
 # Initialize figure
-fig = Figure(resolution=(400, 300))
+fig = Figure(resolution=(450, 350))
 
 # Add axis
 ax = Axis(
     fig[1, 1],
     xlabel="time point",
-    ylabel="log(fₜ₊₁ / fₜ)",
+    ylabel="ln(fₜ₊₁/fₜ)",
+    title="log-frequency ratio PPC"
 )
 
+# Define quantiles to compute
+qs = [0.68, 0.95, 0.997]
+
+# Define colors
+colors = get(ColorSchemes.Blues_9, LinRange(0.25, 0.75, length(qs)))
+
 # Plot posterior predictive checks
-BayesFitness.viz.logfreqratio_neutral_ppc!(ax, qs, df_meanfit; colors=colors)
+BayesFitness.viz.ppc_time_series!(
+    ax, qs, ppc_mat; colors=colors
+)
 
-# Group data by barcod
-df_group = DF.groupby(data[data.neutral, :], :barcode)
+# Add plot for median (we use the 5 percentile to have a "thicker" line showing
+# the median)
+BayesFitness.viz.ppc_time_series!(
+    ax, [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
+)
 
-# Loop through groups
-for d in df_group
-    # Sort data by time
-    DF.sort!(d, :time)
+# Plot log-frequency ratio of neutrals
+BayesFitness.viz.logfreq_ratio_time_series!(
+    ax,
+    data[data.neutral, :];
+    freq_col=:freq,
+    color=:black,
+    alpha=1.0,
+    linewidth=2
+)
 
-    # Compute log ratios
-
-    # Plot data
-    scatterlines!(
-        ax, diff(log.(d.count ./ d.count_sum)), color=(:black, 0.2)
-    )
-end # for
+save("../docs/src/figs/fig04.svg", fig)
 
 fig
 
-## 
+##
