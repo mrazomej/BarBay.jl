@@ -164,15 +164,12 @@ chains = BayesFitness.utils.jld2_concat_chains(
     param[:outputdir], param[:outputname], chain_vars; id_str=""
 )
 
-# Extract chain variables into dataframe
-df_chain = DF.DataFrame(chains)
-
 # Define number of posterior predictive check samples
 n_ppc = 5_000
 
 # Compute posterior predictive checks
 ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
-    n_ppc, df_chain, chain_vars...
+    n_ppc, chains, chain_vars...
 )
 
 ##
