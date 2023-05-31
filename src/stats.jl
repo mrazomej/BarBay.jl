@@ -354,9 +354,10 @@ end # function
 @doc raw"""
     logfreq_ratio_mean_ppc(n_ppc, df, varname_mean, varname_std,varname_freq; flatten=true)
 
-Function to compute the **posterior predictive checks** for the barcode
-log-frequency ratio for neutral lineages. Our model predicts the frequency at
-time ``t+1`` based on the frequency at time ``t`` as
+Function to compute the **posterior predictive checks** (better called the
+posterior retrodictive checks) for the barcode log-frequency ratio for neutral
+lineages. Our model predicts the frequency at time ``t+1`` based on the
+frequency at time ``t`` as
 
 ```math
     f_{t+1}^{(n)} = f_{t}^{(n)} 
@@ -377,17 +378,15 @@ function generates samples out of this distribution.
 - `df::DataFrames.DataFrame`: Dataframe containing the MCMC samples for the
   variables needed to compute the posterior predictive checks. The dataframe
   should have MCMC samples for
-  - mutant relative fitness values.
   - population mean fitness values. NOTE: The number of columns containing
     population mean fitness values determines the number of datapoints where the
     ppc are evaluated.
   - log-normal likelihood standard deviation.
-  - mutant initial frequency.
 - `varname_mean::Union{Symbol, AbstractString}`: Variable name pattern for *all*
   population mean fitness. All columns in the dataframe should contain this
   pattern and the sorting of these names must correspond to the sorting of the
   time points.
-- `varname_std::Union{Symbol,AbstractString}` VAriable name for the log-normal
+- `varname_std::Union{Symbol,AbstractString}` Variable name for the log-normal
   distribution standard deviation.
 
 ## Optional Arguments
@@ -395,8 +394,8 @@ function generates samples out of this distribution.
   multiple chain into a single column.
 
 # Returns
-- `fₜ₊₁ = fₜ × exp(s⁽ᵐ⁾ - s̅ₜ)::Array{Float64}`: Evaluation of the frequency
-  posterior predictive checks at all times for each MCMC sample.
+- `fₜ₊₁ / fₜ = exp(s⁽ᵐ⁾ - s̅ₜ)::Array{Float64}`: Evaluation of the log frequency
+  ratio posterior predictive checks at all times for each MCMC sample.
 """
 function logfreq_ratio_mean_ppc(
     n_ppc::Int,
@@ -426,6 +425,99 @@ function logfreq_ratio_mean_ppc(
             Distributions.MvNormal(
                 -df[:, var],
                 LinearAlgebra.Diagonal(df[:, std_vars[i]] .^ 2)
+            ),
+            n_ppc
+        )
+    end # for
+
+    if flatten
+        # Return flatten matrix
+        return vcat(collect(eachslice(γ_ppc, dims=3))...)
+    else
+        # Return raw matrix
+        return γ_ppc
+    end # if
+end # function
+
+@doc raw"""
+    logfreq_ratio_mean_ppc(n_ppc, chain, varname_mean, varname_std, varname_freq; flatten=true)
+
+Function to compute the **posterior predictive checks** (better called the
+posterior retrodictive checks) for the barcode log-frequency ratio for neutral
+lineages. Our model predicts the frequency at time ``t+1`` based on the
+frequency at time ``t`` as
+
+```math
+    f_{t+1}^{(n)} = f_{t}^{(n)} 
+    \exp\left[ \left( - \bar{s}_t \right) \tau \right],
+```
+where ``\bar{s}_t`` is the population mean fitness between time ``t`` and
+``t+1``, and ``\tau`` is the time interval between time ``t`` and ``t+1``. Our
+inference model assumes that
+```math
+    \frac{f_{t+1}^{(n)}}{f_{t}^{(n)}} \sim 
+    \log-\mathcal{N}\left( - \bar{s}_t, \sigma^{(n)} \right),
+```
+where ``\sigma^{(n)}`` is the inferred standard deviation for the model. This
+function generates samples out of this distribution.
+
+# Arguments
+- `n_ppc::Int`: Number of samples to generate per set of parameters.
+- `chains::MCMChains.Chains`: `Chains` object containing the MCMC samples for
+  the variables needed to compute the posterior predictive checks. The chain
+  object should have MCMC samples for
+  - population mean fitness values. NOTE: The number of columns containing
+    population mean fitness values determines the number of datapoints where the
+    ppc are evaluated.
+  - log-normal likelihood standard deviation.
+- `varname_mean::Union{Symbol, AbstractString}`: Variable name pattern for *all*
+  population mean fitness. All columns in the dataframe should contain this
+  pattern and the sorting of these names must correspond to the sorting of the
+  time points.
+- `varname_std::Union{Symbol,AbstractString}` Variable name for the log-normal
+  distribution standard deviation.
+
+## Optional Arguments
+- `flatten::Bool=true`: Boolean indicating whether to flatten the output of
+  multiple chain into a single column.
+
+# Returns
+- `fₜ₊₁ / fₜ = exp(s⁽ᵐ⁾ - s̅ₜ)::Array{Float64}`: Evaluation of the log frequency
+  ratio posterior predictive checks at all times for each MCMC sample.
+"""
+function logfreq_ratio_mean_ppc(
+    n_ppc::Int,
+    chains::MCMCChains.Chains,
+    varname_mean::Union{Symbol,AbstractString},
+    varname_std::Union{Symbol,AbstractString},
+    flatten::Bool=true
+)
+    # Extract variable names for mean fitness
+    mean_vars = MCMCChains.namesingroup(chains, varname_mean)
+
+    # Extract variable names for standard deviation
+    std_vars = MCMCChains.namesingroup(chains, varname_std)
+
+    # Check that number of mean and std variables matches
+    if length(mean_vars) != length(std_vars)
+        error("The number of mean and standard deviation variables does not match")
+    end # if
+
+    # Compute number of MCMC samples in chain from number of chains and range of
+    # samples
+    n_samples = length(MCMCChains.chains(chains)) *
+                length(MCMCChains.range(chains))
+
+    # Initialize matrix to save PPC
+    γ_ppc = Array{Float64}(undef, n_samples, length(mean_vars), n_ppc)
+
+    # Loop through 
+    for (i, var) in enumerate(mean_vars)
+        # Sample out of posterior distribution
+        γ_ppc[:, i, :] = Random.rand(
+            Distributions.MvNormal(
+                -chains[var][:],
+                LinearAlgebra.Diagonal(chains[std_vars[i]][:] .^ 2)
             ),
             n_ppc
         )

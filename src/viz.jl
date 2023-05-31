@@ -15,8 +15,11 @@ import Distributions
 import MCMCChains
 
 # Import function from stats module
-import BayesFitness.stats: matrix_quantile_range, freq_mutant_ppc_quantile, logfreqratio_neutral_ppc_quantile, gaussian_prior_mean_fitness
+import BayesFitness.stats: matrix_quantile_range, gaussian_prior_mean_fitness
 
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# Time series plots
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 @doc raw"""
     bc_time_series!(ax, data; color, alpha, id_col, time_col, quant_col)
 
@@ -222,6 +225,74 @@ function logfreq_ratio_time_series!(
 end # function
 
 @doc raw"""
+    ppc_time_series!(ax, quantile, ppc_mat; time, colors, alpha)
+
+Function to plot the posterior predictive checks quantiles for any quantity.
+
+# Arguments
+- `ax::Makie.Axis`: Axis object to be populated with plot. 
+- `quantile::Vector{<:AbstractFloat}`: List of quantiles to extract from the
+    posterior predictive checks.
+- `ppc_mat::Matrix{<:AbstractFloat}`: Matrix containing the posterior predictive
+  samples. Rows are assumed to contain the samples, columns the time points.
+
+## Optional arguments
+- `colors=ColorSchemes.Blues_9`: List of colors to use for each quantile.
+- `alpha::AbstractFloat=0.75`: Level of transparency for band representing each
+quantile.
+"""
+function ppc_time_series!(
+    ax::Makie.Axis,
+    quantile::Vector{<:AbstractFloat},
+    ppc_mat::Matrix{<:Real};
+    time::Union{Vector{<:Real},Nothing}=nothing,
+    colors::Union{ColorSchemes.ColorScheme,Vector{<:ColorTypes.Colorant{Float64,3}}}=ColorSchemes.Blues_9,
+    alpha::AbstractFloat=0.75
+)
+    # Check that all quantiles are within bounds
+    if any(.![0.0 ≤ x ≤ 1.0 for x in quantile])
+        error("All quantiles must be between zero and one")
+    end # if
+
+    # Tell user that quantiles will be sorted
+    if quantile != sort(quantile, rev=true)
+        println("Notice that we sort the quantiles to properly display the intervals")
+    end # if
+
+    # Check that there are enough colors for each quantile
+    if length(colors) < length(quantile)
+        error("There are not enough colors provided for all quantiles")
+    end # if
+
+    # Sort quantiles
+    sort!(quantile, rev=true)
+
+    # Compute quantiles
+    ppc_quant = matrix_quantile_range(quantile, ppc_mat)
+
+    # Check if time is provided
+    if typeof(time) <: Nothing
+        time = collect(1:size(ppc_quant, 1))
+    end # if
+
+    # Loop through quantiles
+    for i in eachindex(quantile)
+        # Add confidence interval for observation
+        band!(
+            ax,
+            time,
+            ppc_quant[:, i, 1],
+            ppc_quant[:, i, 2],
+            color=(colors[i], alpha)
+        )
+    end # for
+end # function
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# MCMC trace + density plots
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+@doc raw"""
     mcmc_trace_density!(fig::Figure, chain::MCMCChains.Chains; colors, labels)
 
 Function to plot the traces and density estimates side-to-side for each of the
@@ -348,7 +419,7 @@ parametres in the `MCMCChains.Chains` object.
 - `title_valign::Symbol=:bottom`: Vertical alignment for title label,
 - `title_font::Symbol=:bold`: Type of font to be used in plot.
 - `title_fontsize::Real=20`: Font size for title.
-- `title_padding::Vector{<:Real}=(0, 0, 5, 0)`: Padding for plot text.
+- `title_padding::NTuple{4,<:Real}=(0, 0, 5, 0)`: Padding for plot text.
 """
 function mcmc_trace_density!(
     gl::GridLayout,
@@ -429,6 +500,10 @@ function mcmc_trace_density!(
     end # if
 end # function
 
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# MCMC fit distributions
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 @doc raw"""
     mcmc_fitdist_cdf!(ax, chain, dist; n_points, range, ecdf_label, cdf_label, ecdf_kwargs, cdf_kwargs, legend, legend_kwargs)
 
@@ -504,68 +579,4 @@ function mcmc_fitdist_cdf!(
     if legend
         axislegend(ax; legend_kwargs...)
     end # if
-end # function
-
-@doc raw"""
-    ppc_time_series!(ax, quantile, ppc_mat; time, colors, alpha)
-
-Function to plot the posterior predictive checks quantiles for any quantity.
-
-# Arguments
-- `ax::Makie.Axis`: Axis object to be populated with plot. 
-- `quantile::Vector{<:AbstractFloat}`: List of quantiles to extract from the
-    posterior predictive checks.
-- `ppc_mat::Matrix{<:AbstractFloat}`: Matrix containing the posterior predictive
-  samples. Rows are assumed to contain the samples, columns the time points.
-
-## Optional arguments
-- `colors=ColorSchemes.Blues_9`: List of colors to use for each quantile.
-- `alpha::AbstractFloat=0.75`: Level of transparency for band representing each
-quantile.
-"""
-function ppc_time_series!(
-    ax::Makie.Axis,
-    quantile::Vector{<:AbstractFloat},
-    ppc_mat::Matrix{<:Real};
-    time::Union{Vector{<:Real},Nothing}=nothing,
-    colors::Union{ColorSchemes.ColorScheme,Vector{<:ColorTypes.Colorant{Float64,3}}}=ColorSchemes.Blues_9,
-    alpha::AbstractFloat=0.75
-)
-    # Check that all quantiles are within bounds
-    if any(.![0.0 ≤ x ≤ 1.0 for x in quantile])
-        error("All quantiles must be between zero and one")
-    end # if
-
-    # Tell user that quantiles will be sorted
-    if quantile != sort(quantile, rev=true)
-        println("Notice that we sort the quantiles to properly display the intervals")
-    end # if
-
-    # Check that there are enough colors for each quantile
-    if length(colors) < length(quantile)
-        error("There are not enough colors provided for all quantiles")
-    end # if
-
-    # Sort quantiles
-    sort!(quantile, rev=true)
-
-    # Compute quantiles
-    ppc_quant = matrix_quantile_range(quantile, ppc_mat)
-
-    # Check if time is provided
-    if typeof(time) <: Nothing
-        time = collect(1:size(ppc_quant, 1))
-    end # if
-
-    # Loop through quantiles
-    for i in eachindex(quantile)
-        # Add confidence interval for observation
-        band!(
-            ax,
-            time,
-            ppc_quant[:, i, 1],
-            ppc_quant[:, i, 2],
-            color=(colors[i], alpha)
-        )
-    end # for
 end # function
