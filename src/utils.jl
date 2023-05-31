@@ -130,8 +130,8 @@ function jld2_concat_chains(
     dir::String,
     file_pattern::String,
     var_pattern::Vector{Symbol};
-    id_str::String="f"
-    chainname::String="chain",
+    id_str::String="f",
+    chainname::String="chain"
 )
     # List files
     files = sort(Glob.glob("$(dir)/*$(file_pattern)*.jld2"))
