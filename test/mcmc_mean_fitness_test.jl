@@ -167,9 +167,16 @@ chains = BayesFitness.utils.jld2_concat_chains(
 # Define number of posterior predictive check samples
 n_ppc = 5_000
 
+# Define dictionary with corresponding parameters for variables needed for the
+# posterior predictive checks
+param = Dict(
+    :population_mean_fitness => :sₜ,
+    :population_std_fitness => :σₜ,
+)
+
 # Compute posterior predictive checks
 ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
-    n_ppc, chains, chain_vars...
+    chains, n_ppc; param=param
 )
 
 ##
