@@ -316,12 +316,19 @@ chains = BayesFitness.utils.jld2_concat_chains(
     param[:outputdir], param[:outputname], chain_vars; id_str=""
 )
 
-# Define number of posterior predictive check samples to simulate
+# Define number of posterior predictive check samples
 n_ppc = 5_000
+
+# Define dictionary with corresponding parameters for variables needed for the
+# posterior predictive checks
+param = Dict(
+    :population_mean_fitness => :sₜ,
+    :population_std_fitness => :σₜ,
+)
 
 # Compute posterior predictive checks
 ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
-    n_ppc, chains, chain_vars...
+    chains, n_ppc; param=param
 )
 ```
 Once we generate these samples, we can plot the quantiles of the simulated data
@@ -378,7 +385,7 @@ BayesFitness.viz.logfreq_ratio_time_series!(
 
 This plot shows that the range of inferred population mean fitnesses does
 capture the log-frequency ratios of the neutral lineages. Therefore, we can
-confidently move to the next stage of our inference pipleine.
+confidently move to the next stage of our inference pipeline.
 
 ### Inferring mutants' relative fitness
 Once we make sure that the population mean fitness looks okay, we can tackle the
@@ -561,7 +568,7 @@ chain_names = reduce(
 )
 
 # Extract chain variables
-chain = chain[chain_names]
+chn = chain[chain_names]
 ```
 We also need to extract the actual measurements for the specific barcode we are
 looking as an example. This can easily be extracted from our tidy data frame.
@@ -599,7 +606,7 @@ param = Dict(
 
 # Compute posterior predictive checks
 ppc_mat = BayesFitness.stats.freq_mutant_ppc(
-    chain,
+    chn,
     n_ppc;
     param=param
 )
@@ -642,6 +649,91 @@ BayesFitness.viz.ppc_time_series!(
 scatterlines!(ax, data_bc.freq, color=:black)
 ```
 ![](./figs/fig07.svg)
+
+!!! tip
+    In the previous plot, the credible region expands as time progresses in the
+    experiment. This is to be expected as the uncertainty is propagated over
+    time with new sources of uncertainty added at each time point. But notice
+    that the experimental frequency trajectory falls within the highest
+    probability region.
+
+Another way to visualize the agreement between our inferred parameters and the
+data is to look at the quantity used directly on the inference of the fitness
+value, i.e., the log frequency ratio between two adjacent time points. For this
+we can use the [`BayesFitness.stats.logfreq_ratio_mutant_ppc`](@ref) function to
+compute the posterior predictive checks. The difference between this function
+and the previously used [`BayesFitness.stats.freq_mutant_ppc`](@ref) is that the
+log frequency ratio function does not require the inferred initial frequency of
+the mutant as an input since we are only looking at the log log frequency ratio.
+```julia
+# Name variables to be extracted from chains
+chain_vars = [Symbol("s⁽ᵐ⁾"), Symbol("σ⁽ᵐ⁾"), :s̲ₜ]
+
+# Locate variable names to extract from chain
+chain_names = reduce(
+    vcat, [MCMCChains.namesingroup(chain, var) for var in chain_vars]
+)
+
+# Extract chain variables
+chn = chain[chain_names]
+
+# Define number of posterior predictive check samples
+n_ppc = 5_000
+
+# Define dictionary with corresponding parameters for variables needed for the
+# posterior predictive checks
+param = Dict(
+    :mutant_mean_fitness => :s⁽ᵐ⁾,
+    :mutant_std_fitness => :σ⁽ᵐ⁾,
+    :population_mean_fitness => :s̲ₜ,
+)
+
+# Compute posterior predictive checks
+ppc_mat = BayesFitness.stats.logfreq_ratio_mutant_ppc(
+    chn, n_ppc; param=param
+)
+```
+Again, we can use the [`BayesFitness.viz.ppc_time_series!`](@ref) function to
+plot the quantiles for our posterior predictive checks.
+```julia
+# Initialize figure
+fig = Figure(resolution=(450, 350))
+
+# Add axis
+ax = Axis(
+    fig[1, 1],
+    xlabel="time point",
+    ylabel="ln(fₜ₊₁/fₜ)",
+    title="log-frequency ratio PPC"
+)
+
+# Define quantiles to compute
+qs = [0.95, 0.675]
+
+# Define colors
+colors = get(ColorSchemes.Blues_9, LinRange(0.5, 0.75, length(qs)))
+
+# Plot posterior predictive checks
+BayesFitness.viz.ppc_time_series!(
+    ax, qs, ppc_mat; colors=colors
+)
+
+# Add plot for median (we use the 5 percentile to have a "thicker" line showing
+# the median)
+BayesFitness.viz.ppc_time_series!(
+    ax, [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
+)
+
+# Add scatter of data
+scatterlines!(ax, diff(log.(data_bc.freq)), color=:black)
+```
+![](./figs/fig08.svg)
+
+We can see that indeed the recovered fitness value greatly agrees with the data.
+
+This concludes the example inference pipeline. We invited you to explore more
+the potential in the package and please send any comments/requests through the
+GitHub repository issues.
 
 ## Contents
 
