@@ -395,15 +395,21 @@ for each MCMC chain sampled in the previous section. The
 [`BayesFitness.stats.gaussian_prior_mean_fitness`](@ref) function in the
 [`stats`](./stats.md) module can help us with this.
 
+!!! info
+    Note that the [`BayesFitness.stats.gaussian_prior_mean_fitness`](@ref)
+    function has methods to work with either `MCMCChains.Chains` objects or with
+    tidy `DataFrames.DataFrame`. This allows you to use the data structure you
+    are more comfortable working with.
+
 ```julia
 # Extract mean fitness MCMC chains
-mean_fitness_mcmc = BayesFitness.utils.var_jld2_to_df(
-    "./output/", "data_01_meanfitness", :sₜ
+mean_fitness_chains = BayesFitness.utils.jld2_concat_chains(
+    "./output/", "data_01_meanfitness", [:sₜ]; id_str=""
 )
 
 # Infer mean fitness distribution parameters by fitting a Gaussian
 mean_fitness_dist = BayesFitness.stats.gaussian_prior_mean_fitness(
-    mean_fitness_mcmc
+    mean_fitness_chains
 )
 ```
 
@@ -419,7 +425,7 @@ inferred population mean fitness values from the previous section
 ```julia
 # Infer mean fitness distributions by fitting a Gaussian
 fit_dists = BayesFitness.stats.gaussian_prior_mean_fitness(
-    mean_fitness_mcmc,
+    mean_fitness_chains,
     params=false
 )
 
@@ -436,11 +442,11 @@ axes = [
 ]
 
 # Loop through time points
-for i = 1:length(fit_dists)
+for (i, var) in enumerate(names(mean_fitness_chains))
     # Plot ECDF
     BayesFitness.viz.mcmc_fitdist_cdf!(
         axes[i],
-        mean_fitness_mcmc[:, i],
+        Array(mean_fitness_chains[var])[:],
         fit_dists[i]
     )
 
@@ -456,11 +462,11 @@ end # for
     and the fit distribution as shown in the figure above.
 
 We can now define the dictionary containing the parameters that go into the
-[`BayesFitness.mcmc.mcmc_mutants_fitness`] function from the `mcmc`
+[`BayesFitness.mcmc.mcmc_mutant_fitness`] function from the `mcmc`
 module. 
 
 !!! tip
-    The [`BayesFitness.mcmc.mcmc_mutants_fitness`](@ref) function has two
+    The [`BayesFitness.mcmc.mcmc_mutant_fitness`](@ref) function has two
     multi-threading modalities: `multithread_chain` and `multithread_mutant`.
     Only one of them can be active at any moment. The `multithread_chain` 
     samples multiple chains **for a single mutant at the time** in a multithread
@@ -513,36 +519,129 @@ file = first(
 )
 
 # Load one of the files as an example
-mcmc_chain = JLD2.load(file)["chain"]
+chain = JLD2.load(file)["chain"]
 ```
-Next, let's extract the necessary information from the `mcmc_chain` object. In
-particular, we are interested in the mcmc traces for the mutant fitness (named
-`:s⁽ᵐ⁾` in the chain), all of the population mean fitness traces (named
-`:s̲ₜ[i]` in the chain, where `i` indexes the time point), the standard
-deviation for the mutant fitness (named `:σ⁽ᵐ⁾` in the chain), and the initial
-barcode frequency (named `:f̲⁽ᵐ⁾[1]` in the chain). To extract these specific
-mcmc traces, we can sue the [`BayesFitness.utils.chain_to_df`](@ref) function
-that returns a data frame where each column corresponds to one of the
-parameters.
+As a first diagnostic, let's look at the trace and density plots for the mutant
+fitness and the likelihood standard deviation.
 ```julia
 # Name variables to be extracted from chains
-chain_vars = [Symbol("s⁽ᵐ⁾"), :s̲ₜ, Symbol("σ⁽ᵐ⁾"), Symbol("f̲⁽ᵐ⁾[1]")]
+chain_vars = [Symbol("s⁽ᵐ⁾"), Symbol("σ⁽ᵐ⁾")]
 
-# Extract chain variables into dataframe
-df_chain = BayesFitness.utils.chain_to_df(mcmc_chain, chain_vars)
+# Extract variables from chain
+chn = chain[chain_vars]
+
+# Initialize figure
+fig = Figure(resolution=(600, 350))
+
+# Generate mcmc_trace_density! plot
+BayesFitness.viz.mcmc_trace_density!(fig, chn; alpha=0.5)
 ```
-!!! info
-    The [`BayesFitness.utils.chain_to_df`](@ref) function extracts parameters
-    based on an input pattern. Thus, On the one hand, if we want to extract
-    **all** the mean fitness values indexed as `:s̲ₜ[1]`, `:s̲ₜ[2]`, etc, we
-    need to only provide the pattern `:s̲ₜ`. The Function will then search for
-    all elements in the `mcmc_chain` object whose name contains this pattern. On
-    the other hand, if we only need to extract a specific inferred frequency, we
-    need to specify the entire pattern `:f̲⁽ᵐ⁾[1]` that uniquely identifies the
-    variable we care about.
+![](./figs/fig06.svg)
+
+We can see that the mutant fitness is centered around 1.5. But the Bayesian
+analysis gives us a principled way to estimate the uncertainty on this estimate.
+
+
+To make sure the inferred fitness value agrees with the experimental data, we
+must generate posterior predictive (retrodictive) checks. For this we need to
+extract the necessary information from the `mcmc_chain` object. In particular,
+we are interested in the mcmc traces for the mutant fitness (named `:s⁽ᵐ⁾` in
+the chain), all of the population mean fitness traces (named `:s̲ₜ[i]` in the
+chain, where `i` indexes the time point), the standard deviation for the mutant
+fitness (named `:σ⁽ᵐ⁾` in the chain), and the initial barcode frequency (named
+`:f̲⁽ᵐ⁾[1]` in the chain).
+```julia
+# Name variables to be extracted from chains
+chain_vars = [Symbol("s⁽ᵐ⁾"), Symbol("σ⁽ᵐ⁾"), Symbol("f̲⁽ᵐ⁾[1]"), :s̲ₜ]
+
+# Locate variable names to extract from chain and append them into a single 
+# vector
+chain_names = reduce(
+    vcat, [MCMCChains.namesingroup(chain, var) for var in chain_vars]
+)
+
+# Extract chain variables
+chain = chain[chain_names]
+```
+We also need to extract the actual measurements for the specific barcode we are
+looking as an example. This can easily be extracted from our tidy data frame.
+```julia
+# Extract data for barcode example
+data_bc = data[data.barcode.==bc, :]
+
+# Sort data by time
+DF.sort!(data_bc, :time)
+```
 
 With these variables in hand, we can generate some posterior predictive checks
+for the barcode frequency trajectories. To generate these samples we use the
+[`BayesFitness.stats.freq_mutant_ppc`](@ref) function that takes a chain (or a
+tidy dataframe) as an input with MCMC chains for the following variables:
+- The mutant mean fitness ``s^{(m)}``.
+- The standard deviation from the mutant fitness inference likelihood function
+  ``\sigma^{(m)}``.
+- The initial frequency for the mutant ``f^{(m)}_0``.
+- The corresponding population mean fitness values for each time point where the
+  data was taken ``\underline{\bar{s}}_t``.
 
+```julia
+# Define number of posterior predictive check samples
+n_ppc = 5_000
+
+# Define dictionary with corresponding parameters for variables needed for the
+# posterior predictive checks
+param = Dict(
+    :mutant_mean_fitness => :s⁽ᵐ⁾,
+    :mutant_std_fitness => :σ⁽ᵐ⁾,
+    :mutant_freq => Symbol("f̲⁽ᵐ⁾[1]"),
+    :population_mean_fitness => :s̲ₜ,
+)
+
+# Compute posterior predictive checks
+ppc_mat = BayesFitness.stats.freq_mutant_ppc(
+    chain,
+    n_ppc;
+    param=param
+)
+```
+
+Next, we can use the [`BayesFitness.viz.ppc_time_series!`](@ref) function to
+plot these posterior predictive checks to compare it with the frequency
+trajectory measured experimentally.
+
+```julia
+# Initialize figure
+fig = Figure(resolution=(450, 350))
+
+# Add axis
+ax = Axis(
+    fig[1, 1],
+    xlabel="time point",
+    ylabel="barcode frequency",
+    title="frequency trajectories",
+    yscale=log10,
+)
+
+# Define quantiles to compute
+qs = [0.95, 0.675]
+
+# Define colors
+colors = get(ColorSchemes.Blues_9, LinRange(0.5, 0.75, length(qs)))
+
+# Plot posterior predictive checks
+BayesFitness.viz.ppc_time_series!(
+    ax, qs, ppc_mat; colors=colors
+)
+
+# Add plot for median
+BayesFitness.viz.ppc_time_series!(
+    ax, [0.03], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
+)
+
+# Add scatter of data
+scatterlines!(ax, data_bc.freq, color=:black)
+```
+![](./figs/fig07.svg)
 
 ## Contents
 
