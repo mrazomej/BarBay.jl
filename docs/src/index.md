@@ -239,14 +239,17 @@ The output of this function are [`.jld2`](https://github.com/JuliaIO/JLD2.jl)
 files that save the native data structure with the MCMC samples for each pair of
 adjacent timepoints. To extract the MCMC samples of the variable we care
 about⸺equivalent to marginalizing out all the nuisance variables⸺we can use the
-[`BayesFitness.utils.var_jld2_to_df`](@ref) from the [`utils`](./utils.md)
+[`BayesFitness.utils.jld2_concat_chains`](@ref) from the [`utils`](./utils.md)
 module, indicating the name of the variable we want to extract. What this
 function does is to search for all `.jld2` files in the directory that have a
 particular pattern in their filename, extracts the MCMC samples for the
 requested variable (the mean fitness in our case) and compiles them into a data
 frame, where each column represents the variable extracted from each file.
 ```julia
-BayesFitness.utils.var_jld2_to_df("./output/", "data_01_meanfitness", :sₜ)
+# Concatenate population mean fitness chains into single chain
+chains = BayesFitness.utils.jld2_concat_chains(
+    "./output/", "data_01_meanfitness", [:sₜ]; id_str=""
+)
 ```
 
 !!! info
@@ -256,16 +259,10 @@ BayesFitness.utils.var_jld2_to_df("./output/", "data_01_meanfitness", :sₜ)
 
 To diagnose the inference of these population mean fitness values, it is useful
 to plot both the MCMC traces for each walker as well as the resulting density
-plots. To do this, we can use another function from the `utils` module that
-extracts the MCMC samples in the native format. Then, we feed this data
-structure to the [`BayesFitness.viz.mcmc_trace_density!`](@ref) function to
-automatically generate these plots.
+plots. To do this, we feed the `chains`  data structure to the
+[`BayesFitness.viz.mcmc_trace_density!`](@ref) function to automatically
+generate these plots.
 ```julia
-# Concatenate population mean fitness chains into single chain
-chains = BayesFitness.utils.var_jld2_concat(
-    param[:outputdir], param[:outputname], :sₜ
-)
-
 # Initialize figure
 fig = Figure(resolution=(600, 600))
 
@@ -301,17 +298,22 @@ For this particular case of the population mean fitness, we can use the
 [`BayesFitness.stats.logfreq_ratio_mean_ppc`](@ref) from the
 [`stats`](./stats.md) module to compute the posterior predictive checks. What
 this function does is to generate samples for the log-frequency ratios used to
-infer the population mean fitness values. We just need to extract the necessary
-information from the MCMC chains, which we can easily do with the
-[`BayesFitness.utils.var_jld2_to_df`](@ref) function from the
-[`utils`](./utils.md) module.
+infer the population mean fitness values.
+
+!!! info
+    Note that the [`BayesFitness.stats.logfreq_ratio_mean_ppc`](@ref) function
+    has methods to work with either `MCMCChains.Chains` objects or with tidy
+    `DataFrames.DataFrame`. This allows you to use the data structure you are
+    more comfortable working with.
+
 ```julia
-# Name of variables to be extracted from the output MCMC chains
+# Name of variables to be extracted from the output MCMC chains on multiple 
+# .jld2 files
 chain_vars = [:sₜ, :σₜ]
 
-# Extract chain variables into dataframe
-df_chain = BayesFitness.utils.var_jld2_to_df(
-    param[:outputdir], param[:outputname], chain_vars
+# Extract variables into single chain object
+chains = BayesFitness.utils.jld2_concat_chains(
+    param[:outputdir], param[:outputname], chain_vars; id_str=""
 )
 
 # Define number of posterior predictive check samples to simulate
@@ -319,7 +321,7 @@ n_ppc = 5_000
 
 # Compute posterior predictive checks
 ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
-    n_ppc, df_chain, chain_vars...
+    n_ppc, chains, chain_vars...
 )
 ```
 Once we generate these samples, we can plot the quantiles of the simulated data
@@ -414,9 +416,6 @@ Gaussian distributions. The [`BayesFitness.viz.mcmc_fitdist_cdf!`](@ref)
 function from does exactly this. Let's plot this comparison for all four
 inferred population mean fitness values from the previous section
 
-!!! tip
-    What
-
 ```julia
 # Infer mean fitness distributions by fitting a Gaussian
 fit_dists = BayesFitness.stats.gaussian_prior_mean_fitness(
@@ -449,9 +448,12 @@ for i = 1:length(fit_dists)
 end # for
 ```
 
-
-
 ![](./figs/fig05.svg)
+
+!!! tip
+    If the population mean fitness can be parametrized as a Gaussian
+    distribution, there should be minimal differences between the `mcmc` chain
+    and the fit distribution as shown in the figure above.
 
 We can now define the dictionary containing the parameters that go into the
 [`BayesFitness.mcmc.mcmc_mutants_fitness`] function from the `mcmc`
@@ -495,7 +497,52 @@ Finally, we run the inference.
 BayesFitness.mcmc.mcmc_mutant_fitness(; param...)
 ```
 This function generates `.jld2` files with the MCMC chains for each of the
-mutant barcodes.
+mutant barcodes. Let's look at an example inference. We will specifically load
+the inference for the barcode that reached the highest count throughout the
+experiment. For this, we use the `Glob.jl` library to locate the corresponding
+`.jld2` file. `.jld2` files store multiple Julia objects as dictionary. In our
+case, a single object named `"chain"` was saved on this file, so when loading
+the file, we index this single object.
+```julia
+# Find barcode with maximum count
+bc = data[first(argmax(data.count, dims=1)), :barcode]
+
+# Select file to process
+file = first(
+    Glob.glob("$(param[:outputdir])/$(param[:outputname])*$(bc).jld2")
+)
+
+# Load one of the files as an example
+mcmc_chain = JLD2.load(file)["chain"]
+```
+Next, let's extract the necessary information from the `mcmc_chain` object. In
+particular, we are interested in the mcmc traces for the mutant fitness (named
+`:s⁽ᵐ⁾` in the chain), all of the population mean fitness traces (named
+`:s̲ₜ[i]` in the chain, where `i` indexes the time point), the standard
+deviation for the mutant fitness (named `:σ⁽ᵐ⁾` in the chain), and the initial
+barcode frequency (named `:f̲⁽ᵐ⁾[1]` in the chain). To extract these specific
+mcmc traces, we can sue the [`BayesFitness.utils.chain_to_df`](@ref) function
+that returns a data frame where each column corresponds to one of the
+parameters.
+```julia
+# Name variables to be extracted from chains
+chain_vars = [Symbol("s⁽ᵐ⁾"), :s̲ₜ, Symbol("σ⁽ᵐ⁾"), Symbol("f̲⁽ᵐ⁾[1]")]
+
+# Extract chain variables into dataframe
+df_chain = BayesFitness.utils.chain_to_df(mcmc_chain, chain_vars)
+```
+!!! info
+    The [`BayesFitness.utils.chain_to_df`](@ref) function extracts parameters
+    based on an input pattern. Thus, On the one hand, if we want to extract
+    **all** the mean fitness values indexed as `:s̲ₜ[1]`, `:s̲ₜ[2]`, etc, we
+    need to only provide the pattern `:s̲ₜ`. The Function will then search for
+    all elements in the `mcmc_chain` object whose name contains this pattern. On
+    the other hand, if we only need to extract a specific inferred frequency, we
+    need to specify the entire pattern `:f̲⁽ᵐ⁾[1]` that uniquely identifies the
+    variable we care about.
+
+With these variables in hand, we can generate some posterior predictive checks
+
 
 ## Contents
 
