@@ -173,12 +173,69 @@ function gaussian_prior_mean_fitness(
     end # if
 end # function
 
+@doc raw"""
+    gaussian_prior_mean_fitness(data)
+
+Function that fits Gaussian (normal) distributions to MCMC traces from the
+population mean fitness s̄ₜ. These Gaussians are then used during the mutant
+relative fitness inference.
+
+# Arguments
+- `data::DataFrames.AbstractDataFrame`: DataFrame containing the MCMC samples
+  for each of the inferred population mean fitness values, one inferred mean
+  fitness per column.
+
+## Optional arguments
+- `params::Bool=true`: Boolean indicating whether the distribution parameters
+  (mean and variance) or the full distribution should be returned
+
+# Returns
+if `params == true`:
+    - `µ::Vector{Float64}`: Vector encoding the mean values of the Gaussian
+    distributions.
+    - `σ::Vector{Float64}`: Vector encoding the standard deviation values of the
+    Gaussian distributions.
+else
+    - `dists::Vector{<:Distributions.ContinuousUnivariateDistribution}`: Vector
+    with the `Distributions.jl` fit distributions.
+"""
+function gaussian_prior_mean_fitness(
+    chains::MCMCChains.Chains; params::Bool=true
+)
+    # Initialize array to save distributions
+    dists = Vector{Distributions.ContinuousUnivariateDistribution}(
+        undef, size(chains, 2)
+    )
+
+    # Initialize arrays to save values
+    μ = Vector{Float64}(undef, size(chains, 2))
+    σ = similar(μ)
+
+    # Loop through each variable
+    for (i, var) in enumerate(names(chains))
+        # Extract data
+        d = Array(chains[var])
+        # Fit Gaussian distribution
+        dists[i] = Distributions.fit(Distributions.Normal, d)
+        # Store mean and standard deviation
+        µ[i] = Distributions.mean(dists[i])
+        σ[i] = Distributions.std(dists[i])
+    end # for
+
+    # Check if parameters should be returned
+    if params
+        return µ, σ
+    else
+        return dists
+    end # if
+end # function
+
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
-# Posterior predictive checks
+# Posterior predictive (retrodictive) checks
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    freq_mutant_ppc(n_ppc, df, varname_mut, varname_mean, varname_std,varname_freq; flatten=true)
+    freq_mutant_ppc(n_ppc, df; param, flatten=true)
 
 Function to compute the **posterior predictive checks** for the barcode
 frequency for adaptive mutants. Our model predicts the frequency at time ``t+1``
@@ -199,7 +256,6 @@ where ``\sigma^{(m)}`` is the inferred standard deviation for the model. This
 function generates samples out of this distribution.
 
 # Arguments
-- `n_ppc::Int`: Number of samples to generate per set of parameters.
 - `df::DataFrames.DataFrame`: Dataframe containing the MCMC samples for the
   variables needed to compute the posterior predictive checks. The dataframe
   should have MCMC samples for
@@ -209,16 +265,17 @@ function generates samples out of this distribution.
     ppc are evaluated.
   - log-normal likelihood standard deviation.
   - mutant initial frequency.
-- `varname_mut::Union{Symbol, AbstractString}`: Variable name for the mutant
-    relative fitness in the data frame.
-- `varname_mean::Union{Symbol, AbstractString}`: Variable name pattern for *all*
-  population mean fitness. All columns in the dataframe should contain this
-  pattern and the sorting of these names must correspond to the sorting of the
-  time points.
-- `varname_std::Union{Symbol,AbstractString}` VAriable name for the log-normal
-  distribution standard deviation.
-- `varname_freq::Union{Symbol, AbstractString}`: Variable name for initial
-  mutant barcode frequencies.
+- `n_ppc::Int`: Number of samples to generate per set of parameters.
+- `param::Dict{Symbol, Symbol}`: Dictionary indicating the
+  name of the variables in the mcmc chain defining the following variables:
+  - `:mutant_mean_fitness`: Variable defining the inferred mutant fitness value
+    `sₜ`.
+  - `:mutant_std_fitness`: Variable defining the standard defining the inferred
+    standard deviation on the likelihood function `σₜ`.
+  - `mutant_freq`: Variable defining the inferred initial frequency for the
+    mutant.
+  - `population_mean_fitness`: Common pattern in all population mean fitness
+    variables.
 
 ## Optional Arguments
 - `flatten::Bool=true`: Boolean indicating whether to flatten the output of
@@ -229,30 +286,135 @@ function generates samples out of this distribution.
   posterior predictive checks at all times for each MCMC sample.
 """
 function freq_mutant_ppc(
-    n_ppc::Int,
     df::DF.AbstractDataFrame,
-    varname_mut::Union{Symbol,AbstractString},
-    varname_mean::Union{Symbol,AbstractString},
-    varname_std::Union{Symbol,AbstractString},
-    varname_freq::Union{Symbol,AbstractString};
+    n_ppc::Int;
+    param::Dict{Symbol,Symbol}=Dict(
+        :mutant_mean_fitness => :sₜ,
+        :mutant_std_fitness => :σₜ,
+        :mutant_freq => Symbol("f̲⁽ᵐ⁾[1]"),
+        :population_mean_fitness => :s̲ₜ,
+    ),
     flatten::Bool=true
 )
     # Extract variable names for mean fitness
-    mean_vars = DF.names(df)[occursin.(String(varname_mean), DF.names(df))]
+    mean_vars = sort(
+        DF.names(df)[
+            occursin.(String(param[:population_mean_fitness]), DF.names(df))
+        ]
+    )
 
     # Initialize matrix to save PPC
     f_ppc = Array{Float64}(undef, size(df, 1), length(mean_vars) + 1, n_ppc)
 
     # Set initial frequency
-    f_ppc[:, 1, :] = hcat(repeat([df[:, varname_freq]], n_ppc)...)
+    f_ppc[:, 1, :] = hcat(repeat([df[:, param[:mutant_freq]]], n_ppc)...)
 
     # Loop through time points
     for (i, var) in enumerate(mean_vars)
         # Sample out of posterior distribution
         f_ppc[:, i+1, :] = f_ppc[:, i, :] .* Random.rand(
             Distributions.MvLogNormal(
-                df[:, varname_mut] .- df[:, var],
-                LinearAlgebra.Diagonal(df[:, varname_std] .^ 2)
+                df[:, param[:mutant_mean_fitness]] .- df[:, var],
+                LinearAlgebra.Diagonal(df[:, param[:mutant_std_fitness]] .^ 2)
+            ),
+            n_ppc
+        )
+    end # for
+
+    if flatten
+        # Return flatten matrix
+        return vcat(collect(eachslice(f_ppc, dims=3))...)
+    else
+        # Return raw matrix
+        return f_ppc
+    end # if
+end # function
+
+@doc raw"""
+    freq_mutant_ppc(n_ppc, df; param, flatten=true)
+
+Function to compute the **posterior predictive checks** for the barcode
+frequency for adaptive mutants. Our model predicts the frequency at time ``t+1``
+based on the frequency at time ``t`` as
+
+```math
+    f_{t+1}^{(m)} = f_{t}^{(m)} 
+    \exp\left[ \left( s^{(m)} - \bar{s}_t \right) \tau \right],
+```
+where ``s^{(m)}`` is the mutant relative fitness, ``\bar{s}_t`` is the
+population mean fitness between time ``t`` and ``t+1``, and ``\tau`` is the time
+interval between time ``t`` and ``t+1``. Our inference model assumes that
+```math
+    \frac{f_{t+1}^{(m)}}{f_{t}^{(m)}} \sim 
+    \log-\mathcal{N}\left( s^{(m)} - \bar{s}_t, \sigma^{(m)} \right),
+```
+where ``\sigma^{(m)}`` is the inferred standard deviation for the model. This
+function generates samples out of this distribution.
+
+# Arguments
+- `chain::MCMCChains.Chains`: Chain containing the MCMC samples for the
+  variables needed to compute the posterior predictive checks. The dataframe
+  should have MCMC samples for
+  - mutant relative fitness values.
+  - population mean fitness values. NOTE: The number of columns containing
+    population mean fitness values determines the number of datapoints where the
+    ppc are evaluated.
+  - log-normal likelihood standard deviation.
+  - mutant initial frequency.
+- `n_ppc::Int`: Number of samples to generate per set of parameters.
+- `param::Dict{Symbol, Symbol}`: Dictionary indicating the
+  name of the variables in the mcmc chain defining the following variables:
+  - `:mutant_mean_fitness`: Variable defining the inferred mutant fitness value
+    `sₜ`.
+  - `:mutant_std_fitness`: Variable defining the standard defining the inferred
+    standard deviation on the likelihood function `σₜ`.
+  - `mutant_freq`: Variable defining the inferred initial frequency for the
+    mutant.
+  - `population_mean_fitness`: Common pattern in all population mean fitness
+    variables.
+
+## Optional Arguments
+- `flatten::Bool=true`: Boolean indicating whether to flatten the output of
+  multiple chain into a single column.
+
+# Returns
+- `fₜ₊₁ = fₜ × exp(s⁽ᵐ⁾ - s̅ₜ)::Array{Float64}`: Evaluation of the frequency
+  posterior predictive checks at all times for each MCMC sample.
+"""
+function freq_mutant_ppc(
+    chain::MCMCChains.Chains,
+    n_ppc::Int;
+    param::Dict{Symbol,Symbol}=Dict(
+        :mutant_mean_fitness => :sₜ,
+        :mutant_std_fitness => :σₜ,
+        :mutant_freq => Symbol("f̲⁽ᵐ⁾[1]"),
+        :population_mean_fitness => :s̲ₜ,
+    ),
+    flatten::Bool=true
+)
+    # Extract variable names for mean fitness
+    mean_vars = sort(
+        MCMCChains.namesingroup(chain, param[:population_mean_fitness])
+    )
+
+    # Compute number of MCMC samples in chain from number of chains and range of
+    # samples
+    n_samples = length(MCMCChains.chains(chain)) *
+                length(MCMCChains.range(chain))
+
+    # Initialize matrix to save PPC
+    f_ppc = Array{Float64}(undef, n_samples, length(mean_vars) + 1, n_ppc)
+
+    # Set initial frequency
+    f_ppc[:, 1, :] = hcat(repeat([chain[param[:mutant_freq]][:]], n_ppc)...)
+
+    # Loop through time points
+    for (i, var) in enumerate(mean_vars)
+        # Sample out of posterior distribution
+        f_ppc[:, i+1, :] = f_ppc[:, i, :] .* Random.rand(
+            Distributions.MvLogNormal(
+                chain[param[:mutant_mean_fitness]][:] .- chain[var][:],
+                LinearAlgebra.Diagonal(chain[param[:mutant_std_fitness]][:] .^ 2)
             ),
             n_ppc
         )
