@@ -435,3 +435,97 @@ Turing.@model function mutant_fitness_lognormal_priors(
     )
     return
 end # @model function
+
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Mutant fitness in fluctuating environemnts π(s1⁽ᵐ⁾, s2⁽ᵐ⁾,.. | data)
+# two-environment fluctuations
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+@doc raw"""
+    mutant_fitness__fluct_lognormal(r̲⁽ᵐ⁾, R̲; α, μ_sₜ, σ_sₜ, s_prior, σ_prior, σ_trunc)
+
+`Turing.jl` model to sample out of the posterior distribution for a single
+mutant fitness value `s⁽ᵐ⁾`, given the raw barcode counts and the
+parametrization of the population mean fitness distribution.
+
+# Arguments
+- `r̲⁽ᵐ⁾::Vector{Int64}`: Mutant `m` raw barcode counts time-series. Note: this
+  vector must be the same length as `r̲⁽ᶜ⁾`. This means that each entry
+  `r̲⁽ᵐ⁾[i]` contains the number of reads from barcode `m` at time `i`.
+- `R̲::Vector{Int64}`: time-series of Raw **total** reads. This means that entry
+  `R̲[i]` contains the total number of reads obtained at time `i`.
+- `α::Vector{Float64}`: Parameters for Beta prior distribution.
+- `μ_sₜ::Vector{Float64}`: Array with the time-series mean values of the
+  population mean fitness. This means entry `μ_sₜ[i]` contains the inferred mean
+  value of the population mean fitness for time `i`, assuming `sₜ[i] ~
+  Normal(μ_sₜ[i], σ_sₜ[i])`.
+- `σ_sₜ::Vector{Float64}`: Array with the time-series values of the population
+  mean fitness standard deviation. This means entry `σ_sₜ[i]` contains the
+  inferred value of the standard deviation of the population mean fitness at
+  time `i`, assuming `sₜ[i] ~ Normal(μ_sₜ[i], σ_sₜ[i])`.
+
+## Optional arguments
+- `s_prior::Vector{Real}=[0.0, 2.0]`: Parameters for the mutant fitness prior
+  distribution π(s⁽ᵐ⁾).
+- `σ_prior::Vector{Real}=[0.0, 1.0]`: Parameters for the nuisance standard
+  deviation parameter prior distribution π(σ⁽ᵐ⁾).
+- `σ_trunc::Real=0.0`: Value at which truncate the normal distribution to define
+  it as a half-normal.
+"""
+Turing.@model function mutant_fitness_fluct_lognormal(
+    r̲⁽ᵐ⁾::Vector{Int64},
+    R̲::Vector{Int64};
+    α::Vector{Float64},
+    μ_s̄::Vector{Float64},
+    σ_s̄::Vector{Float64},
+    s_prior::Vector{<:Real}=[0.0, 2.0],
+    σ_prior::Vector{<:Real}=[0.0, 1.0],
+    σ_trunc::Real=0.0,
+    env_idx::Vector{<:Any}=[1,2,1,2,1,2] # default 2-env alternating fluctuations
+)
+  # add a few lines here to process the env_idx argument (ex if it's a vector of strings) 
+  
+  # Prior on mutant fitness s⁽ᵐ⁾
+    s⁽ᵐ⁾ ~ Turing.filldist(Turing.Normal(s_prior...),2) #hardcoded 
+
+    # Prior on LogNormal error σ⁽ᵐ⁾ 
+    σ⁽ᵐ⁾ ~ Turing.filldist(Turing.truncated(Turing.Normal(σ_prior...); lower=σ_trunc),2)
+  
+
+    # Population mean fitness values
+    s̲ₜ ~ Turing.MvNormal(μ_s̄, LinearAlgebra.Diagonal(σ_s̄ .^ 2))
+
+    # Initialize array to store frequencies
+    f̲⁽ᵐ⁾ = Vector{Float64}(undef, length(r̲⁽ᵐ⁾))
+
+    # Frequency distribution for each time point
+    for i in eachindex(r̲⁽ᵐ⁾)
+        f̲⁽ᵐ⁾[i] ~ Turing.Beta(α[1] + r̲⁽ᵐ⁾[i], α[2] + (R̲[i] - r̲⁽ᵐ⁾[i]))
+    end # for
+
+    # Check that all distributions are greater than zero. Although the counts
+    # could be zero, we assume that the real frequencies are non-zero always.
+    if any(iszero.(f̲⁽ᵐ⁾))
+        Turing.@addlogprob! -Inf
+        # Exit the model evaluation early
+        return
+    end
+
+    
+    # Compute frequency ratios
+    γ̲⁽ᵐ⁾ = f̲⁽ᵐ⁾[2:end] ./ f̲⁽ᵐ⁾[1:end-1]
+   
+  
+
+    # Sample posterior for frequency ratio. Since it is a sample over a
+    # generated quantity, we must use the @addlogprob! macro
+    Turing.@addlogprob! Turing.logpdf(
+        Turing.MvLogNormal(
+            s⁽ᵐ⁾[env_idx] .- s̲ₜ,
+            LinearAlgebra.I(length(s̲ₜ)) .* σ⁽ᵐ⁾[env_idx]^2
+        ),
+        γ̲⁽ᵐ⁾
+    )
+    return
+end # @model function
