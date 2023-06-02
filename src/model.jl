@@ -488,7 +488,7 @@ parametrization of the population mean fitness distribution.
 - `σ_trunc::Real=0.0`: Value at which truncate the normal distribution to define
   it as a half-normal.
 """
-Turing.@model function mutant_fitness_fluct_lognormal(
+Turing.@model function mutant_fitness_lognormal(
     r̲⁽ᵐ⁾::Vector{Int64},
     R̲::Vector{Int64};
     envs::Vector,
