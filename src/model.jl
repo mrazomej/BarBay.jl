@@ -330,7 +330,13 @@ Turing.@model function mutant_fitness_lognormal(
     σ⁽ᵐ⁾ ~ Turing.truncated(Turing.Normal(σ_prior...); lower=σ_trunc)
 
     # Population mean fitness values
-    s̲ₜ ~ Turing.MvNormal(μ_s̄, LinearAlgebra.Diagonal(σ_s̄ .^ 2))
+    s̲ₜ = rand(Distributions.MvNormal(μ_s̄, LinearAlgebra.Diagonal(σ_s̄ .^ 2)))
+
+    # Add log probability for population mean fitness manually. This is done
+    # because we do not want the prior distribution to change
+    Turing.@addlogprob! Turing.logpdf(
+        Turing.MvLogNormal(μ_s̄, LinearAlgebra.Diagonal(σ_s̄ .^ 2)), s̲ₜ
+    )
 
     # Initialize array to store frequencies
     f̲⁽ᵐ⁾ = Vector{Float64}(undef, length(r̲⁽ᵐ⁾))
