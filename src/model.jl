@@ -543,7 +543,7 @@ Turing.@model function mutant_fitness_lognormal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvLogNormal(
             s⁽ᵐ⁾[env_idx] .- s̲ₜ,
-            LinearAlgebra.I(length(s̲ₜ)) .* σ⁽ᵐ⁾[env_idx] .^ 2
+            LinearAlgebra.Diagonal(σ⁽ᵐ⁾[env_idx] .^ 2)
         ),
         γ̲⁽ᵐ⁾
     )
