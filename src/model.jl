@@ -98,6 +98,8 @@ The user defines the distribution parameters as:
 - `r̲ₜ₊₁::Vector{Int64}`: Raw counts for **neutral** lineages and the cumulative
   counts for mutant lineages at time `t + 1`. NOTE: The last entry of the array
   must be the sum of all of the counts from mutant lineages.
+
+# Keyword Arguments
 - `α::Vector{Float64}`: Parameters for Dirichlet prior distribution.
 
 ## Optional arguments
@@ -223,6 +225,8 @@ The user defines the distribution parameters as:
 - `r̲ₜ₊₁::Vector{Int64}`: Raw counts for **neutral** lineages and the cumulative
   counts for mutant lineages at time `t + 1`. NOTE: The last entry of the array
   must be the sum of all of the counts from mutant lineages.
+
+# Keyword Arguments
 - `α::Vector{Float64}`: Parameters for Dirichlet prior distribution.
 - `s_prior::Distributions.ContinuousUnivariateDistribution`: Parametrized
   univariate continuous distribution for the prior on the mean fitness π(sₜ).
@@ -290,6 +294,8 @@ parametrization of the population mean fitness distribution.
   `r̲⁽ᵐ⁾[i]` contains the number of reads from barcode `m` at time `i`.
 - `R̲::Vector{Int64}`: time-series of Raw **total** reads. This means that entry
   `R̲[i]` contains the total number of reads obtained at time `i`.
+
+# Keyword Arguments
 - `α::Vector{Float64}`: Parameters for Beta prior distribution.
 - `μ_sₜ::Vector{Float64}`: Array with the time-series mean values of the
   population mean fitness. This means entry `μ_sₜ[i]` contains the inferred mean
@@ -373,6 +379,8 @@ function, and the mutant mean fitness.
   `r̲⁽ᵐ⁾[i]` contains the number of reads from barcode `m` at time `i`.
 - `R̲::Vector{Int64}`: time-series of Raw **total** reads. This means that entry
   `R̲[i]` contains the total number of reads obtained at time `i`.
+
+# Keyword Arguments
 - `α::Vector{Float64}`: Parameters for Beta prior distribution.
 - `s_mean_priors::Vector{<:Distributions.ContinuousUnivariateDistribution}`:
   Vector of univariate distributions defining the prior distribution for each
@@ -443,7 +451,7 @@ end # @model function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    mutant_fitness__fluct_lognormal(r̲⁽ᵐ⁾, R̲; α, μ_sₜ, σ_sₜ, s_prior, σ_prior, σ_trunc)
+    mutant_fitness_lognormal(r̲⁽ᵐ⁾, R̲; α, μ_sₜ, σ_sₜ, s_prior, σ_prior, σ_trunc)
 
 `Turing.jl` model to sample out of the posterior distribution for a single
 mutant fitness value `s⁽ᵐ⁾`, given the raw barcode counts and the
@@ -455,6 +463,13 @@ parametrization of the population mean fitness distribution.
   `r̲⁽ᵐ⁾[i]` contains the number of reads from barcode `m` at time `i`.
 - `R̲::Vector{Int64}`: time-series of Raw **total** reads. This means that entry
   `R̲[i]` contains the total number of reads obtained at time `i`.
+
+# Keyword arguments
+- `env::Vector{<:Any}`: Vector defining the order of environments. Environments
+  can be labeled with numbers (e.g. [1, 2, 2, 3, 1, 3]), strings (e.g. ["env1",
+  "env2", "env1"]), or any convenient label. The point being that they should
+  follow the order of environments to which strains were exposed during the
+  experiment.
 - `α::Vector{Float64}`: Parameters for Beta prior distribution.
 - `μ_sₜ::Vector{Float64}`: Array with the time-series mean values of the
   population mean fitness. This means entry `μ_sₜ[i]` contains the inferred mean
@@ -476,22 +491,30 @@ parametrization of the population mean fitness distribution.
 Turing.@model function mutant_fitness_fluct_lognormal(
     r̲⁽ᵐ⁾::Vector{Int64},
     R̲::Vector{Int64};
+    envs::Vector,
     α::Vector{Float64},
     μ_s̄::Vector{Float64},
     σ_s̄::Vector{Float64},
     s_prior::Vector{<:Real}=[0.0, 2.0],
     σ_prior::Vector{<:Real}=[0.0, 1.0],
-    σ_trunc::Real=0.0,
-    env_idx::Vector{<:Any}=[1,2,1,2,1,2] # default 2-env alternating fluctuations
+    σ_trunc::Real=0.0
 )
-  # add a few lines here to process the env_idx argument (ex if it's a vector of strings) 
-  
-  # Prior on mutant fitness s⁽ᵐ⁾
-    s⁽ᵐ⁾ ~ Turing.filldist(Turing.Normal(s_prior...),2) #hardcoded 
+    # Find unique environments
+    env_unique = unique(envs)
+
+    # Define environmental indexes
+    env_idx = indexin(envs, env_unique)
+
+    # Prior on mutant fitness s⁽ᵐ⁾
+    s⁽ᵐ⁾ ~ Turing.filldist(Turing.Normal(s_prior...), length(env_unique))
 
     # Prior on LogNormal error σ⁽ᵐ⁾ 
-    σ⁽ᵐ⁾ ~ Turing.filldist(Turing.truncated(Turing.Normal(σ_prior...); lower=σ_trunc),2)
-  
+    σ⁽ᵐ⁾ ~ Turing.filldist(
+        Turing.truncated(
+            Turing.Normal(σ_prior...); lower=σ_trunc
+        ),
+        length(env_unique)
+    )
 
     # Population mean fitness values
     s̲ₜ ~ Turing.MvNormal(μ_s̄, LinearAlgebra.Diagonal(σ_s̄ .^ 2))
@@ -512,11 +535,8 @@ Turing.@model function mutant_fitness_fluct_lognormal(
         return
     end
 
-    
     # Compute frequency ratios
     γ̲⁽ᵐ⁾ = f̲⁽ᵐ⁾[2:end] ./ f̲⁽ᵐ⁾[1:end-1]
-   
-  
 
     # Sample posterior for frequency ratio. Since it is a sample over a
     # generated quantity, we must use the @addlogprob! macro
