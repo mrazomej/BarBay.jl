@@ -497,7 +497,7 @@ parametrization of the population mean fitness distribution.
 Turing.@model function mutant_fitness_lognormal(
     r̲⁽ᵐ⁾::Vector{Int64},
     R̲::Vector{Int64};
-    envs::Vector,
+    envs::Vector{<:Any},
     α::Vector{Float64},
     μ_s̄::Vector{Float64},
     σ_s̄::Vector{Float64},
