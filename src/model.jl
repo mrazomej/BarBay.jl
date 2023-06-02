@@ -465,7 +465,7 @@ parametrization of the population mean fitness distribution.
   `R̲[i]` contains the total number of reads obtained at time `i`.
 
 # Keyword arguments
-- `env::Vector{<:Any}`: Vector defining the order of environments. Environments
+- `envs::Vector{<:Any}`: Vector defining the order of environments. Environments
   can be labeled with numbers (e.g. [1, 2, 2, 3, 1, 3]), strings (e.g. ["env1",
   "env2", "env1"]), or any convenient label. The point being that they should
   follow the order of environments to which strains were exposed during the
@@ -543,7 +543,7 @@ Turing.@model function mutant_fitness_lognormal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvLogNormal(
             s⁽ᵐ⁾[env_idx] .- s̲ₜ,
-            LinearAlgebra.I(length(s̲ₜ)) .* σ⁽ᵐ⁾[env_idx]^2
+            LinearAlgebra.I(length(s̲ₜ)) .* σ⁽ᵐ⁾[env_idx] .^ 2
         ),
         γ̲⁽ᵐ⁾
     )
