@@ -457,7 +457,7 @@ end # @model function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    mutant_fitness_lognormal(r̲⁽ᵐ⁾, R̲; α, μ_sₜ, σ_sₜ, s_prior, σ_prior, σ_trunc)
+    env_mutant_fitness_lognormal(r̲⁽ᵐ⁾, R̲; α, μ_sₜ, σ_sₜ, s_prior, σ_prior, σ_trunc)
 
 `Turing.jl` model to sample out of the posterior distribution for a single
 mutant fitness value `s⁽ᵐ⁾`, given the raw barcode counts and the
@@ -494,7 +494,7 @@ parametrization of the population mean fitness distribution.
 - `σ_trunc::Real=0.0`: Value at which truncate the normal distribution to define
   it as a half-normal.
 """
-Turing.@model function mutant_fitness_lognormal(
+Turing.@model function env_mutant_fitness_lognormal(
     r̲⁽ᵐ⁾::Vector{Int64},
     R̲::Vector{Int64};
     envs::Vector{<:Any},
