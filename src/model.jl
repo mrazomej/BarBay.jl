@@ -330,13 +330,7 @@ Turing.@model function mutant_fitness_lognormal(
     σ⁽ᵐ⁾ ~ Turing.truncated(Turing.Normal(σ_prior...); lower=σ_trunc)
 
     # Population mean fitness values
-    s̲ₜ = rand(Distributions.MvNormal(μ_s̄, LinearAlgebra.Diagonal(σ_s̄ .^ 2)))
-
-    # Add log probability for population mean fitness manually. This is done
-    # because we do not want the prior distribution to change
-    Turing.@addlogprob! Turing.logpdf(
-        Turing.MvLogNormal(μ_s̄, LinearAlgebra.Diagonal(σ_s̄ .^ 2)), s̲ₜ
-    )
+    s̲ₜ ~ Turing.MvNormal(μ_s̄, LinearAlgebra.Diagonal(σ_s̄ .^ 2))
 
     # Initialize array to store frequencies
     f̲⁽ᵐ⁾ = Vector{Float64}(undef, length(r̲⁽ᵐ⁾))
@@ -416,12 +410,7 @@ Turing.@model function mutant_fitness_lognormal_priors(
     # Loop through population mean fitness priors
     for i in eachindex(s_mean_priors)
         # Sample population mean fitness prior
-        s̲ₜ[i] = rand(s_mean_priors[i])
-        # Add log probability for population mean fitness manually. This is done
-        # because we do not want the prior distribution to change
-        Turing.@addlogprob! Turing.logpdf(
-            s_mean_priors[i], s̲ₜ[i]
-        )
+        s̲ₜ[i] ~ s_mean_priors[i]
     end # for
 
     # Initialize array to store frequencies
@@ -502,7 +491,7 @@ parametrization of the population mean fitness distribution.
 Turing.@model function env_mutant_fitness_lognormal(
     r̲⁽ᵐ⁾::Vector{Int64},
     R̲::Vector{Int64};
-    envs::Vector{<:Any},
+    envs::Vector,
     α::Vector{Float64},
     μ_s̄::Vector{Float64},
     σ_s̄::Vector{Float64},
@@ -528,13 +517,7 @@ Turing.@model function env_mutant_fitness_lognormal(
     )
 
     # Population mean fitness values
-    s̲ₜ = rand(Distributions.MvNormal(μ_s̄, LinearAlgebra.Diagonal(σ_s̄ .^ 2)))
-
-    # Add log probability for population mean fitness manually. This is done
-    # because we do not want the prior distribution to change
-    Turing.@addlogprob! Turing.logpdf(
-        Turing.MvLogNormal(μ_s̄, LinearAlgebra.Diagonal(σ_s̄ .^ 2)), s̲ₜ
-    )
+    s̲ₜ ~ Turing.MvNormal(μ_s̄, LinearAlgebra.Diagonal(σ_s̄ .^ 2))
 
     # Initialize array to store frequencies
     f̲⁽ᵐ⁾ = Vector{Float64}(undef, length(r̲⁽ᵐ⁾))
