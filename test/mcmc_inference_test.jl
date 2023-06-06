@@ -9,15 +9,21 @@ import Revise
 # Import library package
 import BayesFitness
 
-import Turing
-import FillArrays
+# Import basic mathematical functions
 import LinearAlgebra
 import Distributions
+import Random
+
+# Import MCMC-related packages
+import Turing
+using ReverseDiff
+using Zygote
+import MCMCChains
+using DynamicHMC
 
 # Import libraries to manipulate data
 import DataFrames as DF
 import CSV
-import MCMCChains
 
 # Import library to save and load native julia objects
 import JLD2
@@ -28,12 +34,15 @@ import Glob
 # Import plotting libraries
 using CairoMakie
 import ColorSchemes
+
+Random.seed!(42)
 ##
 
 Turing.@model function fitness_lognormal(
     R̲̲::Matrix{Int64},
     R̲̲⁽ⁿ⁾::Matrix{Int64},
-    R̲̲⁽ᵐ⁾::Matrix{Int64};
+    R̲̲⁽ᵐ⁾::Matrix{Int64},
+    n̲ₜ::Vector{Int64};
     s_pop_prior::Vector{Float64}=[0.0, 2.0],
     σ_pop_prior::Vector{Float64}=[0.0, 1.0],
     s_mut_prior::Vector{Float64}=[0.0, 2.0],
@@ -46,9 +55,9 @@ Turing.@model function fitness_lognormal(
         LinearAlgebra.I(size(R̲̲⁽ⁿ⁾, 1) - 1) .* s_pop_prior[2] .^ 2
     )
     # Prior on LogNormal error σ̲ₜ
-    σ̲ₜ ~ Turing.filldist(
-        Turing.truncated(Turing.Normal(σ_pop_prior...); lower=0.0),
-        size(R̲̲⁽ⁿ⁾, 1) - 1
+    σ̲ₜ ~ Turing.MvLogNormal(
+        repeat([σ_pop_prior[1]], size(R̲̲⁽ⁿ⁾, 1) - 1),
+        LinearAlgebra.I(size(R̲̲⁽ⁿ⁾, 1) - 1) .* σ_pop_prior[2] .^ 2
     )
 
     # Prior on mutant fitness s̲⁽ᵐ⁾
@@ -57,9 +66,9 @@ Turing.@model function fitness_lognormal(
         LinearAlgebra.I(size(R̲̲⁽ᵐ⁾, 2)) .* s_mut_prior[2] .^ 2
     )
     # Prior on LogNormal error σ̲⁽ᵐ⁾ 
-    σ̲⁽ᵐ⁾ ~ Turing.filldist(
-        Turing.truncated(Turing.Normal(σ_mut_prior...); lower=0.0),
-        size(R̲̲⁽ᵐ⁾, 2)
+    σ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
+        repeat([σ_mut_prior[1]], size(R̲̲⁽ᵐ⁾, 2)),
+        LinearAlgebra.I(size(R̲̲⁽ᵐ⁾, 2)) .* σ_mut_prior[2] .^ 2
     )
 
     # Prior on λ parameters
@@ -69,19 +78,11 @@ Turing.@model function fitness_lognormal(
         λ_prior[2]^2
     )
 
+    # Reshape λ parameters to fit the matrix format
     Λ̲̲ = reshape(Λ̲̲, size(R̲̲⁽ⁿ⁾, 1), (size(R̲̲⁽ⁿ⁾, 2) + size(R̲̲⁽ᵐ⁾, 2)))
-
 
     # Compute frequencies πₜ
     F̲̲ = Λ̲̲ ./ sum(Λ̲̲, dims=2)
-
-    # Check that all frequencies are greater than zero. Although the counts
-    # could be zero, we assume that the real frequencies are non-zero always.
-    if any(iszero.(F̲̲))
-        Turing.@addlogprob! -Inf
-        # Exit the model evaluation early
-        return
-    end
 
     # Compute frequency ratios γₜ
     Γ̲̲ = F̲̲[2:end, :] ./ F̲̲[1:end-1, :]
@@ -89,45 +90,35 @@ Turing.@model function fitness_lognormal(
     Γ̲̲⁽ⁿ⁾ = @view Γ̲̲[:, 1:size(R̲̲⁽ⁿ⁾, 2)]
     Γ̲̲⁽ᵐ⁾ = @view Γ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1:end]
 
-    # Initialize array to save n̲ₜ
-    # nₜ = zeros(Int64, size(R̲̲⁽ⁿ⁾, 2))
+    # Prob nₜ | λ̲ₜ
+    n̲ₜ ~ Turing.arraydist([Turing.Poisson(sum(Λ̲̲[t, :])) for t = 1:size(R̲̲⁽ⁿ⁾, 1)])
 
     # Loop through time
     for t = 1:size(R̲̲⁽ⁿ⁾, 1)
-        # Prob nₜ | λ̲ₜ
-        # nₜ[t] = rand(Distributions.Poisson(sum(Λ̲̲[t, :])))
-
         # Prob of reads given parameters R̲ₜ | nₜ, f̲ₜ.
-        R̲̲[t, :] ~ Turing.Multinomial(sum(R̲̲[t, :]), F̲̲[t, :])
+        R̲̲[t, :] ~ Turing.Multinomial(n̲ₜ[t], F̲̲[t, :])
     end # for
 
-    # Loop through pairs of time points
-    for t = 1:size(R̲̲⁽ⁿ⁾, 1)-1
-        # Likelihood for neutral lineages frequency ratio. Since Γ̲̲ is not an
-        # observed variable, we use @addlogprob! to force Turing to consider it
-        # as such.
-        Turing.@addlogprob! Turing.logpdf(
-            Turing.MvLogNormal(
-                FillArrays.Fill(-s̲ₜ[t], size(R̲̲⁽ⁿ⁾, 2)),
-                LinearAlgebra.I(size(R̲̲⁽ⁿ⁾, 2)) .* σ̲ₜ[t]^2
-            ),
-            Γ̲̲⁽ⁿ⁾[t, :]
-        )
-    end # for
 
-    # Loop through mutant lineages
-    for m = 1:size(R̲̲⁽ᵐ⁾, 2)
-        # Sample posterior for frequency ratio. Since it is a sample over a
-        # generated quantity, we must use the @addlogprob! macro
-        Turing.@addlogprob! Turing.logpdf(
-            Turing.MvLogNormal(
-                s̲⁽ᵐ⁾[m] .- s̲ₜ,
-                LinearAlgebra.I(length(s̲ₜ)) .* σ̲⁽ᵐ⁾[m]^2
-            ),
-            Γ̲̲⁽ᵐ⁾[:, m]
-        )
-    end # for
+    Turing.@addlogprob! Turing.logpdf(
+        Turing.MvLogNormal(
+            -1 .* repeat(s̲ₜ, size(Γ̲̲⁽ⁿ⁾, 2)),
+            LinearAlgebra.Diagonal(repeat(σ̲ₜ .^ 2, size(Γ̲̲⁽ⁿ⁾, 2)))
+        ),
+        Γ̲̲⁽ⁿ⁾[:]
+    )
 
+    # Sample posterior for frequency ratio. Since it is a sample over a
+    # generated quantity, we must use the @addlogprob! macro
+    Turing.@addlogprob! Turing.logpdf(
+        Turing.MvLogNormal(
+            # Build vector for fitness differences
+            vcat([s⁽ᵐ⁾ .- s̲ₜ for s⁽ᵐ⁾ in s̲⁽ᵐ⁾]...),
+            # Build vector for variances
+            vcat([repeat([σ], length(s̲ₜ)) for σ in σ̲⁽ᵐ⁾]...)
+        ),
+        Γ̲̲⁽ᵐ⁾[:]
+    )
     return
 end # @model function
 
@@ -178,7 +169,8 @@ for (i, d) in enumerate(data_group)
     R_mut[:, i] = d[:, count_col]
 end # for
 
-R_mut = R_mut
+# R_mut = R_mut[:, 1:10]
+
 
 ##
 
@@ -218,10 +210,21 @@ end # for
 # Concatenate data
 R_tot = hcat(R_neut, R_mut)
 
+# Compute total counts for each run
+nₜ = vec(sum(R_tot, dims=2))
+
 ##
 
-chain = Turing.sample(
-    fitness_lognormal(R_tot, R_neut, R_mut),
+println("Initializing MCMC sampling...\n")
+
+# Set AutoDiff backend to ReverseDiff.jl for faster computation
+Turing.setadbackend(:reversediff)
+# Allow system to generate cache to speed up computation
+Turing.setrdcache(true)
+
+# Sample chain
+@time chain = Turing.sample(
+    fitness_lognormal(R_tot, R_neut, R_mut, nₜ),
     Turing.NUTS(0.65),
     Turing.MCMCThreads(),
     1_000,
@@ -229,4 +232,85 @@ chain = Turing.sample(
 )
 
 # Write output into memory
-JLD2.jldsave("test_chain.jld2", chain=first(chain))
+JLD2.jldsave(
+    "./output/data_example_01_1000steps_4walkers.jld2", chain=chain
+)
+
+##
+
+# Load chain
+chain = JLD2.load("./output/data_example_01_1000steps_4walkers.jld2")["chain"]
+
+##
+
+# Name variables to be extracted from chains
+chain_vars = [:s̲ₜ, :σ̲ₜ]
+
+# Locate variable names to extract from chain
+chain_names = reduce(
+    vcat, [MCMCChains.namesingroup(chain, var) for var in chain_vars]
+)
+
+# Extract chain variables
+chn = chain[chain_names]
+
+# Define number of posterior predictive check samples
+n_ppc = 5_000
+
+# Define dictionary with corresponding parameters for variables needed for the
+# posterior predictive checks
+param = Dict(
+    :population_mean_fitness => :s̲ₜ,
+    :population_std_fitness => :σ̲ₜ,
+)
+
+# Compute posterior predictive checks
+ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
+    chain, n_ppc; param=param
+)
+
+##
+
+##
+
+# Initialize figure
+fig = Figure(resolution=(450, 350))
+
+# Add axis
+ax = Axis(
+    fig[1, 1],
+    xlabel="time point",
+    ylabel="ln(fₜ₊₁/fₜ)",
+    title="log-frequency ratio PPC"
+)
+
+# Define quantiles to compute
+qs = [0.68, 0.95, 0.997]
+
+# Define colors
+colors = get(ColorSchemes.Blues_9, LinRange(0.25, 0.75, length(qs)))
+
+# Plot posterior predictive checks
+BayesFitness.viz.ppc_time_series!(
+    ax, qs, ppc_mat; colors=colors
+)
+
+# Add plot for median (we use the 5 percentile to have a "thicker" line showing
+# the median)
+BayesFitness.viz.ppc_time_series!(
+    ax, [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
+)
+
+# Plot log-frequency ratio of neutrals
+BayesFitness.viz.logfreq_ratio_time_series!(
+    ax,
+    data[data.neutral, :];
+    freq_col=:freq,
+    color=:black,
+    alpha=1.0,
+    linewidth=2
+)
+
+fig
+
+##
