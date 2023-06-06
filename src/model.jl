@@ -17,8 +17,7 @@ export mean_fitness_neutrals_lognormal
 export mean_fitness_neutrals_lognormal_priors
 
 # Export mutant fitness model
-export mutant_fitness_lognormal
-export mutant_fitness_lognormal_priors
+export mutant_fitness_lognormal, mutant_fitness_lognormal_priors, fitness_lognormal
 
 ##
 
@@ -651,8 +650,8 @@ Turing.@model function fitness_lognormal(
 
     # Prior on Poisson distribtion parameters P(λ)
     Λ̲̲ ~ Turing.MvLogNormal(
-        repeat([λ_prior[1]], size(R̲̲⁽ⁿ⁾, 1) * (size(R̲̲⁽ⁿ⁾, 2) + size(R̲̲⁽ᵐ⁾, 2))),
-        LinearAlgebra.I(size(R̲̲⁽ⁿ⁾, 1) * (size(R̲̲⁽ⁿ⁾, 2) + size(R̲̲⁽ᵐ⁾, 2))) .*
+        repeat([λ_prior[1]], length(R̲̲)),
+        LinearAlgebra.I(length(R̲̲)) .*
         λ_prior[2]^2
     )
 
@@ -660,7 +659,7 @@ Turing.@model function fitness_lognormal(
     # originally sampled as a vector for the `Turing.jl` samplers to deal with
     # it. But reshaping it to a matrix simplifies the computation of frequencies
     # and frequency ratios.
-    Λ̲̲ = reshape(Λ̲̲, size(R̲̲⁽ⁿ⁾, 1), (size(R̲̲⁽ⁿ⁾, 2) + size(R̲̲⁽ᵐ⁾, 2)))
+    Λ̲̲ = reshape(Λ̲̲, size(R̲̲)...)
 
     # Compute barcode frequencies from Poisson parameters
     F̲̲ = Λ̲̲ ./ sum(Λ̲̲, dims=2)
@@ -679,10 +678,12 @@ Turing.@model function fitness_lognormal(
 
     # Loop through time points
     for t = 1:size(R̲̲⁽ⁿ⁾, 1)
-        # Prob of reads given parameters P(R̲ₜ | nₜ, f̲ₜ).
-        R̲̲[t, :] ~ Turing.Multinomial(n̲ₜ[t], F̲̲[t, :])
+        # Prob of reads given parameters P(R̲ₜ | nₜ, f̲ₜ). Note: We add the
+        # check_args=false option to avoid the recurrent problem of
+        # > Multinomial: p is not a probability vector.
+        # due to rounding errors
+        R̲̲[t, :] ~ Turing.Multinomial(n̲ₜ[t], F̲̲[t, :]; check_args=false)
     end # for
-
 
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
