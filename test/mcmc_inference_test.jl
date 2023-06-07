@@ -314,3 +314,87 @@ BayesFitness.viz.logfreq_ratio_time_series!(
 fig
 
 ##
+
+# Find barcode with maximum count
+bc = data[first(argmax(data.count, dims=1)), :barcode]
+
+# Extract data for barcode example
+data_bc = data[data.barcode.==bc, :]
+
+# Sort data by time
+DF.sort!(data_bc, :time)
+
+# Group data by unique mutant barcode
+data_group = DF.groupby(data[.!data[:, :neutral], :], id_col)
+
+# List group keys
+bc_group = first.(values.(keys(data_group)))
+
+# Find barcode index to extract chain
+bc_idx = findfirst(bc_group .== bc)
+
+##
+
+# Name variables to be extracted from chains
+chain_vars = [Symbol("s̲⁽ᵐ⁾[$(bc_idx)]"), Symbol("σ̲⁽ᵐ⁾[$(bc_idx)]"), :s̲ₜ]
+
+# Locate variable names to extract from chain
+chain_names = reduce(
+    vcat, [MCMCChains.namesingroup(chain, var) for var in chain_vars]
+)
+
+# Extract chain variables
+chn = chain[chain_names]
+
+##
+
+# Define number of posterior predictive check samples
+n_ppc = 5_000
+
+# Define dictionary with corresponding parameters for variables needed for the
+# posterior predictive checks
+param = Dict(
+    :mutant_mean_fitness => Symbol("s̲⁽ᵐ⁾[$(bc_idx)]"),
+    :mutant_std_fitness => Symbol("σ̲⁽ᵐ⁾[$(bc_idx)]"),
+    :population_mean_fitness => :s̲ₜ,
+)
+
+# Compute posterior predictive checks
+ppc_mat = BayesFitness.stats.logfreq_ratio_mutant_ppc(
+    chn, n_ppc; param=param
+)
+
+##
+
+# Initialize figure
+fig = Figure(resolution=(450, 350))
+
+# Add axis
+ax = Axis(
+    fig[1, 1],
+    xlabel="time point",
+    ylabel="ln(fₜ₊₁/fₜ)",
+    title="log-frequency ratio PPC"
+)
+
+# Define quantiles to compute
+qs = [0.95, 0.675]
+
+# Define colors
+colors = get(ColorSchemes.Blues_9, LinRange(0.5, 0.75, length(qs)))
+
+# Plot posterior predictive checks
+BayesFitness.viz.ppc_time_series!(
+    ax, qs, ppc_mat; colors=colors
+)
+
+# Add plot for median (we use the 5 percentile to have a "thicker" line showing
+# the median)
+BayesFitness.viz.ppc_time_series!(
+    ax, [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
+)
+
+# Add scatter of data
+scatterlines!(ax, diff(log.(data_bc.freq)), color=:black)
+
+fig
