@@ -5,10 +5,6 @@ import Suppressor
 import Turing
 import MCMCChains
 
-# Import AutoDiff backends for Turing.jl to use them if needed
-using Zygote
-using ReverseDiff
-
 # Import library to store output
 import JLD2
 
@@ -613,21 +609,6 @@ used to sample from the population mean fitness posterior distribution.
   inference.
 - `sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65)`: MCMC sampler
   to be used.
-- `setadbackend::Symbol=:reversediff`: Automatic Differentiation backend to be
-  used with gradient-based samplers. Available options are:
-  - `:forwarddiff` (`ForwardDiff.jl`)
-  - `:tracker` (`Tracker`, deprecated according to `Turing.jl`)
-  - `:zygote` (`Zygote.jl`)
-  - `:reversediff` (`ReverseDiff.jl`) We recommend using the default
-  `:reversediff` backend since it works much better for large number of
-  parameters. See the [Turing.jl
-  documentation](https://turing.ml/v0.22/docs/using-turing/autodiff) for more
-  information.
-- `setrdcache::Bool=true`: Recommended to be true when setting `setadbackend` to
-  :reversediff. As Indicated in the [Turing.jl
-  documentation](https://turing.ml/v0.22/docs/using-turing/autodiff) 
-    > When using `ReverseDiff`, to compile the tape only once and cache it for
-    > later use, the user has to call `Turing.setrdcache(true)`.
 - `multithread::Bool=true`: Boolean indicating if the chains should be run in
     parallel.
 - `verbose::Bool=true`: Boolean indicating if the function should print partial
@@ -646,9 +627,7 @@ function mcmc_joint_fitness(;
     neutral_col::Symbol=:neutral,
     rm_T0::Bool=false,
     sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65),
-    setadbackend::Symbol=:reversediff,
-    setrdcache::Bool=true,
-    multithread::Bool=false,
+    multithread::Bool=true,
     verbose::Bool=true
 )
     # Extract unique time points
@@ -739,22 +718,17 @@ function mcmc_joint_fitness(;
     end # if
 
     if verbose
-        println("Initialize MCMC sampling...")
+        println("Initialize MCMC sampling with $(Turing.ADBACKEND)...\n")
     end # if
-
-    # Define Turing.jl model
-    mcmc_model = model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; model_kwargs...)
-
-    # Set AutoDiff backend
-    Turing.setadbackend(setadbackend)
-    # Allow system to generate cache to speed up computation
-    Turing.setrdcache(setrdcache)
 
     # Check if sampling should be done in multithread
     if multithread
+        if verbose
+            println("Sampling posterior in multithread...")
+        end # if
         # Sample posterior using Turing.MCMCThreads
         chain = Turing.sample(
-            mcmc_model,
+            model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; model_kwargs...),
             sampler,
             Turing.MCMCThreads(),
             n_steps,
@@ -762,10 +736,16 @@ function mcmc_joint_fitness(;
             progress=true
         )
     else
+        if verbose
+            println("Sampling posterior in single core...")
+        end # if
         # Sample posterior one chain at the time
         chain = mapreduce(
             c -> Turing.sample(
-                mcmc_model, sampler, n_steps, progress=true
+                model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; model_kwargs...),
+                sampler,
+                n_steps,
+                progress=true
             ),
             Turing.chainscat,
             1:n_walkers
@@ -776,5 +756,5 @@ function mcmc_joint_fitness(;
         println("Saving $(fname) chains...")
     end # if
     # Write output into memory
-    JLD2.jldsave("$(fname)", chain=chain)
+    JLD2.jldsave("$(fname)", chain=chain[1])
 end # function

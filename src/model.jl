@@ -17,7 +17,10 @@ export mean_fitness_neutrals_lognormal
 export mean_fitness_neutrals_lognormal_priors
 
 # Export mutant fitness model
-export mutant_fitness_lognormal, mutant_fitness_lognormal_priors, fitness_lognormal
+export mutant_fitness_lognormal, mutant_fitness_lognormal_priors
+
+# Export joint fitness models
+export fitness_lognormal
 
 ##
 
