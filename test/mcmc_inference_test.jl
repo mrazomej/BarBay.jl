@@ -283,14 +283,32 @@ Turing.setadbackend(:reversediff)
 # Allow system to generate cache to speed up computation
 Turing.setrdcache(true)
 
-# Sample chain
-@time chain = Turing.sample(
-    fitness_lognormal(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ),
-    Turing.NUTS(0.65),
-    Turing.MCMCThreads(),
-    10,
-    4
-)
+multithread = false
+
+if multithread
+    # Sample chain
+    chain = Turing.sample(
+        fitness_lognormal(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; Dict()...),
+        Turing.NUTS(0.65),
+        Turing.MCMCThreads(),
+        10,
+        4,
+        progress=true
+    )
+else
+    chain = mapreduce(
+        c -> Turing.sample(
+            fitness_lognormal(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; Dict()...),
+            Turing.NUTS(0.65),
+            15,
+            progress=true
+        ),
+        Turing.chainscat,
+        1:1
+    )
+end # if
+
+##
 
 # Write output into memory
 JLD2.jldsave(
