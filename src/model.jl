@@ -677,7 +677,7 @@ Turing.@model function fitness_lognormal(
     # Split neutral and mutant frequency ratios. Note: the @view macro means
     # that there is not allocation to memory on this step.
     Γ̲̲⁽ⁿ⁾ = @view Γ̲̲[:, 1:size(R̲̲⁽ⁿ⁾, 2)]
-    Γ̲̲⁽ᵐ⁾ = @view Γ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1:size(R̲̲⁽ⁿ⁾, 2)+size(R̲̲⁽ᵐ⁾, 2)+1]
+    Γ̲̲⁽ᵐ⁾ = @view Γ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1:size(R̲̲⁽ⁿ⁾, 2)+size(R̲̲⁽ᵐ⁾, 2)]
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters P(nₜ | λ̲ₜ)
