@@ -576,9 +576,13 @@ fitness experiment.
   The model assumes the rows are sorted in order of increasing time.
 - `R̲̲::Matrix{Int64}`:: `T × B` matrix, where `T` is the number of time points
   in the data set and `B` is the number of barcodes. Each column represents the
-  barcode count trajectory for a single lineage. **NOTE**: This matrix **must**
-  be equivalent to `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)`. The reason it is an independent input
-  parameter is to avoid the `hcat` computation within the `Turing` model.
+  barcode count trajectory for a single lineage. **NOTE**: This matrix does not
+  necessarily need to be equivalent to `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)`. This is because
+  `R̲̲⁽ᵐ⁾` can exclude mutant barcodes to perform the joint inference only for a
+  subgroup, but `R̲̲` must still contain all counts. Usually, if `R̲̲⁽ᵐ⁾`
+  excludes mutant barcodes, `R̲̲` must be of the form `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾,
+  R̲̲⁽ᴹ⁾)`, where `R̲̲⁽ᴹ⁾` is a vector that aggregates all excluded mutant barcodes
+  into a "super barcode."
 - `n̲ₜ::Vector{Int64}`: Vector with the total number of barcode counts for each
   time point. **NOTE**: This vector **must** be equivalent to computing
   `vec(sum(R̲̲, dims=2))`. The reason it is an independent input parameter is to
@@ -673,7 +677,7 @@ Turing.@model function fitness_lognormal(
     # Split neutral and mutant frequency ratios. Note: the @view macro means
     # that there is not allocation to memory on this step.
     Γ̲̲⁽ⁿ⁾ = @view Γ̲̲[:, 1:size(R̲̲⁽ⁿ⁾, 2)]
-    Γ̲̲⁽ᵐ⁾ = @view Γ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1:end]
+    Γ̲̲⁽ᵐ⁾ = @view Γ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1:size(R̲̲⁽ⁿ⁾, 2)+size(R̲̲⁽ᵐ⁾, 2)+1]
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters P(nₜ | λ̲ₜ)

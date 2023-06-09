@@ -3,6 +3,9 @@
 import DataFrames as DF
 import CSV
 
+# Import basic math
+import StatsBase
+
 # Import function to list files
 import Glob
 
@@ -140,4 +143,62 @@ function jld2_concat_chains(
     chains = [JLD2.load(f)[chainname] for f in files]
 
     return concat_chains(chains, var_pattern; id_str=id_str)
+end # function
+
+@doc raw"""
+    group_split(data, n_groups, groupby_col, count_col; sort_function)
+
+Function to split a set of labels into `n_group` subgroups.
+
+# Arguments
+- `data::DF.AbstractDataFrame`: Data to be split into groups. This function
+    expects a tidy dataframe with at least two columns:
+    - `groupby_col`: Column to group entries by. This is commonly the barcode ID
+      that distinguishes different strains.
+    - `sort_col`: Column with values used to sort the data entries.
+- `n_groups::Int`: Number of groups in which to split the data
+- `groupby_col::Symbol`: Name of column used to group the unique entries in
+  dataset. This is commonly the barcode ID that distinguishes different strains.
+- `sort_col::Symbol`: Name of column with quantity used to sort the entries in
+  the dataset. This is commonly the number of barcode counts or frequency.
+
+## Optional Keyword Arguments
+- `sort_function::Function=x -> StatsBase.mean(log.(x .+ 1))`: Functio to use on
+  the `group-apply-combine` routine. The default function computes the mean in
+  log-scale, adding a 1 to avoid computing `log(0)`.
+
+# Returns
+- `groups::Vector{Vector{typeof(data[groupby_col][1])}}`: Vectors containing the
+  different groups in which to split the dataset.
+"""
+function group_split(
+    data::DF.AbstractDataFrame,
+    n_groups::Int,
+    groupby_col::Symbol,
+    sort_col::Symbol;
+    sort_function::Function=x -> StatsBase.mean(log.(x .+ 1))
+)
+    # Split-apply-combine `sort_function` to define grouping criteria
+    data_combine = DF.combine(
+        DF.groupby(data, groupby_col),
+        sort_col => sort_function
+    )
+    # Rename columns
+    DF.rename!(data_combine, [groupby_col, sort_col])
+
+    # Sort data by sort_col 
+    DF.sort!(data_combine, sort_col, rev=true)
+
+    # Initialize vector to save groups
+    groups = Vector{
+        Vector{typeof(data_combine[:, groupby_col][1])}
+    }(undef, n_groups)
+
+    # Loop through groups
+    for i = 1:n_groups
+        # Select elements for group
+        groups[i] = data_combine[:, groupby_col][i:n_groups:end]
+    end # for
+
+    return groups
 end # function
