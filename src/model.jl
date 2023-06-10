@@ -628,12 +628,12 @@ Turing.@model function fitness_lognormal(
 )
     ## %%%%%%%%%%%%%% Population mean fitness  %%%%%%%%%%%%%% ##
 
-    # Prior on population mean fitness P(s̲ₜ)
+    # Prior on population mean fitness π(s̲ₜ) 
     s̲ₜ ~ Turing.MvNormal(
         repeat([s_pop_prior[1]], size(R̲̲⁽ⁿ⁾, 1) - 1),
         LinearAlgebra.I(size(R̲̲⁽ⁿ⁾, 1) - 1) .* s_pop_prior[2] .^ 2
     )
-    # Prior on LogNormal error P(σ̲ₜ)
+    # Prior on LogNormal error π(σ̲ₜ)
     σ̲ₜ ~ Turing.MvLogNormal(
         repeat([σ_pop_prior[1]], size(R̲̲⁽ⁿ⁾, 1) - 1),
         LinearAlgebra.I(size(R̲̲⁽ⁿ⁾, 1) - 1) .* σ_pop_prior[2] .^ 2
@@ -641,12 +641,12 @@ Turing.@model function fitness_lognormal(
 
     ## %%%%%%%%%%%%%% Mutant fitness  %%%%%%%%%%%%%% ##
 
-    # Prior on mutant fitness P(s̲⁽ᵐ⁾)
+    # Prior on mutant fitness π(s̲⁽ᵐ⁾)
     s̲⁽ᵐ⁾ ~ Turing.MvNormal(
         repeat([s_mut_prior[1]], size(R̲̲⁽ᵐ⁾, 2)),
         LinearAlgebra.I(size(R̲̲⁽ᵐ⁾, 2)) .* s_mut_prior[2] .^ 2
     )
-    # Prior on LogNormal error P(σ̲⁽ᵐ⁾)
+    # Prior on LogNormal error π(σ̲⁽ᵐ⁾)
     σ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
         repeat([σ_mut_prior[1]], size(R̲̲⁽ᵐ⁾, 2)),
         LinearAlgebra.I(size(R̲̲⁽ᵐ⁾, 2)) .* σ_mut_prior[2] .^ 2
@@ -655,11 +655,10 @@ Turing.@model function fitness_lognormal(
 
     ## %%%%%%%%%%%%%% Barcode frequencies %%%%%%%%%%%%%% ##
 
-    # Prior on Poisson distribtion parameters P(λ)
+    # Prior on Poisson distribtion parameters π(λ)
     Λ̲̲ ~ Turing.MvLogNormal(
         repeat([λ_prior[1]], length(R̲̲)),
-        LinearAlgebra.I(length(R̲̲)) .*
-        λ_prior[2]^2
+        LinearAlgebra.I(length(R̲̲)) .* λ_prior[2]^2
     )
 
     # Reshape λ parameters to fit the matrix format. Note: The Λ̲̲ array is
@@ -680,12 +679,12 @@ Turing.@model function fitness_lognormal(
     Γ̲̲⁽ᵐ⁾ = @view Γ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1:size(R̲̲⁽ⁿ⁾, 2)+size(R̲̲⁽ᵐ⁾, 2)]
 
     # Prob of total number of barcodes read given the Poisosn distribution
-    # parameters P(nₜ | λ̲ₜ)
+    # parameters π(nₜ | λ̲ₜ)
     n̲ₜ ~ Turing.arraydist([Turing.Poisson(sum(Λ̲̲[t, :])) for t = 1:size(R̲̲⁽ⁿ⁾, 1)])
 
     # Loop through time points
     for t = 1:size(R̲̲⁽ⁿ⁾, 1)
-        # Prob of reads given parameters P(R̲ₜ | nₜ, f̲ₜ). Note: We add the
+        # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). Note: We add the
         # check_args=false option to avoid the recurrent problem of
         # > Multinomial: p is not a probability vector.
         # due to rounding errors
@@ -696,10 +695,10 @@ Turing.@model function fitness_lognormal(
 
     # Sample posterior for neutral lineage frequency ratio. Since it is a sample
     # over a generated quantity, we must use the @addlogprob! macro
-    # P(γₜ⁽ⁿ⁾| sₜ, σₜ)
+    # π(γₜ⁽ⁿ⁾| sₜ, σₜ)
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvLogNormal(
-            -1 .* repeat(s̲ₜ, size(Γ̲̲⁽ⁿ⁾, 2)),
+            repeat(-s̲ₜ, size(Γ̲̲⁽ⁿ⁾, 2)),
             LinearAlgebra.Diagonal(repeat(σ̲ₜ .^ 2, size(Γ̲̲⁽ⁿ⁾, 2)))
         ),
         Γ̲̲⁽ⁿ⁾[:]
@@ -707,7 +706,7 @@ Turing.@model function fitness_lognormal(
 
     # Sample posterior for nutant lineage frequency ratio. Since it is a sample
     # over a generated quantity, we must use the @addlogprob! macro
-    # P(γₜ⁽ᵐ⁾ | s⁽ᵐ⁾, σ⁽ᵐ⁾, s̲ₜ)
+    # π(γₜ⁽ᵐ⁾ | s⁽ᵐ⁾, σ⁽ᵐ⁾, s̲ₜ)
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvLogNormal(
             # Build vector for fitness differences
