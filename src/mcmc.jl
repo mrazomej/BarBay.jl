@@ -627,7 +627,7 @@ function mcmc_joint_fitness(;
     neutral_col::Symbol=:neutral,
     rm_T0::Bool=false,
     sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65),
-    multithread::Bool=true,
+    ensemble::Turing.AbstractMCMC.AbstractMCMCEnsemble=Turing.MCMCSerial(),
     verbose::Bool=true
 )
     # Extract unique time points
@@ -721,36 +721,19 @@ function mcmc_joint_fitness(;
         println("Initialize MCMC sampling with $(Turing.ADBACKEND)...\n")
     end # if
 
-    # Check if sampling should be done in multithread
-    if multithread
-        if verbose
-            println("Sampling posterior in multithread...")
-        end # if
-        # Sample posterior using Turing.MCMCThreads
-        chain = Turing.sample(
-            model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; model_kwargs...),
-            sampler,
-            Turing.MCMCThreads(),
-            n_steps,
-            n_walkers,
-            progress=true
-        )
-    else
-        if verbose
-            println("Sampling posterior in single core...")
-        end # if
-        # Sample posterior one chain at the time
-        chain = mapreduce(
-            c -> Turing.sample(
-                model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; model_kwargs...),
-                sampler,
-                n_steps,
-                progress=true
-            ),
-            Turing.chainscat,
-            1:n_walkers
-        )
+    if verbose
+        println("Sampling posterior...")
     end # if
+
+    # Sample posterior
+    chain = Turing.sample(
+        model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; model_kwargs...),
+        sampler,
+        ensemble,
+        n_steps,
+        n_walkers,
+        progress=verbose
+    )
 
     if verbose
         println("Saving $(fname) chains...")
@@ -760,7 +743,7 @@ function mcmc_joint_fitness(;
 end # function
 
 @doc raw"""
-    mcmc_joint_fitness(; kwargs)
+    mcmc_joint_fitness_group(; kwargs)
 
 Function to sample the joint posterior distribution for the fitness value of all
 mutant and neutral linages given a time-series barcode count.
@@ -782,6 +765,8 @@ The `DataFrame` must contain at least the following columns:
 # Keyword Arguments
 - `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
 used to sample from the population mean fitness posterior distribution.
+- `group::Vector{<:Any}`: Vector indicating with subgroup of mutants to perform
+  inference on.
 - `n_walkers::Int`: Number of walkers (chains) for the MCMC sample.
 - `n_steps::Int`: Number of steps to take.
 - `outputname::String`: String to be used to name the `.jld2` output file.
@@ -835,7 +820,7 @@ used to sample from the population mean fitness posterior distribution.
 """
 function mcmc_joint_fitness_group(;
     data::DF.AbstractDataFrame,
-    group::Vector{Any},
+    group::Vector{<:Any},
     n_walkers::Int,
     n_steps::Int,
     outputname::String,
@@ -848,11 +833,11 @@ function mcmc_joint_fitness_group(;
     group_col::Symbol=:barcode,
     rm_T0::Bool=false,
     sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65),
-    multithread::Bool=true,
+    ensemble::Turing.AbstractMCMC.AbstractMCMCEnsemble=Turing.MCMCSerial(),
     verbose::Bool=true
 )
     # Check that elements of `group` are the same type as the `group_col`
-    if any(typeof.(group) .!= typeof(data[:, group_col]))
+    if typeof(first(group)) != typeof(data[1, group_col])
         error("typeof(group) and typeof(data[:, group_col]) don't match")
     end # if
 
@@ -955,36 +940,19 @@ function mcmc_joint_fitness_group(;
         println("Initialize MCMC sampling with $(Turing.ADBACKEND)...\n")
     end # if
 
-    # Check if sampling should be done in multithread
-    if multithread
-        if verbose
-            println("Sampling posterior in multithread...")
-        end # if
-        # Sample posterior using Turing.MCMCThreads
-        chain = Turing.sample(
-            model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; model_kwargs...),
-            sampler,
-            Turing.MCMCThreads(),
-            n_steps,
-            n_walkers,
-            progress=true
-        )
-    else
-        if verbose
-            println("Sampling posterior in single core...")
-        end # if
-        # Sample posterior one chain at the time
-        chain = mapreduce(
-            c -> Turing.sample(
-                model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; model_kwargs...),
-                sampler,
-                n_steps,
-                progress=true
-            ),
-            Turing.chainscat,
-            1:n_walkers
-        )
+    if verbose
+        println("Sampling posterior...")
     end # if
+
+    # Sample posterior
+    chain = Turing.sample(
+        model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; model_kwargs...),
+        sampler,
+        ensemble,
+        n_steps,
+        n_walkers,
+        progress=verbose
+    )
 
     if verbose
         println("Saving $(fname) chains...")
