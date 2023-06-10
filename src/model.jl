@@ -624,7 +624,7 @@ Turing.@model function fitness_lognormal(
     σ_pop_prior::Vector{Float64}=[0.0, 1.0],
     s_mut_prior::Vector{Float64}=[0.0, 2.0],
     σ_mut_prior::Vector{Float64}=[0.0, 1.0],
-    λ_prior::Vector{Float64}=[3.0, 3.0]
+    λ_prior::VecOrMat{Float64}=[3.0, 3.0]
 )
     ## %%%%%%%%%%%%%% Population mean fitness  %%%%%%%%%%%%%% ##
 
@@ -655,11 +655,18 @@ Turing.@model function fitness_lognormal(
 
     ## %%%%%%%%%%%%%% Barcode frequencies %%%%%%%%%%%%%% ##
 
-    # Prior on Poisson distribtion parameters π(λ)
-    Λ̲̲ ~ Turing.MvLogNormal(
-        repeat([λ_prior[1]], length(R̲̲)),
-        LinearAlgebra.I(length(R̲̲)) .* λ_prior[2]^2
-    )
+    if typeof(λ_prior) <: Vector
+        # Prior on Poisson distribtion parameters π(λ)
+        Λ̲̲ ~ Turing.MvLogNormal(
+            repeat([λ_prior[1]], length(R̲̲)),
+            LinearAlgebra.I(length(R̲̲)) .* λ_prior[2]^2
+        )
+    elseif typeof(λ_prior) <: Matrix
+        # Prior on Poisson distribtion parameters π(λ)
+        Λ̲̲ ~ Turing.MvLogNormal(
+            λ_prior[:, 1], LinearAlgebra.Diagonal(λ_prior[:, 2] .^ 2)
+        )
+    end  # if
 
     # Reshape λ parameters to fit the matrix format. Note: The Λ̲̲ array is
     # originally sampled as a vector for the `Turing.jl` samplers to deal with
