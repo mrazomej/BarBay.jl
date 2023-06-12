@@ -609,8 +609,11 @@ used to sample from the population mean fitness posterior distribution.
   inference.
 - `sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65)`: MCMC sampler
   to be used.
-- `multithread::Bool=true`: Boolean indicating if the chains should be run in
-    parallel.
+- `ensemble::Turing.AbstractMCMC.AbstractMCMCEnsemble=Turing.MCMCSerial()`:
+Sampling modality to be used. Options are:
+    - `Turing.MCMCSerial()`
+    - `Turing.MCMCThreads()`
+    - `Turing.MCMCDistributed()`
 - `verbose::Bool=true`: Boolean indicating if the function should print partial
   progress to the screen or not.
 """
@@ -813,8 +816,11 @@ used to sample from the population mean fitness posterior distribution.
   inference.
 - `sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65)`: MCMC sampler
   to be used.
-- `multithread::Bool=true`: Boolean indicating if the chains should be run in
-    parallel.
+- `ensemble::Turing.AbstractMCMC.AbstractMCMCEnsemble=Turing.MCMCSerial()`:
+  Sampling modality to be used. Options are:
+    - `Turing.MCMCSerial()`
+    - `Turing.MCMCThreads()`
+    - `Turing.MCMCDistributed()`
 - `verbose::Bool=true`: Boolean indicating if the function should print partial
   progress to the screen or not.
 """
