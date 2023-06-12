@@ -807,3 +807,122 @@ function logfreq_ratio_mean_ppc(
         return γ_ppc
     end # if
 end # function
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Naive fitness estimate
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+@doc raw"""
+    naive_fitness(data; id_col, time_col, count_col, neutral_col, pseudo_count)
+
+Function to compute a naive estimate of mutant fitness data based on counts. The
+fitness estimate is computed as
+
+```math
+\left\langle
+\log\frac{f^{(m)}_{t+1}}{f^{(m)}_{t}} - \log\frac{f^{(n)}_{t+1}}{f^{(n)}_{t}}
+\right\rangle = s^{(m)}
+```
+
+# Arguments
+- `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
+used to infer the fitness values on mutants. The `DataFrame` must contain at
+least the following columns:
+    - `id_col`: Column identifying the ID of the barcode. This can the barcode
+    sequence, for example.
+    - `time_col`: Column defining the measurement time point.
+    - `count_col`: Column with the raw barcode count.
+    - `neutral_col`: Column indicating whether the barcode is from a neutral
+    lineage or not.
+
+## Optional Keyword Arguments
+- `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
+    identifier. The column may contain any type of entry.
+- `time_col::Symbol=:time`: Name of the column in `data` defining the time point
+  at which measurements were done. The column may contain any type of entry as
+  long as `sort` will resulted in time-ordered names.
+- `count_col::Symbol=:count`: Name of the column in `data` containing the raw
+  barcode count. The column must contain entries of type `Int64`.
+- `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
+  the barcode belongs to a neutral lineage or not. The column must contain
+  entries of type `Bool`.
+- `rm_T0::Bool=false`: Optional argument to remove the first time point from the
+inference. Commonly, the data from this first time point is of much lower
+quality. Therefore, removing this first time point might result in a better
+inference.
+- `pseudo_count::Int=1`: Pseudo count number to add to all counts. This is
+  useful to avoid divisions by zero.
+"""
+function naive_fitness(
+    data::DF.AbstractDataFrame;
+    id_col::Symbol=:barcode,
+    time_col::Symbol=:time,
+    count_col::Symbol=:count,
+    neutral_col::Symbol=:neutral,
+    rm_T0::Bool=false,
+    pseudo_count::Int=1
+)
+    # Keep only the needed data to work with
+    data = data[:, [id_col, time_col, count_col, neutral_col]]
+
+    # Extract unique time points
+    timepoints = sort(unique(data[:, time_col]))
+
+    # Remove T0 if indicated
+    if rm_T0
+        data = data[.!(data[:, time_col] .== first(timepoints)), :]
+    end # if
+
+    # Add pseudo-count to each barcode to avoid division by zero
+    data[:, count_col] .+= pseudo_count
+
+    # Extract total counts per barcode
+    data_total = DF.combine(DF.groupby(data, time_col), count_col => sum)
+    # Add total count column to dataframe
+    DF.leftjoin!(data, data_total; on=time_col)
+
+    # Add frequency column
+    DF.insertcols!(data, :freq => data[:, count_col] ./ data.count_sum)
+
+    # Initialize dataframe to save the log freq changes
+    data_log = DF.DataFrame()
+
+    # Group data by barcode
+    data_group = DF.groupby(data, id_col)
+
+    # Loop through each group
+    for d in data_group
+        # Compute log change
+        DF.append!(
+            data_log,
+            DF.DataFrame(
+                id_col .=> first(d[:, id_col]),
+                time_col => d[2:end, time_col],
+                :logf => diff(log.(d.freq)),
+                neutral_col .=> first(d[:, neutral_col])
+            )
+        )
+    end # for
+
+    # Compute the mean population fitness s̄ₜ for all timepoints
+    data_st = DF.combine(
+        DF.groupby(data_log[data_log[:, neutral_col], :], time_col),
+        :logf => StatsBase.mean
+    )
+
+    # Locate index to extract the corresponding mean population fitness
+    idx_st = [
+        findfirst(x .== data_st[:, time_col]) for x in data_log[:, time_col]
+    ]
+
+    # Add normalized column to dataframe
+    DF.insertcols!(
+        data_log, :logf_norm => data_log.logf .- data_st[idx_st, :logf_mean]
+    )
+
+    # Compute mean fitness and return it as dataframe
+    return DF.combine(
+        DF.groupby(data_log[.!data_log[:, neutral_col], :], id_col),
+        :logf_norm => StatsBase.mean
+    )
+end # function
