@@ -921,8 +921,11 @@ function naive_fitness(
     )
 
     # Compute mean fitness and return it as dataframe
-    return DF.combine(
-        DF.groupby(data_log[.!data_log[:, neutral_col], :], id_col),
-        :logf_norm => StatsBase.mean
+    return DF.rename!(
+        DF.combine(
+            DF.groupby(data_log[.!data_log[:, neutral_col], :], id_col),
+            :logf_norm => StatsBase.mean
+        ),
+        :logf_norm_mean => :fitness
     )
 end # function
