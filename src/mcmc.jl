@@ -661,9 +661,6 @@ function mcmc_joint_fitness(;
         error("Not all neutral barcodes have reported counts in all time points")
     end # if
 
-    # Extract keys
-    data_keys = [k[String(id_col)] for k in keys(data_group)]
-
     # Initialize array to save counts for each mutant at time t
     R̲̲⁽ⁿ⁾ = Matrix{Int64}(
         undef, length(timepoints), length(data_group)
@@ -682,13 +679,13 @@ function mcmc_joint_fitness(;
     # Group data by unique mutant barcode
     data_group = DF.groupby(data[.!data[:, neutral_col], :], id_col)
 
+    # Extract group keys
+    data_keys = first.(values.(keys(data_group)))
+
     # Check that all barcodes were measured at all points
     if any([size(d, 1) for d in data_group] .!= length(timepoints))
         error("Not all mutant barcodes have reported counts in all time points")
     end # if
-
-    # Extract keys
-    data_keys = [k[String(id_col)] for k in keys(data_group)]
 
     # Initialize array to save counts for each mutant at time t
     R̲̲⁽ᵐ⁾ = Matrix{Int64}(
@@ -742,7 +739,7 @@ function mcmc_joint_fitness(;
         println("Saving $(fname) chains...")
     end # if
     # Write output into memory
-    JLD2.jldsave("$(fname)", chain=chain)
+    JLD2.jldsave("$(fname)", chain=chain, group=data_keys)
 end # function
 
 @doc raw"""
@@ -874,9 +871,6 @@ function mcmc_joint_fitness_group(;
     if any([size(d, 1) for d in data_group] .!= length(timepoints))
         error("Not all neutral barcodes have reported counts in all time points")
     end # if
-
-    # Extract keys
-    data_keys = [k[String(id_col)] for k in keys(data_group)]
 
     # Initialize array to save counts for each mutant at time t
     R̲̲⁽ⁿ⁾ = Matrix{Int64}(
