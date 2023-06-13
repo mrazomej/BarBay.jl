@@ -719,7 +719,9 @@ Turing.@model function fitness_lognormal(
             # Build vector for fitness differences
             vcat([s⁽ᵐ⁾ .- s̲ₜ for s⁽ᵐ⁾ in s̲⁽ᵐ⁾]...),
             # Build vector for variances
-            vcat([repeat([σ], length(s̲ₜ)) for σ in σ̲⁽ᵐ⁾]...)
+            LinearAlgebra.Diagonal(
+                vcat([repeat([σ], length(s̲ₜ)) for σ in σ̲⁽ᵐ⁾]...) .^ 2
+            )
         ),
         Γ̲̲⁽ᵐ⁾[:]
     )
