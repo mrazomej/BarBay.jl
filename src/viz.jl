@@ -164,7 +164,7 @@ The `DataFrame` must contain at least the following columns:
 - `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
     used to sample from the population mean fitness posterior distribution.
 
-## Optional Arguments
+## Optional Keyword Arguments
 - `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
     identifier. The column may contain any type of entry.
 - `time_col::Symbol=:time`: Name of the column in `data` defining the time point
@@ -179,6 +179,7 @@ colors are randomnly assigned to each barcode by sampling from the list of
 colors.
 - `alpha::AbstractFloat=1.0`: Level of transparency for plots.
 - `linewidth::Real=5`: Trajectory linewidth.
+- `markersize::Real=0`: Markersize to show the position of time points.
 - `log_fn::Union{typeof(log), typeof(log10), typeof(log2)}=log`: Log function
   to be used in plot.
 """
@@ -191,6 +192,7 @@ function logfreq_ratio_time_series!(
     color::Union{ColorSchemes.ColorScheme,Symbol,ColorTypes.Colorant{Float64,3}}=ColorSchemes.glasbey_hv_n256,
     alpha::AbstractFloat=1.0,
     linewidth::Real=2,
+    markersize::Real=0,
     log_fn::Union{typeof(log),typeof(log10),typeof(log2)}=log
 )
     # Group data by id_col
@@ -204,21 +206,23 @@ function logfreq_ratio_time_series!(
         # Check if unique color was assigned to each barcode
         if typeof(color) <: ColorSchemes.ColorScheme
             # Plot trajectory
-            lines!(
+            scatterlines!(
                 ax,
                 bc[2:end, time_col],
                 diff(log_fn.(bc[:, freq_col])),
                 color=(color[StatsBase.sample(1:length(color))], alpha),
                 linewidth=linewidth,
+                markersize=markersize
             )
         else
             # Plot trajectory
-            lines!(
+            scatterlines!(
                 ax,
                 bc[2:end, time_col],
                 diff(log_fn.(bc[:, freq_col])),
                 color=(color, alpha),
                 linewidth=linewidth,
+                markersize=markersize
             )
         end # if
     end # for
@@ -236,7 +240,9 @@ Function to plot the posterior predictive checks quantiles for any quantity.
 - `ppc_mat::Matrix{<:AbstractFloat}`: Matrix containing the posterior predictive
   samples. Rows are assumed to contain the samples, columns the time points.
 
-## Optional arguments
+## Optional Keyword Arguments
+- `time::Union{Vector{<:Real},Nothing}=nothing`: x-axis values to be used. If
+  not provided, the function assumes an ascending discrete time starting at 1.
 - `colors=ColorSchemes.Blues_9`: List of colors to use for each quantile.
 - `alpha::AbstractFloat=0.75`: Level of transparency for band representing each
 quantile.
