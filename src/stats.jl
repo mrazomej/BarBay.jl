@@ -852,6 +852,11 @@ quality. Therefore, removing this first time point might result in a better
 inference.
 - `pseudo_count::Int=1`: Pseudo count number to add to all counts. This is
   useful to avoid divisions by zero.
+
+# Returns
+- `DataFrames.DataFrame`: Data frame with two columns:
+    - `id_col`: Column indicating the strain ID.
+    - `fitness`: Naive fitness estimate.
 """
 function naive_fitness(
     data::DF.AbstractDataFrame;
