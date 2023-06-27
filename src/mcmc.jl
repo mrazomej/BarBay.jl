@@ -958,5 +958,5 @@ function mcmc_joint_fitness_group(;
         println("Saving $(fname) chains...")
     end # if
     # Write output into memory
-    JLD2.jldsave("$(fname)", chain=chain, group=group)
+    JLD2.jldsave("$(fname)", chain=chain, group=data_keys[group_idx])
 end # function
