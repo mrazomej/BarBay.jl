@@ -3,6 +3,7 @@ import LinearAlgebra
 
 # Import libraries to define distributions
 import Distributions
+import Random
 
 # Import libraries relevant for MCMC
 import Turing
@@ -996,6 +997,106 @@ Turing.@model function mean_fitness_lognormal(
             LinearAlgebra.Diagonal(repeat(σ̲ₜ .^ 2, size(Γ̲̲⁽ⁿ⁾, 2)))
         ),
         Γ̲̲⁽ⁿ⁾[:]
+    )
+    return
+end # @model function
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+Turing.@model function singlemutant_fitness_lognormal(
+    r̲⁽ᵐ⁾::Vector{Int64},
+    R̲̲::Matrix{Int64},
+    n̲ₜ::Vector{Int64};
+    s_pop_prior_mean::Vector{Float64},
+    s_pop_prior_std::Vector{Float64},
+    s_mut_prior::Vector{<:Real}=[0.0, 2.0],
+    σ_mut_prior::Vector{<:Real}=[0.0, 1.0],
+    λ_prior::VecOrMat{Float64}=[3.0, 3.0]
+)
+    ## %%%%%%%%%%%%%% Population mean fitness  %%%%%%%%%%%%%% ##
+
+    # Sample population mean fitness values
+    s̲ₜ = Random.rand(
+        Turing.MvNormal(
+            s_pop_prior_mean, LinearAlgebra.Diagonal(s_pop_prior_std .^ 2)
+        )
+    )
+
+    # Add "immutable prior" log probability
+    Turing.@addlogprob! Turing.logpdf(
+        Turing.MvNormal(
+            s_pop_prior_mean, LinearAlgebra.Diagonal(s_pop_prior_std .^ 2)
+        ),
+        s̲ₜ
+    )
+    # s̲ₜ ~ Turing.MvNormal(
+    #     s_pop_prior_mean, LinearAlgebra.Diagonal(s_pop_prior_std .^ 2)
+    # )
+
+    ## %%%%%%%%%%%%%% Mutant fitness  %%%%%%%%%%%%%% ##
+
+    # Prior on mutant fitness π(s⁽ᵐ⁾)
+    s⁽ᵐ⁾ ~ Turing.Normal(s_mut_prior[1], s_mut_prior[2])
+    # Prior on LogNormal error π(σ̲⁽ᵐ⁾)
+    σ⁽ᵐ⁾ ~ Turing.LogNormal(σ_mut_prior[1], σ_mut_prior[2])
+
+    ## %%%%%%%%%%%%%% Barcode frequencies %%%%%%%%%%%%%% ##
+
+    if typeof(λ_prior) <: Vector
+        # Prior on Poisson distribtion parameters π(λ)
+        Λ̲̲ ~ Turing.MvLogNormal(
+            repeat([λ_prior[1]], length(R̲̲)),
+            LinearAlgebra.I(length(R̲̲)) .* λ_prior[2]^2
+        )
+    elseif typeof(λ_prior) <: Matrix
+        # Prior on Poisson distribtion parameters π(λ)
+        Λ̲̲ ~ Turing.MvLogNormal(
+            λ_prior[:, 1], LinearAlgebra.Diagonal(λ_prior[:, 2] .^ 2)
+        )
+    end  # if
+
+    # Reshape λ parameters to fit the matrix format. Note: The Λ̲̲ array is
+    # originally sampled as a vector for the `Turing.jl` samplers to deal with
+    # it. But reshaping it to a matrix simplifies the computation of frequencies
+    # and frequency ratios.
+    Λ̲̲ = reshape(Λ̲̲, size(R̲̲)...)
+
+    # Compute barcode frequencies from Poisson parameters
+    F̲̲ = Λ̲̲ ./ sum(Λ̲̲, dims=2)
+
+    # Compute frequency ratios between consecutive time points.
+    Γ̲̲ = F̲̲[2:end, :] ./ F̲̲[1:end-1, :]
+
+    # Extract mutant frequency ratios. Note: the @view macro means
+    # that there is not allocation to memory on this step.
+    γ̲⁽ᵐ⁾ = @view Γ̲̲[:, 1]
+
+    # Prob of total number of barcodes read given the Poisosn distribution
+    # parameters π(nₜ | λ̲ₜ)
+    n̲ₜ ~ Turing.arraydist(
+        [Turing.Poisson(sum(Λ̲̲[t, :])) for t in eachindex(r̲⁽ᵐ⁾)]
+    )
+
+    # Loop through time points
+    for t in eachindex(r̲⁽ᵐ⁾)
+        # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). Note: We add the
+        # check_args=false option to avoid the recurrent problem of
+        # > Multinomial: p is not a probability vector.
+        # due to rounding errors
+        R̲̲[t, :] ~ Turing.Multinomial(n̲ₜ[t], F̲̲[t, :]; check_args=false)
+    end # for
+
+    # Sample posterior for frequency ratio. Since it is a sample over a
+    # generated quantity, we must use the @addlogprob! macro
+    Turing.@addlogprob! Turing.logpdf(
+        Turing.MvLogNormal(
+            s⁽ᵐ⁾ .- s̲ₜ,
+            LinearAlgebra.I(length(s̲ₜ)) .* σ⁽ᵐ⁾^2
+        ),
+        γ̲⁽ᵐ⁾[:]
     )
     return
 end # @model function

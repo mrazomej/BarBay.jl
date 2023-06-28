@@ -964,6 +964,8 @@ end # function
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
     mcmc_joint_mean_fitness(; kwargs)
@@ -1160,4 +1162,162 @@ function mcmc_joint_mean_fitness(;
     end # if
     # Write output into memory
     JLD2.jldsave("$(fname)", chain=chain)
+end # function
+
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+function mcmc_singlemutant_fitness(;
+    data::DF.AbstractDataFrame,
+    n_walkers::Int,
+    n_steps::Int,
+    outputname::String,
+    model::Function,
+    model_kwargs::Dict=Dict(),
+    id_col::Symbol=:barcode,
+    time_col::Symbol=:time,
+    count_col::Symbol=:count,
+    neutral_col::Symbol=:neutral,
+    rm_T0::Bool=false,
+    sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65),
+    ensemble::Turing.AbstractMCMC.AbstractMCMCEnsemble=Turing.MCMCSerial(),
+    verbose::Bool=true,
+    multithread::Bool=false
+)
+    # Extract unique time points
+    timepoints = sort(unique(data[:, time_col]))
+
+    # Remove T0 if indicated
+    if rm_T0
+        if verbose
+            println("Deleting T0 as requested...")
+        end # if 
+        data = data[.!(data[:, time_col] .== first(timepoints)), :]
+    end # if
+
+    # Re-extract unique time points
+    timepoints = sort(unique(data[:, time_col]))
+
+    if verbose
+        println("Preparing input data...")
+    end # if
+
+    ## %%%%%%%%%%% Neutral barcodes data %%%%%%%%%%% ##
+
+    # Group data by unique mutant barcode
+    data_group = DF.groupby(data[data[:, neutral_col], :], id_col)
+
+    # Check that all barcodes were measured at all points
+    if any([size(d, 1) for d in data_group] .!= length(timepoints))
+        error("Not all neutral barcodes have reported counts in all time points")
+    end # if
+
+    # Initialize array to save counts for each mutant at time t
+    R̲̲⁽ⁿ⁾ = Matrix{Int64}(
+        undef, length(timepoints), length(data_group)
+    )
+
+    # Loop through each unique barcode
+    for (i, d) in enumerate(data_group)
+        # Sort data by timepoint
+        DF.sort!(d, time_col)
+        # Extract data
+        R̲̲⁽ⁿ⁾[:, i] = d[:, count_col]
+    end # for
+
+    ## %%%%%%%%%%% Mutant barcodes data %%%%%%%%%%% ##
+
+    # Group data by unique mutant barcode
+    data_group = DF.groupby(data[.!data[:, neutral_col], :], id_col)
+
+    # Extract group keys
+    data_keys = first.(values.(keys(data_group)))
+
+    # Check that all barcodes were measured at all points
+    if any([size(d, 1) for d in data_group] .!= length(timepoints))
+        error("Not all mutant barcodes have reported counts in all time points")
+    end # if
+
+    # Initialize array to save counts for each mutant at time t
+    R̲̲⁽ᵐ⁾ = Matrix{Int64}(
+        undef, length(timepoints), length(data_group)
+    )
+
+    # Loop through each unique barcode
+    for (i, d) in enumerate(data_group)
+        # Sort data by timepoint
+        DF.sort!(d, time_col)
+        # Extract data
+        R̲̲⁽ᵐ⁾[:, i] = d[:, count_col]
+    end # for
+
+    # Define function to be used with each barcode. This is used to make the
+    # multi-thread option simpler. This is because rather than copying the same
+    # code twice, we can call this function
+    function sample_bc(i, R̲̲⁽ᵐ⁾=R̲̲⁽ᵐ⁾, R̲̲⁽ⁿ⁾=R̲̲⁽ⁿ⁾)
+
+        ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
+        R̲̲ = hcat(
+            R̲̲⁽ᵐ⁾[:, i],
+            sum(R̲̲⁽ⁿ⁾, dims=2) .+ sum(R̲̲⁽ᵐ⁾[:, 1:size(R̲̲⁽ᵐ⁾, 2).≠i], dims=2)
+        )
+        # Compute total counts for each run
+        n̲ₜ = vec(sum(R̲̲, dims=2))
+
+        ## %%%%%%%%%%% MCMC sampling %%%%%%%%%%% ##
+        # Define output filename
+        fname = "$(outputname)_$(data_keys[i]).jld2"
+
+        # Check if file has been processed before
+        if isfile(fname)
+            error("$(fname) was already processed")
+        end # if
+
+        if verbose
+            println("Initialize MCMC sampling with $(Turing.ADBACKEND)...\n")
+        end # if
+
+        if verbose
+            println("Sampling posterior...")
+        end # if
+
+        # Sample posterior
+        chain = Turing.sample(
+            model(R̲̲⁽ᵐ⁾[:, i], R̲̲, n̲ₜ; model_kwargs...),
+            sampler,
+            ensemble,
+            n_steps,
+            n_walkers,
+            progress=verbose
+        )
+
+        if verbose
+            println("Saving $(fname) chains...")
+        end # if
+        # Write output into memory
+        JLD2.jldsave("$(fname)", chain=chain)
+    end # function
+
+    # Check if multithread should be used for mutants
+    if multithread
+        Threads.@threads for i = 1:size(R̲̲⁽ᵐ⁾, 2)
+            try
+                sample_bc(i, R̲̲⁽ᵐ⁾, R̲̲⁽ⁿ⁾)
+            catch
+                @warn "bc $(data_keys[i]) was already processed"
+            end # try/catch
+        end # for
+    else
+        for i = 1:size(R̲̲⁽ᵐ⁾, 2)
+            try
+                sample_bc(i, R̲̲⁽ᵐ⁾, R̲̲⁽ⁿ⁾)
+            catch
+                @warn "bc $(data_keys[i]) was already processed"
+            end # try/catch
+        end # for
+    end # if
+
 end # function
