@@ -1,3 +1,6 @@
+# Import library for distributed computing
+import Distributed
+
 # Import library to suppress output
 import Suppressor
 
@@ -1170,6 +1173,86 @@ end # function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
+@doc raw"""
+    mcmc_single_fitness(; kwargs)
+
+Function to sample the joint posterior distribution for the fitness value of a
+single mutant barcode and all neutral linages given a time-series barcode count.
+
+This function expects the data in a **tidy** format. This means that every row
+represents **a single observation**. For example, if we measure barcode `i` in 4
+different time points, each of these four measurements gets an individual row.
+Furthermore, measurements of barcode `j` over time also get their own individual
+rows.
+    
+The `DataFrame` must contain at least the following columns:
+- `id_col`: Column identifying the ID of the barcode. This can the barcode
+  sequence, for example.
+- `time_col`: Column defining the measurement time point.
+- `count_col`: Column with the raw barcode count.
+- `neutral_col`: Column indicating whether the barcode is from a neutral lineage
+  or not.
+
+# Keyword Arguments
+- `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
+used to sample from the population mean fitness posterior distribution.
+- `n_walkers::Int`: Number of walkers (chains) for the MCMC sample.
+- `n_steps::Int`: Number of steps to take.
+- `outputname::String`: String to be used to name the `.jld2` output file.
+- `model::Function`: `Turing.jl` model defining the posterior distribution from
+  which to sample (see `BayesFitness.model` module). This function must take as
+  the first four inputs the following:
+    - `R̲̲⁽ⁿ⁾::Matrix{Int64}`: `T × N` matrix where `T` is the number of time
+      points in the data set and `N` is the number of neutral lineage barcodes.
+      Each column represents the barcode count trajectory for a single neutral
+      lineage.  **NOTE**: The model assumes the rows are sorted in order of
+      increasing time.
+    - `R̲̲⁽ᵐ⁾::Matrix{Int64}`: `T × M` matrix where `T` is the number of time
+      points in the data set and `M` is the number of mutant lineage barcodes.
+      Each column represents the barcode count trajectory for a single mutant
+      lineage. **NOTE**: The model assumes the rows are sorted in order of
+      increasing time.
+    - `R̲̲::Matrix{Int64}`:: `T × B` matrix, where `T` is the number of time
+      points in the data set and `B` is the number of barcodes. Each column
+      represents the barcode count trajectory for a single lineage. **NOTE**:
+      This matrix **must** be equivalent to `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)`. The reason
+      it is an independent input parameter is to avoid the `hcat` computation
+      within the `Turing` model.
+    - `n̲ₜ::Vector{Int64}`: Vector with the total number of barcode counts for
+      each time point. **NOTE**: This vector **must** be equivalent to computing
+      `vec(sum(R̲̲, dims=2))`. The reason it is an independent input parameter
+      is to avoid the `sum` computation within the `Turing` model.
+
+## Optional Keyword Arguments
+- `model_kwargs::Dict=Dict()`: Extra keyword arguments to be passed to the
+  `model` function.
+- `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
+    identifier. The column may contain any type of entry.
+- `time_col::Symbol=:time`: Name of the column in `data` defining the time point
+  at which measurements were done. The column may contain any type of entry as
+  long as `sort` will resulted in time-ordered names.
+- `count_col::Symbol=:count`: Name of the column in `data` containing the raw
+  barcode count. The column must contain entries of type `Int64`.
+- `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
+  the barcode belongs to a neutral lineage or not. The column must contain
+  entries of type `Bool`.
+- `rm_T0::Bool=false`: Optional argument to remove the first time point from the
+  inference. Commonly, the data from this first time point is of much lower
+  quality. Therefore, removing this first time point might result in a better
+  inference.
+- `sampler::Turing.Inference.InferenceAlgorithm=Turing.NUTS(0.65)`: MCMC sampler
+  to be used.
+- `ensemble::Turing.AbstractMCMC.AbstractMCMCEnsemble=Turing.MCMCSerial()`:
+Sampling modality to be used. Options are:
+    - `Turing.MCMCSerial()`
+    - `Turing.MCMCThreads()`
+    - `Turing.MCMCDistributed()`
+- `verbose::Bool=true`: Boolean indicating if the function should print partial
+  progress to the screen or not.
+- `multithread::Bool=false`: Boolean indicating whether to use
+  `Threads.@threads` when running the `for`-loop over all mutants. NOTE: This
+  requires julia to be initialized with multiple threads.
+"""
 function mcmc_singlemutant_fitness(;
     data::DF.AbstractDataFrame,
     n_walkers::Int,
@@ -1260,16 +1343,13 @@ function mcmc_singlemutant_fitness(;
     function sample_bc(i, R̲̲⁽ᵐ⁾=R̲̲⁽ᵐ⁾, R̲̲⁽ⁿ⁾=R̲̲⁽ⁿ⁾)
 
         ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
-        R̲̲ = hcat(
-            R̲̲⁽ᵐ⁾[:, i],
-            sum(R̲̲⁽ⁿ⁾, dims=2) .+ sum(R̲̲⁽ᵐ⁾[:, 1:size(R̲̲⁽ᵐ⁾, 2).≠i], dims=2)
-        )
+        R̲̲ = hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾[:, i], sum(R̲̲⁽ᵐ⁾[:, 1:size(R̲̲⁽ᵐ⁾, 2).≠i], dims=2))
         # Compute total counts for each run
         n̲ₜ = vec(sum(R̲̲, dims=2))
 
         ## %%%%%%%%%%% MCMC sampling %%%%%%%%%%% ##
         # Define output filename
-        fname = "$(outputname)_$(data_keys[i]).jld2"
+        fname = "$(outputname)$(data_keys[i]).jld2"
 
         # Check if file has been processed before
         if isfile(fname)
@@ -1286,7 +1366,7 @@ function mcmc_singlemutant_fitness(;
 
         # Sample posterior
         chain = Turing.sample(
-            model(R̲̲⁽ᵐ⁾[:, i], R̲̲, n̲ₜ; model_kwargs...),
+            model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾[:, i], R̲̲, n̲ₜ; model_kwargs...),
             sampler,
             ensemble,
             n_steps,
