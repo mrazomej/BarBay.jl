@@ -66,8 +66,8 @@ param = Dict(
         :λ_prior => λ_prior,
     ),
     :sampler => Turing.NUTS(1000, 0.65),
-    :ensemble => Turing.MCMCThreads(),
-    :multithread => false
+    :ensemble => Turing.MCMCSerial(),
+    :multithread => true
 )
 
 ##
@@ -79,4 +79,4 @@ end # if
 
 # Run inference
 println("Running Inference...")
-@time BayesFitness.mcmc.mcmc_singlemutant_fitness(; param...)
+@time BayesFitness.mcmc.mcmc_single_fitness(; param...)
