@@ -1,6 +1,3 @@
-# Import library for distributed computing
-import Distributed
-
 # Import library to suppress output
 import Suppressor
 
@@ -10,6 +7,9 @@ import MCMCChains
 
 # Import library to store output
 import JLD2
+
+# Import library to locate files
+import Glob
 
 # Import package to handle DataFrames
 import DataFrames as DF
@@ -1253,7 +1253,7 @@ Sampling modality to be used. Options are:
   `Threads.@threads` when running the `for`-loop over all mutants. NOTE: This
   requires julia to be initialized with multiple threads.
 """
-function mcmc_singlemutant_fitness(;
+function mcmc_single_fitness(;
     data::DF.AbstractDataFrame,
     n_walkers::Int,
     n_steps::Int,
@@ -1341,6 +1341,9 @@ function mcmc_singlemutant_fitness(;
     # multi-thread option simpler. This is because rather than copying the same
     # code twice, we can call this function
     function sample_bc(i, R̲̲⁽ᵐ⁾=R̲̲⁽ᵐ⁾, R̲̲⁽ⁿ⁾=R̲̲⁽ⁿ⁾)
+        if verbose
+            println("performing inference for $(data_keys[i])...")
+        end # if
 
         ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
         R̲̲ = hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾[:, i], sum(R̲̲⁽ᵐ⁾[:, 1:size(R̲̲⁽ᵐ⁾, 2).≠i], dims=2))
@@ -1381,21 +1384,32 @@ function mcmc_singlemutant_fitness(;
         JLD2.jldsave("$(fname)", chain=chain)
     end # function
 
+    # Search for previously-processed files. This is because running in
+    # multithread with some files previously process somehow stops the
+    # multithreading
+    files = Glob.glob("$(outputname)*")
+    # Extract previously processed barcodes
+    bc_prev = [replace(f, outputname => "", ".jld2" => "") for f in files]
+    # Find barcodes not yet processed
+    bc_idx = [.!any(bc .== bc_prev) for bc in string.(data_keys)]
+
     # Check if multithread should be used for mutants
     if multithread
-        Threads.@threads for i = 1:size(R̲̲⁽ᵐ⁾, 2)
+        Threads.@threads for i = collect(1:size(R̲̲⁽ᵐ⁾, 2))[bc_idx]
             try
                 sample_bc(i, R̲̲⁽ᵐ⁾, R̲̲⁽ⁿ⁾)
             catch
                 @warn "bc $(data_keys[i]) was already processed"
+                continue
             end # try/catch
         end # for
     else
-        for i = 1:size(R̲̲⁽ᵐ⁾, 2)
+        for i = collect(1:size(R̲̲⁽ᵐ⁾, 2))[bc_idx]
             try
                 sample_bc(i, R̲̲⁽ᵐ⁾, R̲̲⁽ⁿ⁾)
             catch
                 @warn "bc $(data_keys[i]) was already processed"
+                continue
             end # try/catch
         end # for
     end # if
