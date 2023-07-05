@@ -1061,5 +1061,5 @@ Turing.@model function fitness_hierarchical_replicates(
         Γ̲̲⁽ᵐ⁾[:]
     )
 
-    return
+    return s̲⁽ᵐ⁾
 end # @model function

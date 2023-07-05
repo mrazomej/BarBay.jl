@@ -742,7 +742,7 @@ function mcmc_joint_fitness(;
         println("Saving $(fname) chains...")
     end # if
     # Write output into memory
-    JLD2.jldsave("$(fname)", chain=chain, group=data_keys)
+    JLD2.jldsave("$(fname)", chain=chain, ids=data_keys)
 end # function
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
@@ -1157,9 +1157,9 @@ function mcmc_joint_fitness_hierarchical_replicates(;
     # Extract unique time points
     timepoints = sort(unique(data_mut[:, time_col]))
     # Extract unique IDs
-    ids_mut = unique(data_mut[:, id_col])
+    ids_mut = sort(unique(data_mut[:, id_col]))
     # Extract unique reps
-    reps = unique(data_mut[:, rep_col])
+    reps = sort(unique(data_mut[:, rep_col]))
 
     # Initialize array to save counts for each mutant at time t
     R̲̲⁽ᵐ⁾ = Array{Int64,3}(
@@ -1220,5 +1220,5 @@ function mcmc_joint_fitness_hierarchical_replicates(;
         println("Saving $(fname) chains...")
     end # if
     # Write output into memory
-    JLD2.jldsave("$(fname)", chain=chain, group=data_keys)
+    JLD2.jldsave("$(fname)", chain=chain, ids=ids_mut)
 end # function
