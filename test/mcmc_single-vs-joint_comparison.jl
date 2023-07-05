@@ -447,6 +447,10 @@ for row in 1:n_row
         # Add scatter of data
         scatterlines!(axes[1], diff(log.(data_bc.freq)), color=:black)
 
+        # Add title
+        axes[1].title = "joint inference"
+        axes[1].titlesize = 12
+
         ## === Single barcode inference === ##
         # Define colors
         colors = get(ColorSchemes.Blues_9, LinRange(0.5, 0.75, length(qs)))
@@ -476,11 +480,16 @@ for row in 1:n_row
         # Add scatter of data
         scatterlines!(axes[2], diff(log.(data_bc.freq)), color=:black)
 
+        # Add title
+        axes[2].title = "single barcode"
+        axes[2].titlesize = 12
         ## == Plot format == ##
+
         # Hide axis decorations
         hidedecorations!.(axes, grid=false)
         # Set row and col gaps
         rowgap!(gl, 1)
+
         # Add barcode as title
         Label(
             gl[0, 3:4],
@@ -489,10 +498,16 @@ for row in 1:n_row
             justification=:center,
             lineheight=0.9
         )
+
         # Update counter
         counter += 1
     end  # for
 end # for
+
+# Add x-axis label
+Label(fig[end, :, Bottom()], "time points", fontsize=20)
+# Add y-axis label
+Label(fig[:, 1, Left()], "ln(fₜ₊₁/fₜ)", rotation=π / 2, fontsize=20)
 
 fig
 
