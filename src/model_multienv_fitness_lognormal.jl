@@ -3,7 +3,7 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    env_fitness_lognormal(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; kwargs)
+    multienv_fitness_lognormal(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; kwargs)
 
 `Turing.jl` model to sample the joint posterior distribution for a competitive
 fitness experiment with different environments on each growth-dilution cycle.
@@ -66,7 +66,7 @@ fitness experiment with different environments on each growth-dilution cycle.
   assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. **NOTE**: This method assigns
     the same prior to **all** mutant fitness error values to be inferred.
 """
-Turing.@model function env_fitness_lognormal(
+Turing.@model function multienv_fitness_lognormal(
     R̲̲⁽ⁿ⁾::Matrix{Int64},
     R̲̲⁽ᵐ⁾::Matrix{Int64},
     R̲̲::Matrix{Int64},
@@ -202,7 +202,7 @@ end # @model function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    env_fitness_lognormal(R̲̲⁽ⁿ⁾, r̲⁽ᵐ⁾, R̲̲, n̲ₜ; kwargs)
+    multienv_fitness_lognormal(R̲̲⁽ⁿ⁾, r̲⁽ᵐ⁾, R̲̲, n̲ₜ; kwargs)
 
 `Turing.jl` model to sample the posterior distribution for a competitive fitness
 experiment with different environments on each growth-dilution cycle using data
@@ -262,7 +262,7 @@ from a single mutant barcode and all available neutral barcodes.
   assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. **NOTE**: This method assigns
     the same prior to **all** mutant fitness error values to be inferred.
 """
-Turing.@model function env_fitness_lognormal(
+Turing.@model function multienv_fitness_lognormal(
     R̲̲⁽ⁿ⁾::Matrix{Int64},
     r̲⁽ᵐ⁾::Vector{Int64},
     R̲̲::Matrix{Int64},
