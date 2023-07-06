@@ -48,7 +48,7 @@ n_steps = 1000
 n_walkers = 4
 
 # Define boolean to plot trajectories
-plot_trajectories = false
+plot_trajectories = true
 
 ##
 println("Loading data...\n")
@@ -61,9 +61,9 @@ data = CSV.read(
 
 
 if plot_trajectories
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
     # Plot trajectories
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
     println("Plotting frequency trajectories...\n")
     # Initialize figure
@@ -127,9 +127,9 @@ if plot_trajectories
 
     ##
 
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
     # Plot log-freq ratio trajectories
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
     println("Plotting log-frequency ratio trajectories...\n")
     # Initialize figure
@@ -217,7 +217,7 @@ param = Dict(
     :outputname => "./output/single_mutant_multi-env_inference/" *
                    "chain_multi-env_$(lpad(n_steps, 2, "0"))steps_" *
                    "$(lpad(n_walkers, 2, "0"))walkers_bc",
-    :model => BayesFitness.model.env_fitness_lognormal,
+    :model => BayesFitness.model.multienv_fitness_lognormal,
     :model_kwargs => Dict(
         :envs => ["G", "H", "N", "G", "H", "N"],
         :λ_prior => λ_prior,
@@ -248,3 +248,8 @@ end # if
 println("Running Inference...")
 @time BayesFitness.mcmc.mcmc_single_fitness(; param...)
 
+##
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Sample posterior distribution
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
