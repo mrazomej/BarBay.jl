@@ -231,7 +231,7 @@ function gaussian_prior_mean_fitness(
 end # function
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
-# Posterior predictive (retrodictive) checks
+# Posterior predictive (retrodictive) checks for frequency trajectories
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
@@ -429,9 +429,11 @@ function freq_mutant_ppc(
 end # function
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Posterior predictive (retrodictive) checks for log-freq ratio trajectories
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    logfreq_ratio_mutant_ppc(df, n_ppc, param; flatten=true)
+    logfreq_ratio_mutant_ppc(df, n_ppc; param, flatten=true)
 
 Function to compute the **posterior predictive checks** for the barcode
 log-frequency ratio for adaptive mutants. Our model predicts the frequency at
@@ -463,7 +465,7 @@ function generates samples out of this distribution.
   - mutant initial frequency.
 - `n_ppc::Int`: Number of samples to generate per set of parameters.
 
-## Optional Arguments
+## Optional Keyword Arguments
 - `param::Dict{Symbol, Symbol}`: Dictionary indicating the
 name of the variables in the mcmc chain defining the following variables:
   - `:mutant_mean_fitness`: Variable defining the inferred mutant fitness value
@@ -497,12 +499,12 @@ function logfreq_ratio_mutant_ppc(
     )
 
     # Initialize matrix to save PPC
-    γ_ppc = Array{Float64}(undef, size(df, 1), length(mean_vars), n_ppc)
+    logγ_ppc = Array{Float64}(undef, size(df, 1), length(mean_vars), n_ppc)
 
     # Loop through time points
     for (i, var) in enumerate(mean_vars)
         # Sample out of posterior distribution
-        γ_ppc[:, i, :] = Random.rand(
+        logγ_ppc[:, i, :] = Random.rand(
             Distributions.MvNormal(
                 df[:, param[:mutant_mean_fitness]] .- df[:, var],
                 LinearAlgebra.Diagonal(df[:, param[:mutant_std_fitness]] .^ 2)
@@ -513,15 +515,15 @@ function logfreq_ratio_mutant_ppc(
 
     if flatten
         # Return flatten matrix
-        return vcat(collect(eachslice(γ_ppc, dims=3))...)
+        return vcat(collect(eachslice(logγ_ppc, dims=3))...)
     else
         # Return raw matrix
-        return γ_ppc
+        return logγ_ppc
     end # if
 end # function
 
 @doc raw"""
-    logfreq_ratio_mutant_ppc(df, n_ppc; param, flatten=true)
+    logfreq_ratio_mutant_ppc(chain, n_ppc; param, flatten=true)
 
 Function to compute the **posterior predictive checks** for the barcode
 log-frequency ratio for adaptive mutants. Our model predicts the frequency at
@@ -590,12 +592,12 @@ function logfreq_ratio_mutant_ppc(
                 length(MCMCChains.range(chain))
 
     # Initialize matrix to save PPC
-    γ_ppc = Array{Float64}(undef, n_samples, length(mean_vars), n_ppc)
+    logγ_ppc = Array{Float64}(undef, n_samples, length(mean_vars), n_ppc)
 
     # Loop through time points
     for (i, var) in enumerate(mean_vars)
         # Sample out of posterior distribution
-        γ_ppc[:, i, :] = Random.rand(
+        logγ_ppc[:, i, :] = Random.rand(
             Distributions.MvNormal(
                 chain[param[:mutant_mean_fitness]][:] .- chain[var][:],
                 LinearAlgebra.Diagonal(chain[param[:mutant_std_fitness]][:] .^ 2)
@@ -606,10 +608,10 @@ function logfreq_ratio_mutant_ppc(
 
     if flatten
         # Return flatten matrix
-        return vcat(collect(eachslice(γ_ppc, dims=3))...)
+        return vcat(collect(eachslice(logγ_ppc, dims=3))...)
     else
         # Return raw matrix
-        return γ_ppc
+        return logγ_ppc
     end # if
 end # function
 
@@ -690,12 +692,12 @@ function logfreq_ratio_mean_ppc(
     end # if
 
     # Initialize matrix to save PPC
-    γ_ppc = Array{Float64}(undef, size(df, 1), length(mean_vars), n_ppc)
+    logγ_ppc = Array{Float64}(undef, size(df, 1), length(mean_vars), n_ppc)
 
     # Loop through 
     for (i, var) in enumerate(mean_vars)
         # Sample out of posterior distribution
-        γ_ppc[:, i, :] = Random.rand(
+        logγ_ppc[:, i, :] = Random.rand(
             Distributions.MvNormal(
                 -df[:, var],
                 LinearAlgebra.Diagonal(df[:, std_vars[i]] .^ 2)
@@ -706,10 +708,10 @@ function logfreq_ratio_mean_ppc(
 
     if flatten
         # Return flatten matrix
-        return vcat(collect(eachslice(γ_ppc, dims=3))...)
+        return vcat(collect(eachslice(logγ_ppc, dims=3))...)
     else
         # Return raw matrix
-        return γ_ppc
+        return logγ_ppc
     end # if
 end # function
 
@@ -785,12 +787,12 @@ function logfreq_ratio_mean_ppc(
                 length(MCMCChains.range(chains))
 
     # Initialize matrix to save PPC
-    γ_ppc = Array{Float64}(undef, n_samples, length(mean_vars), n_ppc)
+    logγ_ppc = Array{Float64}(undef, n_samples, length(mean_vars), n_ppc)
 
     # Loop through 
     for (i, var) in enumerate(mean_vars)
         # Sample out of posterior distribution
-        γ_ppc[:, i, :] = Random.rand(
+        logγ_ppc[:, i, :] = Random.rand(
             Distributions.MvNormal(
                 -chains[var][:],
                 LinearAlgebra.Diagonal(chains[std_vars[i]][:] .^ 2)
@@ -801,10 +803,217 @@ function logfreq_ratio_mean_ppc(
 
     if flatten
         # Return flatten matrix
-        return vcat(collect(eachslice(γ_ppc, dims=3))...)
+        return vcat(collect(eachslice(logγ_ppc, dims=3))...)
     else
         # Return raw matrix
-        return γ_ppc
+        return logγ_ppc
+    end # if
+end # function
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Posterior predictive (retrodictive) checks for log-freq ratio trajectories
+# in multiple environments
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+@doc raw"""
+    logfreq_ratio_mutienv_ppc(df, n_ppc, param; flatten=true)
+
+Function to compute the **posterior predictive checks** for the barcode
+log-frequency ratio for adaptive mutants. Our model predicts the frequency at
+time ``t+1`` based on the frequency at time ``t`` as
+
+```math
+    f_{t+1}^{(m)} = f_{t}^{(m)} 
+    \exp\left[ \left( s^{(m)} - \bar{s}_t \right) \tau \right],
+```
+where ``s^{(m)}`` is the mutant relative fitness, ``\bar{s}_t`` is the
+population mean fitness between time ``t`` and ``t+1``, and ``\tau`` is the time
+interval between time ``t`` and ``t+1``. Our inference model assumes that
+```math
+    \frac{f_{t+1}^{(m)}}{f_{t}^{(m)}} \sim 
+    \log-\mathcal{N}\left( s^{(m)} - \bar{s}_t, \sigma^{(m)} \right),
+```
+where ``\sigma^{(m)}`` is the inferred standard deviation for the model. This
+function generates samples out of this distribution.
+
+# Arguments
+- `df::DataFrames.DataFrame`: Dataframe containing the MCMC samples for the
+  variables needed to compute the posterior predictive checks. The dataframe
+  should have MCMC samples for
+  - mutant relative fitness values.
+  - population mean fitness values. NOTE: The number of columns containing
+    population mean fitness values determines the number of datapoints where the
+    ppc are evaluated.
+  - log-normal likelihood standard deviation.
+  - mutant initial frequency.
+- `n_ppc::Int`: Number of samples to generate per set of parameters.
+- `envs::Vector{<:Any}`: List of environments in experiment. This is used to
+  index the corresponding fitness from the chain. NOTE: The list of environments
+  should be the name or corresponding label of the environemnt; the index is
+  generated internally.
+
+## Optional Keyword Arguments
+- `param::Dict{Symbol, Symbol}`: Dictionary indicating the name of the variables
+in the mcmc chain defining the following variables:
+  - `:mutant_mean_fitness`: Variable defining the inferred mutant fitness value
+    `s⁽ᵐ⁾`.
+  - `:mutant_std_fitness`: Variable defining the standard defining the inferred
+    standard deviation on the likelihood function `σ⁽ᵐ⁾`.
+  - `population_mean_fitness`: Common pattern in all population mean fitness
+    variables.
+- `flatten::Bool=true`: Boolean indicating whether to flatten the output of
+  multiple chain into a single column.
+
+# Returns
+- `log(fₜ₊₁ / fₜ) = s⁽ᵐ⁾ - s̅ₜ::Array{Float64}`: Evaluation of the frequency
+  posterior predictive checks at all times for each MCMC sample.
+"""
+function logfreq_ratio_multienv_ppc(
+    df::DF.AbstractDataFrame,
+    n_ppc::Int,
+    envs::Vector{<:Any};
+    param::Dict{Symbol,Symbol}=Dict(
+        :mutant_mean_fitness => :s̲⁽ᵐ⁾,
+        :mutant_std_fitness => :σ̲⁽ᵐ⁾,
+        :population_mean_fitness => :s̲ₜ,
+    ),
+    flatten::Bool=true
+)
+    # Find unique environments
+    env_unique = unique(envs)
+    # Define number of environments
+    n_env = length(env_unique)
+    # Define environmental indexes
+    env_idx = indexin(envs, env_unique)
+
+    # Extract variable names for mean fitness
+    mean_vars = sort(
+        DF.names(df)[
+            occursin.(String(param[:population_mean_fitness]), DF.names(df))
+        ]
+    )
+
+    # Extract variable names for mutant relative fitness
+    s_vars = sort(
+        DF.names(df)[
+            occursin.(String(param[:mutant_mean_fitness]), DF.names(df))
+        ]
+    )
+
+    # Extract variable names for mutant relative fitness error
+    σ_vars = sort(
+        DF.names(df)[
+            occursin.(String(param[:mutant_std_fitness]), DF.names(df))
+        ]
+    )
+
+    # Check that number of environments matches number of variables
+    if (length(s_vars) != n_env) | (length(σ_vars) != n_env)
+        error(
+            "# of mutant-related variables does not match # of environments"
+        )
+    end # if
+
+    # Check if list of environments matches number of time points
+    if (length(envs) != length(mean_vars) + 1)
+        error("Number of given environments does not match time points in chain")
+    end # if
+
+    # Initialize matrix to save PPC
+    logγ_ppc = Array{Float64}(undef, size(df, 1), length(mean_vars), n_ppc)
+
+    # Loop through time points
+    for (i, var) in enumerate(mean_vars)
+        # Sample out of posterior distribution
+        logγ_ppc[:, i, :] = Random.rand(
+            Distributions.MvNormal(
+                df[:, s_vars[env_idx[i+1]]] .- df[:, var],
+                LinearAlgebra.Diagonal(df[:, σ_vars[env_idx[i+1]]] .^ 2)
+            ),
+            n_ppc
+        )
+    end # for
+
+    if flatten
+        # Return flatten matrix
+        return vcat(collect(eachslice(logγ_ppc, dims=3))...)
+    else
+        # Return raw matrix
+        return logγ_ppc
+    end # if
+end # function
+
+function logfreq_ratio_multienv_ppc(
+    chain::MCMCChains.Chains,
+    n_ppc::Int,
+    envs::Vector{<:Any};
+    param::Dict{Symbol,Symbol}=Dict(
+        :mutant_mean_fitness => :s̲⁽ᵐ⁾,
+        :mutant_std_fitness => :σ̲⁽ᵐ⁾,
+        :population_mean_fitness => :s̲ₜ,
+    ),
+    flatten::Bool=true
+)
+    # Find unique environments
+    env_unique = unique(envs)
+    # Define number of environments
+    n_env = length(env_unique)
+    # Define environmental indexes
+    env_idx = indexin(envs, env_unique)
+
+    # Extract variable names for mean fitness
+    mean_vars = sort(
+        MCMCChains.namesingroup(chain, param[:population_mean_fitness])
+    )
+
+    # Extract variable names for mutant relative fitness
+    s_vars = sort(
+        MCMCChains.namesingroup(chain, param[:mutant_mean_fitness])
+    )
+
+    # Extract variable names for mutant relative fitness error
+    σ_vars = sort(
+        MCMCChains.namesingroup(chain, param[:mutant_std_fitness])
+    )
+
+    # Check that number of environments matches number of variables
+    if (length(s_vars) != n_env) | (length(σ_vars) != n_env)
+        error(
+            "# of mutant-related variables does not match # of environments"
+        )
+    end # if
+
+    # Check if list of environments matches number of time points
+    if (length(envs) != length(mean_vars) + 1)
+        error("Number of given environments does not match time points in chain")
+    end # if
+
+    # Compute number of MCMC samples in chain from number of chains and range of
+    # samples
+    n_samples = length(MCMCChains.chains(chain)) *
+                length(MCMCChains.range(chain))
+
+    # Initialize matrix to save PPC
+    logγ_ppc = Array{Float64}(undef, n_samples, length(mean_vars), n_ppc)
+
+    # Loop through time points
+    for (i, var) in enumerate(mean_vars)
+        # Sample out of posterior distribution
+        logγ_ppc[:, i, :] = Random.rand(
+            Distributions.MvNormal(
+                chain[s_vars[env_idx[i+1]]][:] .- chain[var][:],
+                LinearAlgebra.Diagonal(chain[σ_vars[env_idx[i+1]]][:] .^ 2)
+            ),
+            n_ppc
+        )
+    end # for
+
+    if flatten
+        # Return flatten matrix
+        return vcat(collect(eachslice(logγ_ppc, dims=3))...)
+    else
+        # Return raw matrix
+        return logγ_ppc
     end # if
 end # function
 
