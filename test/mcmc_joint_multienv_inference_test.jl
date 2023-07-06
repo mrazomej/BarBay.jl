@@ -253,3 +253,251 @@ println("Running Inference...")
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 # Sample posterior distribution
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Read single-mutant inferences
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# List files from group inference
+files = sort(
+    Glob.glob(
+        "./output/single_mutant_multi-env_inference/" *
+        "chain_multi-env_$(lpad(n_steps, 2, "0"))steps_" *
+        "$(lpad(n_walkers, 2, "0"))walkers_bc*"
+    )
+)
+
+# Extract barcode information from each file
+bc_list = [
+    parse(Int64, replace(split(f, "_")[end], "bc" => "", ".jld2" => ""))
+    for f in files
+]
+
+# Initialize dictionary to store chains
+chn_dict = Dict()
+# Initialize dictionary to store tidy dataframes
+df_dict = Dict()
+
+# Loop through each file
+for (bc, f) in zip(bc_list, files)
+    # Add chain to dictionary
+    setindex!(chn_dict, JLD2.load(f)["chain"], bc)
+    # Add tidy dataframe to dictionary
+    setindex!(df_dict, DF.DataFrame(chn_dict[bc]), bc)
+end # for
+
+##
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Plot population mean fitness ECDF
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Define number of rows and columns
+n_row, n_col = [2, 3]
+
+# Initialize figure
+fig = Figure(resolution=(300 * n_col, 300 * n_row))
+
+# Add axis objects for each timepoint
+axes = [
+    Axis(
+        fig[i, j],
+        xlabel="population mean fitness (s̄ₜ)",
+        ylabel="ecdf",
+    ) for i = 1:n_row for j = 1:n_col
+]
+
+# Extract population mean fitness variable names
+pop_mean_vars = MCMCChains.namesingroup(chn_dict[first(bc_list)], :s̲ₜ)
+
+# Define colors
+colors = get(ColorSchemes.Blues_9, LinRange(0.25, 0.75, length(files)))
+
+# Loop through population mean fitness variables
+for (i, s) in enumerate(pop_mean_vars)
+    # Loop through mutant barcodes
+    for (j, bc) in enumerate(bc_list)
+        # Plot full inference value
+        ecdfplot!(axes[i], df_dict[bc][:, s], color=colors[j])
+    end # for
+    # Set x-axis limit
+    # xlims!(axes[i], 0, 1.5)
+end # for
+
+fig
+
+##
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Plot log-frequency ratio PPC
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Define number of rows and columns
+n_row, n_col = [4, 4]
+# Initialize figure
+fig = Figure(resolution=(300 * n_col, 300 * n_row))
+
+# Add GridLayout
+gl = fig[1, 1] = GridLayout()
+
+# Add axis objects
+axes = [Axis(fig[i, j]) for i = 1:n_row for j = 1:n_col]
+
+# Define dictionary with corresponding parameters for variables needed for the
+# posterior predictive checks
+param = Dict(
+    :population_mean_fitness => :s̲ₜ,
+    :population_std_fitness => :σ̲ₜ,
+)
+# Define number of posterior predictive check samples
+n_ppc = 500
+# Define quantiles to compute
+qs = [0.68, 0.95, 0.995]
+
+# Loop through elements
+for (i, chn) in enumerate(collect(keys(chn_dict))[1:length(axes)])
+    # Compute posterior predictive checks
+    ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
+        chn_dict[chn], n_ppc; param=param
+    )
+
+    # Define colors
+    colors = get(ColorSchemes.Blues_9, LinRange(0.5, 0.75, length(qs)))
+
+    # Plot posterior predictive checks
+    BayesFitness.viz.ppc_time_series!(
+        axes[i], qs, ppc_mat; colors=colors
+    )
+
+    # Add plot for median (we use the 5 percentile to have a "thicker" line
+    # showing the median)
+    BayesFitness.viz.ppc_time_series!(
+        axes[i], [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
+    )
+
+    # Plot log-frequency ratio of neutrals
+    BayesFitness.viz.logfreq_ratio_time_series!(
+        axes[i],
+        data[data.neutral, :];
+        freq_col=:freq,
+        color=:black,
+        alpha=1.0,
+        linewidth=2
+    )
+
+    # Add title
+    axes[i].title = "bc $(chn)"
+
+    # Hide axis decorations
+    hidedecorations!(axes[i], grid=false)
+end # for
+
+# Add x-axis label
+Label(fig[end, :, Bottom()], "time points", fontsize=20)
+# Add y-axis label
+Label(fig[:, 1, Left()], "ln(fₜ₊₁/fₜ)", rotation=π / 2, fontsize=20)
+# Add Plot title
+Label(fig[0, 2:3], text="PPC neutral lineages", fontsize=20)
+# Set row and col gaps
+colgap!(gl, 10)
+rowgap!(gl, 10)
+
+fig
+##
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Plot posterior predictive checks for barcodes
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Define number of rows and columns
+n_row, n_col = [4, 4]
+# Initialize figure
+fig = Figure(resolution=(300 * n_col, 300 * n_row))
+
+# Add GridLayout
+gl = fig[1, 1] = GridLayout()
+
+# Add axis objects
+axes = [Axis(fig[i, j]) for i = 1:n_row for j = 1:n_col]
+
+# Define dictionary with corresponding parameters for variables needed for the
+# posterior predictive checks
+param = Dict(
+    :population_mean_fitness => :s̲ₜ,
+    :mutant_mean_fitness => :s̲⁽ᵐ⁾,
+    :mutant_std_fitness => :σ̲⁽ᵐ⁾,
+)
+
+# Define number of posterior predictive check samples
+n_ppc = 500
+# Define quantiles to compute
+qs = [0.68, 0.95]
+
+# Define environments
+envs = ["G", "H", "N", "G", "H", "N"]
+
+# Define colors
+col_dict = Dict(
+    "G" => ColorSchemes.Greens_9,
+    "H" => ColorSchemes.Oranges_9,
+    "N" => ColorSchemes.Purples_9,
+)
+
+# Loop through elements
+for (i, chn) in enumerate(collect(keys(chn_dict))[1:length(axes)])
+    # Compute posterior predictive checks
+    ppc_mat = BayesFitness.stats.logfreq_ratio_multienv_ppc(
+        chn_dict[chn], n_ppc, envs; param=param
+    )
+
+    # Loop through environments
+    for j = 2:size(ppc_mat, 2)
+        # Define colors
+        colors = get(col_dict[envs[j]], LinRange(0.5, 0.75, length(qs)))
+
+        # Plot posterior predictive checks
+        BayesFitness.viz.ppc_time_series!(
+            axes[i], qs, ppc_mat[:, j-1:j]; time=[j - 1, j], colors=colors
+        )
+
+        # Add plot for median (we use the 5 percentile to have a "thicker" line
+        # showing the median)
+        BayesFitness.viz.ppc_time_series!(
+            axes[i],
+            [0.05],
+            ppc_mat[:, j-1:j];
+            time=[j - 1, j],
+            colors=col_dict[envs[j]][end:end]
+        )
+    end # for
+
+
+    # Plot log-frequency ratio of neutrals
+    BayesFitness.viz.logfreq_ratio_time_series!(
+        axes[i],
+        data[data.barcode.==chn, :];
+        freq_col=:freq,
+        color=:black,
+        alpha=1.0,
+        linewidth=2,
+        markersize=10
+    )
+
+    # Add title
+    axes[i].title = "bc $(chn)"
+
+    # Hide axis decorations
+    hidedecorations!(axes[i], grid=false)
+end # for
+
+# Add x-axis label
+Label(fig[end, :, Bottom()], "time points", fontsize=20)
+# Add y-axis label
+Label(fig[:, 1, Left()], "ln(fₜ₊₁/fₜ)", rotation=π / 2, fontsize=20)
+# Add Plot title
+Label(fig[0, 2:3], text="PPC mutant lineages", fontsize=20)
+# Set row and col gaps
+colgap!(gl, 10)
+rowgap!(gl, 10)
+
+fig
