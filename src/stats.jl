@@ -11,8 +11,17 @@ import Distributions
 import StatsBase
 
 # Import library to handle MCMC chains
+import Turing
 import MCMCChains
+import DynamicPPL
 
+# Import library to return unconstrained versions of distributions
+using Bijectors
+
+
+# Import libraries for convenient array indexing
+import ComponentArrays
+import UnPack
 ##
 
 
@@ -1142,4 +1151,71 @@ function naive_fitness(
         ),
         :logf_norm_mean => :fitness
     )
+end # function
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Define full-rank normal distribution for variational inference
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+function build_getq(dim, model)
+    # Define base distribution as standard normal.
+    base_dist = Turing.DistributionsAD.TuringDiagMvNormal(zeros(dim), ones(dim))
+
+    # From Turing.jl:
+    # > bijector(model::Turing.Model) is defined by Turing, and will return a
+    # bijector which takes you from the space of the latent variables to the
+    # real space. We're interested in using a normal distribution as a
+    # base-distribution and transform samples to the latent space, thus we need
+    # the inverse mapping from the reals to the latent space.
+    constrained_dist = Bijectors.inverse(Bijectors.bijector(model))
+
+    # Define proto array with parameters for full-rank normal distribution.
+    # Note: Using the ComponentArray makes things much simpler to work with.
+    proto_arr = ComponentArrays.ComponentArray(;
+        L=zeros(dim, dim), b=zeros(dim)
+    )
+
+    # Get Axes for proto-array. This basically returns the shape of each element
+    # in proto_arr
+    proto_axes = ComponentArrays.getaxes(proto_arr)
+    # Define number of parameters
+    num_params = length(proto_arr)
+
+    # Define getq function to be returned with specific dimensions for full-rank
+    # variational problem.
+    function getq(θ)
+        # Unpack parameters. This is where the combination of
+        # `ComponentArrays.jl` and `UnPack.jl` become handy.
+        L, b = begin
+            # Unpack covariance matrix and mean array
+            UnPack.@unpack L, b = ComponentArrays.ComponentArray(θ, proto_axes)
+            # Convert covariance matrix to lower diagonal covariance matrix to
+            # use Cholesky decomposition.
+            LinearAlgebra.LowerTriangular(L), b
+        end
+
+        # From Turing.jl:
+        # > For this to represent a covariance matrix we need to ensure that the
+        # diagonal is positive. We can enforce this by zeroing out the diagonal
+        # and then adding back the diagonal exponentiated.
+
+        # 1. Extract diagonal elements of matrix L
+        D = LinearAlgebra.Diagonal(LinearAlgebra.diag(L))
+        # 2. Subtract diagonal elements to make the L diagonal be all zeros,
+        #    then, add the exponential of the diagonal to ensure positivit.
+        A = L - D + exp(D)
+
+        # Define unconstrained parameters by composing the constrained
+        # distribution with the bijectors Shift and Scale. The ∘ operator means
+        # to compose functions (f∘g)(x) = f(g(x)). NOTE: I do not fully
+        # follow how this works, I am using Turing.jl's example.
+
+        b = constrained_dist ∘ Bijectors.Shift(b) ∘ Bijectors.Scale(A)
+
+        return Turing.transformed(base_dist, b)
+    end
+
+    # Return resulting getq function
+    return getq
+
 end # function

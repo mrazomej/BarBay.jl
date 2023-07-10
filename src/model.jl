@@ -557,6 +557,9 @@ end # @model function
 # fitness inference π(s̲⁽ᵐ⁾, s̲ₜ | data)
 include("./model_fitness_lognormal.jl")
 
+# fitness inference π(s̲⁽ᵐ⁾, s̲ₜ | data)
+include("./model_fitness_normal.jl")
+
 # fitness inference in multiple environemnts π(s1⁽ᵐ⁾, s2⁽ᵐ⁾,.. | data)
 include("./model_multienv_fitness_lognormal.jl")
 
