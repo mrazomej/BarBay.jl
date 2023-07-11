@@ -61,6 +61,9 @@ data = CSV.read(
 
 
 if plot_trajectories
+
+    ##
+
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
     # Plot trajectories
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
@@ -251,18 +254,14 @@ println("Running Inference...")
 ##
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
-# Sample posterior distribution
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
-
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 # Read single-mutant inferences
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 # List files from group inference
 files = sort(
     Glob.glob(
-        "./output/single_mutant_multi-env_inference/" *
-        "chain_multi-env_$(lpad(n_steps, 2, "0"))steps_" *
+        "./output/single_mutant_multienv_inference/" *
+        "chain_single_multienv_$(lpad(n_steps, 2, "0"))steps_" *
         "$(lpad(n_walkers, 2, "0"))walkers_bc*"
     )
 )
@@ -448,6 +447,15 @@ for (i, chn) in enumerate(collect(keys(chn_dict))[1:length(axes)])
     # Compute posterior predictive checks
     ppc_mat = BayesFitness.stats.logfreq_ratio_multienv_ppc(
         chn_dict[chn], n_ppc, envs; param=param
+    )
+
+    # Add first environment inference
+    BayesFitness.viz.ppc_time_series!(
+        axes[i],
+        qs,
+        ppc_mat[:, [1, 1]];
+        time=[0.75, 1],
+        colors=get(col_dict[envs[1]], LinRange(0.5, 0.75, length(qs)))
     )
 
     # Loop through environments
