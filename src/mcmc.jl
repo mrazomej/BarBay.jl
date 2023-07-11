@@ -730,7 +730,7 @@ function mcmc_joint_fitness(;
 
     # Sample posterior
     chain = Turing.sample(
-        model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; model_kwargs...),
+        model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, Vector.(eachrow(R̲̲)), n̲ₜ; model_kwargs...),
         sampler,
         ensemble,
         n_steps,
@@ -946,7 +946,7 @@ function mcmc_single_fitness(;
 
         # Sample posterior
         chain = Turing.sample(
-            model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾[:, i], R̲̲, n̲ₜ; model_kwargs...),
+            model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾[:, i], Vector.(eachrow(R̲̲)), n̲ₜ; model_kwargs...),
             sampler,
             ensemble,
             n_steps,

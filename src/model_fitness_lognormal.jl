@@ -3,7 +3,7 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    fitness_lognormal(R̲̲, R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, n̲ₜ; s_pop_prior, σ_pop_prior, s_mut_prior, σ_mut_prior, λ_prior)
+    fitness_lognormal(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; s_pop_prior, σ_pop_prior, s_mut_prior, σ_mut_prior, λ_prior)
 
 `Turing.jl` model to sample the joint posterior distribution for a competitive
 fitness experiment.
@@ -20,15 +20,16 @@ fitness experiment.
   in the data set and `M` is the number of mutant lineage barcodes. Each column
   represents the barcode count trajectory for a single mutant lineage. **NOTE**:
   The model assumes the rows are sorted in order of increasing time.
-- `R̲̲::Matrix{Int64}`:: `T × B` matrix, where `T` is the number of time points
-  in the data set and `B` is the number of barcodes. Each column represents the
-  barcode count trajectory for a single lineage. **NOTE**: This matrix does not
+- `R̲̲::Vector{Vector{Int64}}`:: `T × B` matrix--split into a vector of vectors
+  for computational efficiency--where `T` is the number of time points in the
+  data set and `B` is the number of barcodes. Each column represents the barcode
+  count trajectory for a single lineage. **NOTE**: This matrix does not
   necessarily need to be equivalent to `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)`. This is because
   `R̲̲⁽ᵐ⁾` can exclude mutant barcodes to perform the joint inference only for a
   subgroup, but `R̲̲` must still contain all counts. Usually, if `R̲̲⁽ᵐ⁾`
   excludes mutant barcodes, `R̲̲` must be of the form `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾,
-  R̲̲⁽ᴹ⁾)`, where `R̲̲⁽ᴹ⁾` is a vector that aggregates all excluded mutant barcodes
-  into a "super barcode."
+  R̲̲⁽ᴹ⁾)`, where `R̲̲⁽ᴹ⁾` is a vector that aggregates all excluded mutant
+  barcodes into a "super barcode."
 - `n̲ₜ::Vector{Int64}`: Vector with the total number of barcode counts for each
   time point. **NOTE**: This vector **must** be equivalent to computing
   `vec(sum(R̲̲, dims=2))`. The reason it is an independent input parameter is to
@@ -64,7 +65,7 @@ fitness experiment.
 Turing.@model function fitness_lognormal(
     R̲̲⁽ⁿ⁾::Matrix{Int64},
     R̲̲⁽ᵐ⁾::Matrix{Int64},
-    R̲̲::Matrix{Int64},
+    R̲̲::Vector{Vector{Int64}},
     n̲ₜ::Vector{Int64};
     s_pop_prior::Vector{Float64}=[0.0, 2.0],
     σ_pop_prior::Vector{Float64}=[0.0, 1.0],
@@ -72,30 +73,39 @@ Turing.@model function fitness_lognormal(
     σ_mut_prior::Vector{Float64}=[0.0, 1.0],
     λ_prior::VecOrMat{Float64}=[3.0, 3.0]
 )
+    # Define number of time points
+    n_time = length(n̲ₜ)
+    # Define number of neutrals
+    n_neutral = size(R̲̲⁽ⁿ⁾, 2)
+    # Define numbero f mutants
+    n_mut = size(R̲̲⁽ᵐ⁾, 2)
+    # Define number of barcodes
+    n_bc = n_neutral + n_mut
+
     ## %%%%%%%%%%%%%% Population mean fitness  %%%%%%%%%%%%%% ##
 
     # Prior on population mean fitness π(s̲ₜ) 
     s̲ₜ ~ Turing.MvNormal(
-        repeat([s_pop_prior[1]], size(R̲̲⁽ⁿ⁾, 1) - 1),
-        LinearAlgebra.I(size(R̲̲⁽ⁿ⁾, 1) - 1) .* s_pop_prior[2] .^ 2
+        repeat([s_pop_prior[1]], n_time - 1),
+        LinearAlgebra.I(n_time - 1) .* s_pop_prior[2] .^ 2
     )
     # Prior on LogNormal error π(σ̲ₜ)
     σ̲ₜ ~ Turing.MvLogNormal(
-        repeat([σ_pop_prior[1]], size(R̲̲⁽ⁿ⁾, 1) - 1),
-        LinearAlgebra.I(size(R̲̲⁽ⁿ⁾, 1) - 1) .* σ_pop_prior[2] .^ 2
+        repeat([σ_pop_prior[1]], n_time - 1),
+        LinearAlgebra.I(n_time - 1) .* σ_pop_prior[2] .^ 2
     )
 
     ## %%%%%%%%%%%%%% Mutant fitness  %%%%%%%%%%%%%% ##
 
     # Prior on mutant fitness π(s̲⁽ᵐ⁾)
     s̲⁽ᵐ⁾ ~ Turing.MvNormal(
-        repeat([s_mut_prior[1]], size(R̲̲⁽ᵐ⁾, 2)),
-        LinearAlgebra.I(size(R̲̲⁽ᵐ⁾, 2)) .* s_mut_prior[2] .^ 2
+        repeat([s_mut_prior[1]], n_mut),
+        LinearAlgebra.I(n_mut) .* s_mut_prior[2] .^ 2
     )
     # Prior on LogNormal error π(σ̲⁽ᵐ⁾)
     σ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
-        repeat([σ_mut_prior[1]], size(R̲̲⁽ᵐ⁾, 2)),
-        LinearAlgebra.I(size(R̲̲⁽ᵐ⁾, 2)) .* σ_mut_prior[2] .^ 2
+        repeat([σ_mut_prior[1]], n_mut),
+        LinearAlgebra.I(n_mut) .* σ_mut_prior[2] .^ 2
     )
 
 
@@ -104,8 +114,8 @@ Turing.@model function fitness_lognormal(
     if typeof(λ_prior) <: Vector
         # Prior on Poisson distribtion parameters π(λ)
         Λ̲̲ ~ Turing.MvLogNormal(
-            repeat([λ_prior[1]], length(R̲̲)),
-            LinearAlgebra.I(length(R̲̲)) .* λ_prior[2]^2
+            repeat([λ_prior[1]], sum(length.(R̲̲))),
+            LinearAlgebra.I(sum(length.(R̲̲))) .* λ_prior[2]^2
         )
     elseif typeof(λ_prior) <: Matrix
         # Prior on Poisson distribtion parameters π(λ)
@@ -118,7 +128,7 @@ Turing.@model function fitness_lognormal(
     # originally sampled as a vector for the `Turing.jl` samplers to deal with
     # it. But reshaping it to a matrix simplifies the computation of frequencies
     # and frequency ratios.
-    Λ̲̲ = reshape(Λ̲̲, size(R̲̲)...)
+    Λ̲̲ = reshape(Λ̲̲, length(R̲̲), length(first(R̲̲)))
 
     # Compute barcode frequencies from Poisson parameters
     F̲̲ = Λ̲̲ ./ sum(Λ̲̲, dims=2)
@@ -128,21 +138,18 @@ Turing.@model function fitness_lognormal(
 
     # Split neutral and mutant frequency ratios. Note: the @view macro means
     # that there is not allocation to memory on this step.
-    Γ̲̲⁽ⁿ⁾ = @view Γ̲̲[:, 1:size(R̲̲⁽ⁿ⁾, 2)]
-    Γ̲̲⁽ᵐ⁾ = @view Γ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1:size(R̲̲⁽ⁿ⁾, 2)+size(R̲̲⁽ᵐ⁾, 2)]
+    Γ̲̲⁽ⁿ⁾ = vec(Γ̲̲[:, 1:n_neutral])
+    Γ̲̲⁽ᵐ⁾ = vec(Γ̲̲[:, n_neutral+1:n_neutral+n_mut])
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)
-    n̲ₜ ~ Turing.arraydist([Turing.Poisson(sum(Λ̲̲[t, :])) for t = 1:size(R̲̲⁽ⁿ⁾, 1)])
+    n̲ₜ ~ Turing.arraydist([Turing.Poisson(sum(Λ̲̲[t, :])) for t = 1:n_time])
 
-    # Loop through time points
-    for t = 1:size(R̲̲⁽ⁿ⁾, 1)
-        # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). Note: We add the
-        # check_args=false option to avoid the recurrent problem of
-        # > Multinomial: p is not a probability vector.
-        # due to rounding errors
-        R̲̲[t, :] ~ Turing.Multinomial(n̲ₜ[t], F̲̲[t, :]; check_args=false)
-    end # for
+    # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). Note: We add the
+    # check_args=false option to avoid the recurrent problem of
+    # > Multinomial: p is not a probability vector.
+    # due to rounding errors
+    R̲̲ .~ [Turing.Multinomial(n̲ₜ[t], F̲̲[t, :]; check_args=false) for t = 1:n_time]
 
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
@@ -151,10 +158,10 @@ Turing.@model function fitness_lognormal(
     # π(γₜ⁽ⁿ⁾| sₜ, σₜ)
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvLogNormal(
-            repeat(-s̲ₜ, size(Γ̲̲⁽ⁿ⁾, 2)),
-            LinearAlgebra.Diagonal(repeat(σ̲ₜ .^ 2, size(Γ̲̲⁽ⁿ⁾, 2)))
+            repeat(-s̲ₜ, n_neutral),
+            LinearAlgebra.Diagonal(repeat(σ̲ₜ .^ 2, n_neutral))
         ),
-        Γ̲̲⁽ⁿ⁾[:]
+        Γ̲̲⁽ⁿ⁾
     )
 
     # Sample posterior for nutant lineage frequency ratio. Since it is a sample
@@ -166,10 +173,10 @@ Turing.@model function fitness_lognormal(
             vcat([s⁽ᵐ⁾ .- s̲ₜ for s⁽ᵐ⁾ in s̲⁽ᵐ⁾]...),
             # Build vector for variances
             LinearAlgebra.Diagonal(
-                vcat([repeat([σ], length(s̲ₜ)) for σ in σ̲⁽ᵐ⁾]...) .^ 2
+                vcat([repeat([σ], n_time - 1) for σ in σ̲⁽ᵐ⁾]...) .^ 2
             )
         ),
-        Γ̲̲⁽ᵐ⁾[:]
+        Γ̲̲⁽ᵐ⁾
     )
     return F̲̲
 end # @model function
@@ -195,9 +202,10 @@ fitness experiment for the neutral barcodes and *a single mutant barcode*
 - `r̲⁽ᵐ⁾::Vector{Int64}`: `T` dimensional vector where `T` is the number of time
   points in the data set. **NOTE**: The model assumes the rows are sorted in
   order of increasing time.
-- `R̲̲::Matrix{Int64}`:: `T × B` matrix, where `T` is the number of time points
-  in the data set and `B` is the number of barcodes. Each column represents the
-  barcode count trajectory for a single lineage.
+- `R̲̲::Vector{Vector{Int64}}`:: `T × B` matrix--split into a vector of vectors
+for computational efficiency--where `T` is the number of time points in the data
+  set and `B` is the number of barcodes. Each column represents the barcode
+  count trajectory for a single lineage.
 - `n̲ₜ::Vector{Int64}`: Vector with the total number of barcode counts for each
   time point. **NOTE**: This vector **must** be equivalent to computing
   `vec(sum(R̲̲, dims=2))`. The reason it is an independent input parameter is to
@@ -233,7 +241,7 @@ fitness experiment for the neutral barcodes and *a single mutant barcode*
 Turing.@model function fitness_lognormal(
     R̲̲⁽ⁿ⁾::Matrix{Int64},
     r̲⁽ᵐ⁾::Vector{Int64},
-    R̲̲::Matrix{Int64},
+    R̲̲::Vector{Vector{Int64}},
     n̲ₜ::Vector{Int64};
     s_pop_prior::Vector{Float64}=[0.0, 2.0],
     σ_pop_prior::Vector{Float64}=[0.0, 1.0],
@@ -241,17 +249,24 @@ Turing.@model function fitness_lognormal(
     σ_mut_prior::Vector{Float64}=[0.0, 1.0],
     λ_prior::VecOrMat{Float64}=[3.0, 3.0]
 )
+    # Define number of time points
+    n_time = length(n̲ₜ)
+    # Define number of neutrals
+    n_neutral = size(R̲̲⁽ⁿ⁾, 2)
+    # Define number of barcodes
+    n_bc = n_neutral + 2
+
     ## %%%%%%%%%%%%%% Population mean fitness  %%%%%%%%%%%%%% ##
 
     # Prior on population mean fitness π(s̲ₜ) 
     s̲ₜ ~ Turing.MvNormal(
-        repeat([s_pop_prior[1]], size(R̲̲⁽ⁿ⁾, 1) - 1),
-        LinearAlgebra.I(size(R̲̲⁽ⁿ⁾, 1) - 1) .* s_pop_prior[2] .^ 2
+        repeat([s_pop_prior[1]], n_time - 1),
+        LinearAlgebra.I(n_time - 1) .* s_pop_prior[2] .^ 2
     )
     # Prior on LogNormal error π(σ̲ₜ)
     σ̲ₜ ~ Turing.MvLogNormal(
-        repeat([σ_pop_prior[1]], size(R̲̲⁽ⁿ⁾, 1) - 1),
-        LinearAlgebra.I(size(R̲̲⁽ⁿ⁾, 1) - 1) .* σ_pop_prior[2] .^ 2
+        repeat([σ_pop_prior[1]], n_time - 1),
+        LinearAlgebra.I(n_time - 1) .* σ_pop_prior[2] .^ 2
     )
 
     ## %%%%%%%%%%%%%% Mutant fitness  %%%%%%%%%%%%%% ##
@@ -266,8 +281,8 @@ Turing.@model function fitness_lognormal(
     if typeof(λ_prior) <: Vector
         # Prior on Poisson distribtion parameters π(λ)
         Λ̲̲ ~ Turing.MvLogNormal(
-            repeat([λ_prior[1]], length(R̲̲)),
-            LinearAlgebra.I(length(R̲̲)) .* λ_prior[2]^2
+            repeat([λ_prior[1]], sum(length.(R̲̲))),
+            LinearAlgebra.I(sum(length.(R̲̲))) .* λ_prior[2]^2
         )
     elseif typeof(λ_prior) <: Matrix
         # Prior on Poisson distribtion parameters π(λ)
@@ -280,7 +295,7 @@ Turing.@model function fitness_lognormal(
     # originally sampled as a vector for the `Turing.jl` samplers to deal with
     # it. But reshaping it to a matrix simplifies the computation of frequencies
     # and frequency ratios.
-    Λ̲̲ = reshape(Λ̲̲, size(R̲̲)...)
+    Λ̲̲ = reshape(Λ̲̲, length(R̲̲), length(first(R̲̲)))
 
     # Compute barcode frequencies from Poisson parameters
     F̲̲ = Λ̲̲ ./ sum(Λ̲̲, dims=2)
@@ -290,21 +305,18 @@ Turing.@model function fitness_lognormal(
 
     # Split neutral and mutant frequency ratios. Note: the @view macro means
     # that there is not allocation to memory on this step.
-    Γ̲̲⁽ⁿ⁾ = @view Γ̲̲[:, 1:size(R̲̲⁽ⁿ⁾, 2)]
-    γ̲⁽ᵐ⁾ = @view Γ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1]
+    Γ̲̲⁽ⁿ⁾ = vec(Γ̲̲[:, 1:n_neutral])
+    γ̲⁽ᵐ⁾ = vec(Γ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1])
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)
     n̲ₜ ~ Turing.arraydist([Turing.Poisson(sum(Λ̲̲[t, :])) for t = 1:size(R̲̲⁽ⁿ⁾, 1)])
 
-    # Loop through time points
-    for t = 1:size(R̲̲⁽ⁿ⁾, 1)
-        # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). Note: We add the
-        # check_args=false option to avoid the recurrent problem of
-        # > Multinomial: p is not a probability vector.
-        # due to rounding errors
-        R̲̲[t, :] ~ Turing.Multinomial(n̲ₜ[t], F̲̲[t, :]; check_args=false)
-    end # for
+    # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). Note: We add the
+    # check_args=false option to avoid the recurrent problem of
+    # > Multinomial: p is not a probability vector.
+    # due to rounding errors
+    R̲̲ .~ [Turing.Multinomial(n̲ₜ[t], F̲̲[t, :]; check_args=false) for t = 1:n_time]
 
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
@@ -313,10 +325,10 @@ Turing.@model function fitness_lognormal(
     # π(γₜ⁽ⁿ⁾| sₜ, σₜ)
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvLogNormal(
-            repeat(-s̲ₜ, size(Γ̲̲⁽ⁿ⁾, 2)),
-            LinearAlgebra.Diagonal(repeat(σ̲ₜ .^ 2, size(Γ̲̲⁽ⁿ⁾, 2)))
+            repeat(-s̲ₜ, n_neutral),
+            LinearAlgebra.Diagonal(repeat(σ̲ₜ .^ 2, n_neutral))
         ),
-        Γ̲̲⁽ⁿ⁾[:]
+        Γ̲̲⁽ⁿ⁾
     )
 
     # Sample posterior for nutant lineage frequency ratio. Since it is a sample
@@ -325,9 +337,9 @@ Turing.@model function fitness_lognormal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvLogNormal(
             s⁽ᵐ⁾ .- s̲ₜ,
-            LinearAlgebra.Diagonal(repeat([σ⁽ᵐ⁾^2], length(s̲ₜ)))
+            LinearAlgebra.Diagonal(repeat([σ⁽ᵐ⁾^2], n_time - 1))
         ),
-        γ̲⁽ᵐ⁾[:]
+        γ̲⁽ᵐ⁾
     )
     return F̲̲
 end # @model function
