@@ -143,13 +143,13 @@ Turing.@model function fitness_lognormal(
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)
-    n̲ₜ ~ Turing.arraydist([Turing.Poisson(sum(Λ̲̲[t, :])) for t = 1:n_time])
+    n̲ₜ ~ Turing.arraydist(Turing.Poisson.(sum.(eachrow(Λ̲̲))))
 
     # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). Note: We add the
     # check_args=false option to avoid the recurrent problem of
     # > Multinomial: p is not a probability vector.
     # due to rounding errors
-    R̲̲ .~ [Turing.Multinomial(n̲ₜ[t], F̲̲[t, :]; check_args=false) for t = 1:n_time]
+    R̲̲ .~ Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false)
 
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
@@ -306,17 +306,17 @@ Turing.@model function fitness_lognormal(
     # Split neutral and mutant frequency ratios. Note: the @view macro means
     # that there is not allocation to memory on this step.
     Γ̲̲⁽ⁿ⁾ = vec(Γ̲̲[:, 1:n_neutral])
-    γ̲⁽ᵐ⁾ = vec(Γ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1])
+    γ̲⁽ᵐ⁾ = Γ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1]
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)
-    n̲ₜ ~ Turing.arraydist([Turing.Poisson(sum(Λ̲̲[t, :])) for t = 1:size(R̲̲⁽ⁿ⁾, 1)])
+    n̲ₜ ~ Turing.arraydist(Turing.Poisson.(sum.(eachrow(Λ̲̲))))
 
     # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). Note: We add the
     # check_args=false option to avoid the recurrent problem of
     # > Multinomial: p is not a probability vector.
     # due to rounding errors
-    R̲̲ .~ [Turing.Multinomial(n̲ₜ[t], F̲̲[t, :]; check_args=false) for t = 1:n_time]
+    R̲̲ .~ Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false)
 
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
