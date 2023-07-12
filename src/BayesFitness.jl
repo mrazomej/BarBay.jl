@@ -12,6 +12,10 @@ module mcmc
 include("mcmc.jl")
 end # submodule
 
+module optim
+include("optim.jl")
+end # submodule
+
 module vi
 include("vi.jl")
 end # submodule
