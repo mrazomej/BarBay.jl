@@ -94,6 +94,7 @@ function optim_joint_fitness(;
     rm_T0::Bool=false,
     optim::Union{Turing.ModeEstimation.MLE,Turing.ModeEstimation.MAP},
     optimizer::Optim.AbstractOptimizer=Optim.LBFGS(),
+    options::Optim.Options=Optim.Options(),
     optimize_kwargs::Dict=Dict(),
     verbose::Bool=true
 )
@@ -181,6 +182,6 @@ function optim_joint_fitness(;
     m = model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, Vector.(eachrow(R̲̲)), n̲ₜ; model_kwargs...)
 
     # Optimize function
-    return Turing.optimize(m, optim, optimizer; optimize_kwargs...)
+    return Turing.optimize(m, optim, optimizer, options; optimize_kwargs...)
 
 end # function
