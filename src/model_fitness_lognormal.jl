@@ -143,13 +143,26 @@ Turing.@model function fitness_lognormal(
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)
-    n̲ₜ ~ Turing.arraydist(Turing.Poisson.(sum.(eachrow(Λ̲̲))))
+    # n̲ₜ ~ Turing.arraydist(Turing.Poisson.(sum.(eachrow(Λ̲̲))))
+    n̲ₜ ~ Turing.arraydist(Turing.Poisson.(vec(sum(Λ̲̲, dims=2))))
 
-    # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). Note: We add the
-    # check_args=false option to avoid the recurrent problem of
-    # > Multinomial: p is not a probability vector.
-    # due to rounding errors
-    R̲̲ .~ Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false)
+    # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). 
+    # Note # 1: We add the check_args=false option to avoid the recurrent
+    # problem of
+    # > Multinomial: p is not a probability vector. 
+    # due to rounding errors 
+    # Note # 2: We use @addlogprob! rather than a broadcasting function of the
+    # form
+    # R̲̲ .~ Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false)
+    # because according to this discussion
+    # (https://discourse.julialang.org/t/making-turing-fast-with-large-numbers-of-parameters/69072/78?u=dlakelan)
+    # broadcasting does not work well when using ReverseDiff.jl
+    Turing.@addlogprob! sum(
+        Turing.logpdf.(
+            Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false),
+            R̲̲
+        ),
+    )
 
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
@@ -310,13 +323,26 @@ Turing.@model function fitness_lognormal(
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)
-    n̲ₜ ~ Turing.arraydist(Turing.Poisson.(sum.(eachrow(Λ̲̲))))
+    # n̲ₜ ~ Turing.arraydist(Turing.Poisson.(sum.(eachrow(Λ̲̲))))
+    n̲ₜ ~ Turing.arraydist(Turing.Poisson.(vec(sum(Λ̲̲, dims=2))))
 
-    # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). Note: We add the
-    # check_args=false option to avoid the recurrent problem of
-    # > Multinomial: p is not a probability vector.
-    # due to rounding errors
-    R̲̲ .~ Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false)
+    # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). 
+    # Note # 1: We add the check_args=false option to avoid the recurrent
+    # problem of
+    # > Multinomial: p is not a probability vector. 
+    # due to rounding errors 
+    # Note # 2: We use @addlogprob! rather than a broadcasting function of the
+    # form
+    # R̲̲ .~ Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false)
+    # because according to this discussion
+    # (https://discourse.julialang.org/t/making-turing-fast-with-large-numbers-of-parameters/69072/78?u=dlakelan)
+    # broadcasting does not work well when using ReverseDiff.jl
+    Turing.@addlogprob! sum(
+        Turing.logpdf.(
+            Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false),
+            R̲̲
+        ),
+    )
 
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
