@@ -15,7 +15,7 @@ import Distributions
 import MCMCChains
 
 # Import function from stats module
-import BayesFitness.stats: matrix_quantile_range, gaussian_prior_mean_fitness
+import BayesFitness.stats: matrix_quantile_range
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # Time series plots
