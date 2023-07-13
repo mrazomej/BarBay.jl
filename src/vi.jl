@@ -8,6 +8,9 @@ import Flux
 import Turing
 import MCMCChains
 
+# Import libraries for Pathfinder: Parallel quasi-Newton variational inference
+import Pathfinder
+
 # Import library to store output
 import JLD2
 
@@ -206,7 +209,7 @@ function vi_joint_fitness(;
     end # if
 
     # Define model
-    m = model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; model_kwargs...)
+    m = model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, Vector.(eachrow(R̲̲)), n̲ₜ; model_kwargs...)
 
 
     # Check if variational problem is meanfield or full-rank
@@ -246,4 +249,125 @@ function vi_joint_fitness(;
 
     # Write output into memory
     JLD2.jldsave("$(fname)", dist=q, ids=data_keys)
+end # function
+
+function pathfinder_joint_fitness(;
+    data::DF.AbstractDataFrame,
+    outputname::String,
+    model::Function,
+    model_kwargs::Dict=Dict(),
+    id_col::Symbol=:barcode,
+    time_col::Symbol=:time,
+    count_col::Symbol=:count,
+    neutral_col::Symbol=:neutral,
+    rm_T0::Bool=false,
+    pathfinder::Symbol=:single,
+    ndraws::Int=1_000,
+    pathfinder_kwargs::Dict=Dict(),
+    verbose::Bool=true
+)
+    # Extract unique time points
+    timepoints = sort(unique(data[:, time_col]))
+
+    # Remove T0 if indicated
+    if rm_T0
+        if verbose
+            println("Deleting T0 as requested...")
+        end # if 
+        data = data[.!(data[:, time_col] .== first(timepoints)), :]
+    end # if
+
+    # Re-extract unique time points
+    timepoints = sort(unique(data[:, time_col]))
+
+    if verbose
+        println("Preparing input data...")
+    end # if
+
+    ## %%%%%%%%%%% Neutral barcodes data %%%%%%%%%%% ##
+
+    # Group data by unique mutant barcode
+    data_group = DF.groupby(data[data[:, neutral_col], :], id_col)
+
+    # Check that all barcodes were measured at all points
+    if any([size(d, 1) for d in data_group] .!= length(timepoints))
+        error("Not all neutral barcodes have reported counts in all time points")
+    end # if
+
+    # Initialize array to save counts for each mutant at time t
+    R̲̲⁽ⁿ⁾ = Matrix{Int64}(
+        undef, length(timepoints), length(data_group)
+    )
+
+    # Loop through each unique barcode
+    for (i, d) in enumerate(data_group)
+        # Sort data by timepoint
+        DF.sort!(d, time_col)
+        # Extract data
+        R̲̲⁽ⁿ⁾[:, i] = d[:, count_col]
+    end # for
+
+    ## %%%%%%%%%%% Mutant barcodes data %%%%%%%%%%% ##
+
+    # Group data by unique mutant barcode
+    data_group = DF.groupby(data[.!data[:, neutral_col], :], id_col)
+
+    # Extract group keys
+    data_keys = first.(values.(keys(data_group)))
+
+    # Check that all barcodes were measured at all points
+    if any([size(d, 1) for d in data_group] .!= length(timepoints))
+        error("Not all mutant barcodes have reported counts in all time points")
+    end # if
+
+    # Initialize array to save counts for each mutant at time t
+    R̲̲⁽ᵐ⁾ = Matrix{Int64}(
+        undef, length(timepoints), length(data_group)
+    )
+
+    # Loop through each unique barcode
+    for (i, d) in enumerate(data_group)
+        # Sort data by timepoint
+        DF.sort!(d, time_col)
+        # Extract data
+        R̲̲⁽ᵐ⁾[:, i] = d[:, count_col]
+    end # for
+
+    ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
+
+    # Concatenate neutral and mutant data matrices
+    R̲̲ = hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)
+
+    # Compute total counts for each run
+    n̲ₜ = vec(sum(R̲̲, dims=2))
+
+    ## %%%%%%%%%%% Variational Inference %%%%%%%%%%% ##
+    # Define output filename
+    fname = "$(outputname).jld2"
+
+    # Check if file has been processed before
+    if isfile(fname)
+        error("$(fname) was already processed")
+    end # if
+
+    if verbose
+        println("Initialize Variational Inference Optimization...\n")
+    end # if
+
+    # Define model
+    m = model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, Vector.(eachrow(R̲̲)), n̲ₜ; model_kwargs...)
+
+
+    # Check which mode of pathfinder to use. This is a little annoying, but it
+    # is because of the arguments between both functions not being consistent.
+    if pathfinder == :single
+        dist = Pathfinder.pathfinder(m; ndraws=ndraws, pathfinder_kwargs...)
+    elseif pathfinder == :multi
+        dist = Pathfinder.multipathfinder(m, ndraws; pathfinder_kwargs...)
+    else
+        error("pathfinder should either be :single or :multi")
+    end
+
+    # Write output into memory
+    JLD2.jldsave("$(fname)", dist=dist, ids=data_keys)
 end # function
