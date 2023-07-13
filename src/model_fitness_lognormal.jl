@@ -79,8 +79,6 @@ Turing.@model function fitness_lognormal(
     n_neutral = size(R̲̲⁽ⁿ⁾, 2)
     # Define numbero f mutants
     n_mut = size(R̲̲⁽ᵐ⁾, 2)
-    # Define number of barcodes
-    n_bc = n_neutral + n_mut
 
     ## %%%%%%%%%%%%%% Population mean fitness  %%%%%%%%%%%%%% ##
 
@@ -266,8 +264,6 @@ Turing.@model function fitness_lognormal(
     n_time = length(n̲ₜ)
     # Define number of neutrals
     n_neutral = size(R̲̲⁽ⁿ⁾, 2)
-    # Define number of barcodes
-    n_bc = n_neutral + 2
 
     ## %%%%%%%%%%%%%% Population mean fitness  %%%%%%%%%%%%%% ##
 
