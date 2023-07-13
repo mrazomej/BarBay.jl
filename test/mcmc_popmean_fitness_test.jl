@@ -13,8 +13,10 @@ import BayesFitness
 import DataFrames as DF
 import CSV
 
-# Import library to set random seed
+# Import statistics-related packages
 import Random
+import Distributions
+import StatsBase
 
 # Import library to save and load native julia objects
 import JLD2
@@ -51,7 +53,7 @@ n_steps = 1_000
 n_walkers = 4
 
 # Define whether plots should be generated or not
-gen_plots = false
+gen_plots = true
 
 ##
 
@@ -156,6 +158,7 @@ param = Dict(
     :sampler => Turing.DynamicNUTS(),
     :ensemble => Turing.MCMCThreads(),
 )
+
 ##
 
 # Create output directory
@@ -169,89 +172,174 @@ BayesFitness.mcmc.mcmc_popmean_fitness(; param...)
 
 ##
 
-# println("Plotting trances and densities...\n")
-# # Concatenate population mean fitness chains into single chain
-# chains = BayesFitness.utils.jld2_concat_chains(
-#     param[:outputdir], param[:outputname], [:sₜ]; id_str=""
-# )
+# Load chain into memory
+chn = JLD2.load("$(param[:outputname]).jld2")["chain"]
 
-# # Initialize figure
-# fig = Figure(resolution=(600, 600))
+if gen_plots
+    println("Plotting trances and densities...\n")
 
-# # Generate mcmc_trace_density! plot
-# BayesFitness.viz.mcmc_trace_density!(fig, chains; alpha=0.5)
+    # Select variables for population mean fitness and associated variance
+    var_name = vcat(MCMCChains.namesingroup.(Ref(chn), [:s̲ₜ, :σ̲ₜ])...)
 
-# save("../docs/src/figs/fig03.svg", fig)
+    # Initialize figure
+    fig = Figure(resolution=(600, 800))
 
-# fig
+    # Generate mcmc_trace_density! plot
+    BayesFitness.viz.mcmc_trace_density!(fig, chn[var_name]; alpha=0.5)
 
-# ##
+    # save("../docs/src/figs/fig03.svg", fig)
 
-# # Name variables to be extracted from chains
-# chain_vars = [:sₜ, :σₜ]
+    fig
 
-# # Extract variables into single chain object
-# chains = BayesFitness.utils.jld2_concat_chains(
-#     param[:outputdir], param[:outputname], chain_vars; id_str=""
-# )
+end # if
 
-# # Define number of posterior predictive check samples
-# n_ppc = 5_000
+##
 
-# # Define dictionary with corresponding parameters for variables needed for the
-# # posterior predictive checks
-# param = Dict(
-#     :population_mean_fitness => :sₜ,
-#     :population_std_fitness => :σₜ,
-# )
+if gen_plots
+    println("Generating posterior predictive checks...\n")
+    # Define number of posterior predictive check samples
+    n_ppc = 500
 
-# # Compute posterior predictive checks
-# ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
-#     chains, n_ppc; param=param
-# )
+    # Define dictionary with corresponding parameters for variables needed for the
+    # posterior predictive checks
+    param = Dict(
+        :population_mean_fitness => :s̲ₜ,
+        :population_std_fitness => :σ̲ₜ,
+    )
 
-# ##
+    # Compute posterior predictive checks
+    ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
+        chn, n_ppc; param=param
+    )
 
-# # Initialize figure
-# fig = Figure(resolution=(450, 350))
+end # if
 
-# # Add axis
-# ax = Axis(
-#     fig[1, 1],
-#     xlabel="time point",
-#     ylabel="ln(fₜ₊₁/fₜ)",
-#     title="log-frequency ratio PPC"
-# )
+##
 
-# # Define quantiles to compute
-# qs = [0.68, 0.95, 0.997]
+if gen_plots
+    println("Plotting posterior predictive checks...")
 
-# # Define colors
-# colors = get(ColorSchemes.Blues_9, LinRange(0.25, 0.75, length(qs)))
+    # Initialize figure
+    fig = Figure(resolution=(450, 350))
 
-# # Plot posterior predictive checks
-# BayesFitness.viz.ppc_time_series!(
-#     ax, qs, ppc_mat; colors=colors
-# )
+    # Add axis
+    ax = Axis(
+        fig[1, 1],
+        xlabel="time point",
+        ylabel="ln(fₜ₊₁/fₜ)",
+        title="log-frequency ratio PPC"
+    )
 
-# # Add plot for median (we use the 5 percentile to have a "thicker" line showing
-# # the median)
-# BayesFitness.viz.ppc_time_series!(
-#     ax, [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
-# )
+    # Define quantiles to compute
+    qs = [0.05, 0.68, 0.95]
 
-# # Plot log-frequency ratio of neutrals
-# BayesFitness.viz.logfreq_ratio_time_series!(
-#     ax,
-#     data[data.neutral, :];
-#     freq_col=:freq,
-#     color=:black,
-#     alpha=1.0,
-#     linewidth=2
-# )
+    # Define colors
+    colors = get(ColorSchemes.Blues_9, LinRange(0.25, 1, length(qs)))
 
-# save("../docs/src/figs/fig04.svg", fig)
+    # Plot posterior predictive checks
+    BayesFitness.viz.ppc_time_series!(
+        ax, qs, ppc_mat; colors=colors
+    )
 
-# fig
+    # Plot log-frequency ratio of neutrals
+    BayesFitness.viz.logfreq_ratio_time_series!(
+        ax,
+        data[data.neutral, :];
+        freq_col=:freq,
+        color=:black,
+        alpha=1.0,
+        linewidth=2,
+        markersize=8
+    )
 
-# ##
+    # save("../docs/src/figs/fig04.svg", fig)
+
+    fig
+end # if
+
+##
+
+if gen_plots
+    println("Fitting parametric distributions to relevant parameters")
+
+    # Select variables for population mean fitness and associated variance
+    var_name = MCMCChains.namesingroup.(Ref(chn), [:s̲ₜ, :σ̲ₜ])
+
+    # Fit normal distributions to population mean fitness
+    pop_mean = Distributions.fit.(
+        Ref(Distributions.Normal), [vec(chn[x]) for x in var_name[1]]
+    )
+
+    # Fit lognormal distributions to associated error
+    pop_std = Distributions.fit.(
+        Ref(Distributions.LogNormal), [vec(chn[x]) for x in var_name[2]]
+    )
+
+end # if
+
+##
+
+if gen_plots
+    println("Plotting ECDF plots for population mean fitness")
+
+    # Initialize figure
+    fig = Figure(resolution=(600, 600))
+
+    # Add axis objects for each timepoint
+    axes = [
+        Axis(
+            fig[i, j],
+            xlabel="population mean fitness (s̄ₜ)",
+            ylabel="ecdf",
+        ) for i = 1:2 for j = 1:2
+    ]
+
+    # Loop through time points
+    for (i, var) in enumerate(var_name[1])
+        # Plot ECDF
+        BayesFitness.viz.mcmc_fitdist_cdf!(
+            axes[i],
+            vec(chn[var])[:],
+            pop_mean[i]
+        )
+
+        axes[i].title = "timepoint $(i)"
+    end # for
+
+    fig
+end # if
+
+
+##
+
+if gen_plots
+    println("Plotting ECDF plots for population mean fitness associated variance")
+
+    # Initialize figure
+    fig = Figure(resolution=(600, 600))
+
+    # Add axis objects for each timepoint
+    axes = [
+        Axis(
+            fig[i, j],
+            xlabel="log-likelihood error (σₜ)",
+            ylabel="ecdf",
+        ) for i = 1:2 for j = 1:2
+    ]
+
+    # Loop through time points
+    for (i, var) in enumerate(var_name[2])
+        # Plot ECDF
+        BayesFitness.viz.mcmc_fitdist_cdf!(
+            axes[i],
+            vec(chn[var])[:],
+            pop_std[i]
+        )
+
+        axes[i].title = "timepoint $(i)"
+    end # for
+
+    fig
+end # if
+
+##
