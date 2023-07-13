@@ -555,6 +555,9 @@ Turing.@model function env_mutant_fitness_lognormal(
 end # @model function
 
 # Population mean fitness inference from neutrals data π(s̲ₜ | data)
+include("./model_freq_lognormal.jl")
+
+# Population mean fitness inference from neutrals data π(s̲ₜ | data)
 include("./model_neutrals_lognormal.jl")
 
 # fitness inference π(s̲⁽ᵐ⁾, s̲ₜ | data)
