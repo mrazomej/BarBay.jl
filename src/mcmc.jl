@@ -616,7 +616,7 @@ Sampling modality to be used. Options are:
 - `verbose::Bool=true`: Boolean indicating if the function should print partial
   progress to the screen or not.
 """
-function mcmc_joint_mean_fitness(;
+function mcmc_popmean_fitness(;
     data::DF.AbstractDataFrame,
     n_walkers::Int,
     n_steps::Int,
