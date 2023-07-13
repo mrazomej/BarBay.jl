@@ -39,12 +39,12 @@ lineages.
   assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. **NOTE**: This method assigns
     the same prior to **all** mutant fitness error values to be inferred.
 """
-Turing.@model function mean_fitness_lognormal(
+Turing.@model function neutrals_lognormal(
     R̲̲⁽ⁿ⁾::Matrix{Int64},
     R̲̲::Vector{Vector{Int64}},
     n̲ₜ::Vector{Int64};
-    s_pop_prior::Vector{Float64}=[0.0, 2.0],
-    σ_pop_prior::Vector{Float64}=[0.0, 1.0],
+    s_pop_prior::Vector{Float64}=[0.0, 1.0],
+    σ_pop_prior::Vector{Float64}=[0.0, 0.5],
     λ_prior::VecOrMat{Float64}=[3.0, 3.0]
 )
     # Define number of time points
