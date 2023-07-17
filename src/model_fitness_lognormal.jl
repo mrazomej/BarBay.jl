@@ -36,31 +36,39 @@ fitness experiment.
   avoid the `sum` computation within the `Turing` model.
 
 ## Optional Keyword Arguments
-- `s_pop_prior::Vector{Float64}=[0.0, 2.0]`: Vector with the correspnding
-    parameters (`s_pop_prior[1]` = mean, `s_pop_prior[2]` = standard deviation)
-    for a Normal prior on the population mean fitness values. **NOTE**: This
-    method assigns the same prior to **all** population mean fitness to be
-    inferred.
-- `σ_pop_prior::Vector{Float64}=[0.0, 1.0]`: Vector with the correspnding
-    parameters (`σ_pop_prior[1]` = mean, `σ_pop_prior[2]` = standard deviation)
-    for a Log-Normal prior on the population mean fitness error utilized in the
-    log-likelihood function. **NOTE**: This method assigns the same prior to
-    **all** population mean fitness errors to be inferred.
-- `s_mut_prior::Vector{Float64}=[0.0, 2.0]`: Vector with the correspnding
-    parameters (`s_mut_prior[1]` = mean, `s_mut_prior[2]` = standard deviation)
-    for a Normal prior on the mutant fitness values. **NOTE**: This method
-    assigns the same prior to **all** mutant fitness values to be inferred.
-- `σ_mut_prior::Vector{Float64}=[0.0, 1.0]`: Vector with the correspnding
-    parameters (`σ_mut_prior[1]` = mean, `σ_mut_prior[2]` = standard deviation)
-    for a Log-Normal prior on the mutant fitness error utilized in the
-    log-likelihood function. **NOTE**: This method assigns the same prior to
-    **all** mutant fitness error values to be inferred.
-- `λ_prior::Vector{Float64}=[3.0, 3.0]`: Vector with the corresponding
-  parameters (`λ_prior[1]` = mean, `λ_prior[2]` = standard deviation) for a
-  Log-Normal prior on the λ parameter in the Poisson distribution. The λ
-  parameter can be interpreted as the mean number of barcode counts since we
-  assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. **NOTE**: This method assigns
-    the same prior to **all** mutant fitness error values to be inferred.
+- `s_pop_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
+    correspnding parameters (Vector: `s_pop_prior[1]` = mean, `s_pop_prior[2]` =
+    standard deviation, Matrix: `s_pop_prior[:, 1] = mean`, `s_pop_prior[:, 2] =
+    standard deviation`) for a Normal prior on the population mean fitness
+    values. If `typeof(s_pop_prior) <: Matrix`, there should be as many rows in
+    the matrix as pairs of time adjacent time points in dataset.
+- `σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+    correspnding parameters (Vector: `σ_pop_prior[1]` = mean, `σ_pop_prior[2]` =
+    standard deviation, Matrix: `σ_pop_prior[:, 1] = mean`, `σ_pop_prior[:, 2] =
+    standard deviation`) for a Log-Normal prior on the population mean fitness
+    error utilized in the log-likelihood function. If `typeof(σ_pop_prior) <:
+    Matrix`, there should be as many rows in the matrix as pairs of time
+    adjacent time points in dataset.
+- `s_mut_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
+    correspnding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
+    standard deviation, Matrix: `s_mut_prior[:, 1] = mean`, `s_mut_prior[:, 2] =
+    standard deviation`) for a Normal prior on the mutant fitness values. If
+    `typeof(s_mut_prior) <: Matrix`, there should be as many rows in the matrix
+    as mutant lineages in the dataset.
+- `σ_mut_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+  correspnding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
+  standard deviation, Matrix: `s_mut_prior[:, 1] = mean`, `s_mut_prior[:, 2] =
+  standard deviation`) for a Log-Normal prior on the mutant fitness error
+  utilized in the log-likelihood function. If `typeof(σ_mut_prior) <: Matrix`,
+  there should be as many rows in the matrix as mutant lineages in the dataset.
+- `λ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
+  correspnding parameters (Vector: `λ_prior[1]` = mean, `λ_prior[2]` = standard
+  deviation, Matrix: `λ_prior[:, 1] = mean`, `λ_prior[:, 2] = standard
+  deviation`) for a Log-Normal prior on the λ parameter in the Poisson
+  distribution. The λ parameter can be interpreted as the mean number of barcode
+  counts since we assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. If
+  `typeof(λ_prior) <: Matrix`, there should be as many rows in the matrix as
+  number of barcodes × number of time points in the dataset.
 """
 Turing.@model function fitness_lognormal(
     R̲̲⁽ⁿ⁾::Matrix{Int64},
