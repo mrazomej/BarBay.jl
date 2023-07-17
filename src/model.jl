@@ -570,4 +570,4 @@ include("./model_fitness_normal.jl")
 include("./model_multienv_fitness_lognormal.jl")
 
 # Hierarchical model for multiple experimental replicates π(θ̲ᴹ, s̲ᴹ, s̲ₜ | data)
-include("./model_fitness_hierarchical_replicates.jl")
+include("./model_fitness_lognormal_hierarchical_replicates.jl")
