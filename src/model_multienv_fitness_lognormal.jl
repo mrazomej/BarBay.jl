@@ -20,9 +20,10 @@ fitness experiment with different environments on each growth-dilution cycle.
   in the data set and `M` is the number of mutant lineage barcodes. Each column
   represents the barcode count trajectory for a single mutant lineage. **NOTE**:
   The model assumes the rows are sorted in order of increasing time.
-- `R̲̲::Matrix{Int64}`:: `T × B` matrix, where `T` is the number of time points
-  in the data set and `B` is the number of barcodes. Each column represents the
-  barcode count trajectory for a single lineage. **NOTE**: This matrix does not
+- `R̲̲::Vector{Vector{Int64}}`:: `T × B` matrix--split into a vector of vectors
+  for computational efficiency--where `T` is the number of time points in the
+  data set and `B` is the number of barcodes. Each column represents the barcode
+  count trajectory for a single lineage. **NOTE**: This matrix does not
   necessarily need to be equivalent to `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)`. This is because
   `R̲̲⁽ᵐ⁾` can exclude mutant barcodes to perform the joint inference only for a
   subgroup, but `R̲̲` must still contain all counts. Usually, if `R̲̲⁽ᵐ⁾`
@@ -40,42 +41,51 @@ fitness experiment with different environments on each growth-dilution cycle.
   time point.
 
 ## Optional Keyword Arguments
-- `s_pop_prior::Vector{Float64}=[0.0, 2.0]`: Vector with the correspnding
-    parameters (`s_pop_prior[1]` = mean, `s_pop_prior[2]` = standard deviation)
-    for a Normal prior on the population mean fitness values. **NOTE**: This
-    method assigns the same prior to **all** population mean fitness to be
-    inferred.
-- `σ_pop_prior::Vector{Float64}=[0.0, 1.0]`: Vector with the correspnding
-    parameters (`σ_pop_prior[1]` = mean, `σ_pop_prior[2]` = standard deviation)
-    for a Log-Normal prior on the population mean fitness error utilized in the
-    log-likelihood function. **NOTE**: This method assigns the same prior to
-    **all** population mean fitness errors to be inferred.
-- `s_mut_prior::Vector{Float64}=[0.0, 2.0]`: Vector with the correspnding
-    parameters (`s_mut_prior[1]` = mean, `s_mut_prior[2]` = standard deviation)
-    for a Normal prior on the mutant fitness values. **NOTE**: This method
-    assigns the same prior to **all** mutant fitness values to be inferred.
-- `σ_mut_prior::Vector{Float64}=[0.0, 1.0]`: Vector with the correspnding
-    parameters (`σ_mut_prior[1]` = mean, `σ_mut_prior[2]` = standard deviation)
-    for a Log-Normal prior on the mutant fitness error utilized in the
-    log-likelihood function. **NOTE**: This method assigns the same prior to
-    **all** mutant fitness error values to be inferred.
-- `λ_prior::Vector{Float64}=[3.0, 3.0]`: Vector with the corresponding
-  parameters (`λ_prior[1]` = mean, `λ_prior[2]` = standard deviation) for a
-  Log-Normal prior on the λ parameter in the Poisson distribution. The λ
-  parameter can be interpreted as the mean number of barcode counts since we
-  assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. **NOTE**: This method assigns
-    the same prior to **all** mutant fitness error values to be inferred.
+- `s_pop_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
+    correspnding parameters (Vector: `s_pop_prior[1]` = mean, `s_pop_prior[2]` =
+    standard deviation, Matrix: `s_pop_prior[:, 1] = mean`, `s_pop_prior[:, 2] =
+    standard deviation`) for a Normal prior on the population mean fitness
+    values. If `typeof(s_pop_prior) <: Matrix`, there should be as many rows in
+    the matrix as pairs of time adjacent time points in dataset.
+- `σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+    correspnding parameters (Vector: `σ_pop_prior[1]` = mean, `σ_pop_prior[2]` =
+    standard deviation, Matrix: `σ_pop_prior[:, 1] = mean`, `σ_pop_prior[:, 2] =
+    standard deviation`) for a Log-Normal prior on the population mean fitness
+    error utilized in the log-likelihood function. If `typeof(σ_pop_prior) <:
+    Matrix`, there should be as many rows in the matrix as pairs of time
+    adjacent time points in dataset.
+- `s_mut_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
+    correspnding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
+    standard deviation, Matrix: `s_mut_prior[:, 1] = mean`, `s_mut_prior[:, 2] =
+    standard deviation`) for a Normal prior on the mutant fitness values. If
+    `typeof(s_mut_prior) <: Matrix`, there should be as many rows in the matrix
+    as mutant lineages × number of unique environments in the dataset.
+- `σ_mut_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+  correspnding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
+  standard deviation, Matrix: `s_mut_prior[:, 1] = mean`, `s_mut_prior[:, 2] =
+  standard deviation`) for a Log-Normal prior on the mutant fitness error
+  utilized in the log-likelihood function. If `typeof(σ_mut_prior) <: Matrix`,
+  there should be as many rows in the matrix as mutant lineages × number of
+  unique environments in the dataset.
+- `λ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
+  correspnding parameters (Vector: `λ_prior[1]` = mean, `λ_prior[2]` = standard
+  deviation, Matrix: `λ_prior[:, 1] = mean`, `λ_prior[:, 2] = standard
+  deviation`) for a Log-Normal prior on the λ parameter in the Poisson
+  distribution. The λ parameter can be interpreted as the mean number of barcode
+  counts since we assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. If
+  `typeof(λ_prior) <: Matrix`, there should be as many rows in the matrix as
+  number of barcodes × number of time points in the dataset.
 """
 Turing.@model function multienv_fitness_lognormal(
     R̲̲⁽ⁿ⁾::Matrix{Int64},
     R̲̲⁽ᵐ⁾::Matrix{Int64},
-    R̲̲::Matrix{Int64},
+    R̲̲::Vector{Vector{Int64}},
     n̲ₜ::Vector{Int64};
     envs::Vector{<:Any},
-    s_pop_prior::Vector{Float64}=[0.0, 2.0],
-    σ_pop_prior::Vector{Float64}=[0.0, 1.0],
-    s_mut_prior::Vector{Float64}=[0.0, 2.0],
-    σ_mut_prior::Vector{Float64}=[0.0, 1.0],
+    s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
+    σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
+    s_mut_prior::VecOrMat{Float64}=[0.0, 2.0],
+    σ_mut_prior::VecOrMat{Float64}=[0.0, 1.0],
     λ_prior::VecOrMat{Float64}=[3.0, 3.0]
 )
     # Check that the number of time points and environments matches
@@ -90,31 +100,64 @@ Turing.@model function multienv_fitness_lognormal(
     # Define environmental indexes
     env_idx = indexin(envs, env_unique)
 
+    # Define number of time points
+    n_time = length(n̲ₜ)
+    # Define number of neutrals
+    n_neutral = size(R̲̲⁽ⁿ⁾, 2)
+    # Define numbero f mutants
+    n_mut = size(R̲̲⁽ᵐ⁾, 2)
+
     ## %%%%%%%%%%%%%% Population mean fitness  %%%%%%%%%%%%%% ##
 
     # Prior on population mean fitness π(s̲ₜ) 
-    s̲ₜ ~ Turing.MvNormal(
-        repeat([s_pop_prior[1]], size(R̲̲⁽ⁿ⁾, 1) - 1),
-        LinearAlgebra.I(size(R̲̲⁽ⁿ⁾, 1) - 1) .* s_pop_prior[2] .^ 2
-    )
+    if typeof(s_pop_prior) <: Vector
+        s̲ₜ ~ Turing.MvNormal(
+            repeat([s_pop_prior[1]], n_time - 1),
+            LinearAlgebra.I(n_time - 1) .* s_pop_prior[2] .^ 2
+        )
+    elseif typeof(s_pop_prior) <: Matrix
+        s̲ₜ ~ Turing.MvNormal(
+            s_pop_prior[:, 1], LinearAlgebra.Diagonal(s_pop_prior[:, 2] .^ 2)
+        )
+    end # if
+
     # Prior on LogNormal error π(σ̲ₜ)
-    σ̲ₜ ~ Turing.MvLogNormal(
-        repeat([σ_pop_prior[1]], size(R̲̲⁽ⁿ⁾, 1) - 1),
-        LinearAlgebra.I(size(R̲̲⁽ⁿ⁾, 1) - 1) .* σ_pop_prior[2] .^ 2
-    )
+    if typeof(σ_pop_prior) <: Vector
+        σ̲ₜ ~ Turing.MvLogNormal(
+            repeat([σ_pop_prior[1]], n_time - 1),
+            LinearAlgebra.I(n_time - 1) .* σ_pop_prior[2] .^ 2
+        )
+    elseif typeof(σ_pop_prior) <: Matrix
+        σ̲ₜ ~ Turing.MvNormal(
+            σ_pop_prior[:, 1], LinearAlgebra.Diagonal(σ_pop_prior[:, 2] .^ 2)
+        )
+    end # if
 
     ## %%%%%%%%%%%%%% Mutant fitness  %%%%%%%%%%%%%% ##
 
     # Prior on mutant fitness π(s̲⁽ᵐ⁾)
-    s̲⁽ᵐ⁾ ~ Turing.MvNormal(
-        repeat([s_mut_prior[1]], size(R̲̲⁽ᵐ⁾, 2) * n_env),
-        LinearAlgebra.I(size(R̲̲⁽ᵐ⁾, 2) * n_env) .* s_mut_prior[2] .^ 2
-    )
+    if typeof(s_mut_prior) <: Vector
+        s̲⁽ᵐ⁾ ~ Turing.MvNormal(
+            repeat([s_mut_prior[1]], size(R̲̲⁽ᵐ⁾, 2) * n_env),
+            LinearAlgebra.I(size(R̲̲⁽ᵐ⁾, 2) * n_env) .* s_mut_prior[2] .^ 2
+        )
+    elseif typeof(s_mut_prior) <: Matrix
+        s̲⁽ᵐ⁾ ~ Turing.MvNormal(
+            s_mut_prior[:, 1], LinearAlgebra.Diagonal(s_mut_prior[:, 2] .^ 2)
+        )
+    end # if
+
     # Prior on LogNormal error π(σ̲⁽ᵐ⁾)
-    σ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
-        repeat([σ_mut_prior[1]], size(R̲̲⁽ᵐ⁾, 2) * n_env),
-        LinearAlgebra.I(size(R̲̲⁽ᵐ⁾, 2) * n_env) .* σ_mut_prior[2] .^ 2
-    )
+    if typeof(σ_mut_prior) <: Vector
+        σ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
+            repeat([σ_mut_prior[1]], size(R̲̲⁽ᵐ⁾, 2) * n_env),
+            LinearAlgebra.I(size(R̲̲⁽ᵐ⁾, 2) * n_env) .* σ_mut_prior[2] .^ 2
+        )
+    elseif typeof(σ_mut_prior) <: Matrix
+        σ̲⁽ᵐ⁾ ~ Turing.MvNormal(
+            σ_mut_prior[:, 1], LinearAlgebra.Diagonal(σ_mut_prior[:, 2] .^ 2)
+        )
+    end # if
 
 
     ## %%%%%%%%%%%%%% Barcode frequencies %%%%%%%%%%%%%% ##
@@ -136,7 +179,7 @@ Turing.@model function multienv_fitness_lognormal(
     # originally sampled as a vector for the `Turing.jl` samplers to deal with
     # it. But reshaping it to a matrix simplifies the computation of frequencies
     # and frequency ratios.
-    Λ̲̲ = reshape(Λ̲̲, size(R̲̲)...)
+    Λ̲̲ = reshape(Λ̲̲, length(R̲̲), length(first(R̲̲)))
 
     # Compute barcode frequencies from Poisson parameters
     F̲̲ = Λ̲̲ ./ sum(Λ̲̲, dims=2)
@@ -146,21 +189,30 @@ Turing.@model function multienv_fitness_lognormal(
 
     # Split neutral and mutant frequency ratios. Note: the @view macro means
     # that there is not allocation to memory on this step.
-    Γ̲̲⁽ⁿ⁾ = @view Γ̲̲[:, 1:size(R̲̲⁽ⁿ⁾, 2)]
-    Γ̲̲⁽ᵐ⁾ = @view Γ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1:size(R̲̲⁽ⁿ⁾, 2)+size(R̲̲⁽ᵐ⁾, 2)]
+    Γ̲̲⁽ⁿ⁾ = vec(Γ̲̲[:, 1:n_neutral])
+    Γ̲̲⁽ᵐ⁾ = vec(Γ̲̲[:, n_neutral+1:n_neutral+n_mut])
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)
-    n̲ₜ ~ Turing.arraydist([Turing.Poisson(sum(Λ̲̲[t, :])) for t = 1:size(R̲̲⁽ⁿ⁾, 1)])
+    n̲ₜ ~ Turing.arraydist(Turing.Poisson.(vec(sum(Λ̲̲, dims=2))))
 
-    # Loop through time points
-    for t = 1:size(R̲̲⁽ⁿ⁾, 1)
-        # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). Note: We add the
-        # check_args=false option to avoid the recurrent problem of
-        # > Multinomial: p is not a probability vector.
-        # due to rounding errors
-        R̲̲[t, :] ~ Turing.Multinomial(n̲ₜ[t], F̲̲[t, :]; check_args=false)
-    end # for
+    # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). 
+    # Note # 1: We add the check_args=false option to avoid the recurrent
+    # problem of
+    # > Multinomial: p is not a probability vector. 
+    # due to rounding errors 
+    # Note # 2: We use @addlogprob! rather than a broadcasting function of the
+    # form
+    # R̲̲ .~ Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false)
+    # because according to this discussion
+    # (https://discourse.julialang.org/t/making-turing-fast-with-large-numbers-of-parameters/69072/78?u=dlakelan)
+    # broadcasting does not work well when using ReverseDiff.jl
+    Turing.@addlogprob! sum(
+        Turing.logpdf.(
+            Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false),
+            R̲̲
+        ),
+    )
 
     ## %%%%%%%%%%%% Reshape arrays to split replicate variables %%%%%%%%%%%% ##
     s̲⁽ᵐ⁾ = reshape(s̲⁽ᵐ⁾, n_env, :)  # n_env × n_mut
@@ -176,7 +228,7 @@ Turing.@model function multienv_fitness_lognormal(
             repeat(-s̲ₜ, size(Γ̲̲⁽ⁿ⁾, 2)),
             LinearAlgebra.Diagonal(repeat(σ̲ₜ .^ 2, size(Γ̲̲⁽ⁿ⁾, 2)))
         ),
-        Γ̲̲⁽ⁿ⁾[:]
+        Γ̲̲⁽ⁿ⁾
     )
 
     # Sample posterior for nutant lineage frequency ratio. Since it is a sample
@@ -191,7 +243,7 @@ Turing.@model function multienv_fitness_lognormal(
                 vcat([σ⁽ᵐ⁾[env_idx] for σ⁽ᵐ⁾ in eachcol(σ̲⁽ᵐ⁾)]...) .^ 2
             )
         ),
-        Γ̲̲⁽ᵐ⁾[:]
+        Γ̲̲⁽ᵐ⁾
     )
     return F̲̲
 end # @model function
@@ -236,25 +288,31 @@ from a single mutant barcode and all available neutral barcodes.
   time point.
 
 ## Optional Keyword Arguments
-- `s_pop_prior::Vector{Float64}=[0.0, 2.0]`: Vector with the correspnding
-    parameters (`s_pop_prior[1]` = mean, `s_pop_prior[2]` = standard deviation)
-    for a Normal prior on the population mean fitness values. **NOTE**: This
-    method assigns the same prior to **all** population mean fitness to be
-    inferred.
-- `σ_pop_prior::Vector{Float64}=[0.0, 1.0]`: Vector with the correspnding
-    parameters (`σ_pop_prior[1]` = mean, `σ_pop_prior[2]` = standard deviation)
-    for a Log-Normal prior on the population mean fitness error utilized in the
-    log-likelihood function. **NOTE**: This method assigns the same prior to
-    **all** population mean fitness errors to be inferred.
-- `s_mut_prior::Vector{Float64}=[0.0, 2.0]`: Vector with the correspnding
-    parameters (`s_mut_prior[1]` = mean, `s_mut_prior[2]` = standard deviation)
-    for a Normal prior on the mutant fitness values. **NOTE**: This method
-    assigns the same prior to **all** mutant fitness values to be inferred.
-- `σ_mut_prior::Vector{Float64}=[0.0, 1.0]`: Vector with the correspnding
-    parameters (`σ_mut_prior[1]` = mean, `σ_mut_prior[2]` = standard deviation)
-    for a Log-Normal prior on the mutant fitness error utilized in the
-    log-likelihood function. **NOTE**: This method assigns the same prior to
-    **all** mutant fitness error values to be inferred.
+- `s_pop_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
+    correspnding parameters (Vector: `s_pop_prior[1]` = mean, `s_pop_prior[2]` =
+    standard deviation, Matrix: `s_pop_prior[:, 1] = mean`, `s_pop_prior[:, 2] =
+    standard deviation`) for a Normal prior on the population mean fitness
+    values. If `typeof(s_pop_prior) <: Matrix`, there should be as many rows in
+    the matrix as pairs of time adjacent time points in dataset.
+- `σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+    correspnding parameters (Vector: `σ_pop_prior[1]` = mean, `σ_pop_prior[2]` =
+    standard deviation, Matrix: `σ_pop_prior[:, 1] = mean`, `σ_pop_prior[:, 2] =
+    standard deviation`) for a Log-Normal prior on the population mean fitness
+    error utilized in the log-likelihood function. If `typeof(σ_pop_prior) <:
+    Matrix`, there should be as many rows in the matrix as pairs of time
+    adjacent time points in dataset.
+- `s_mut_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
+  correspnding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
+  standard deviation, Matrix: `s_mut_prior[:, 1] = mean`, `s_mut_prior[:, 2] =
+  standard deviation`) for a Normal prior on the mutant fitness values. If
+  `typeof(s_mut_prior) <: Matrix`, there should be as many rows in the matrix as
+  unique environments.
+- `σ_mut_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+  correspnding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
+  standard deviation, Matrix: `s_mut_prior[:, 1] = mean`, `s_mut_prior[:, 2] =
+  standard deviation`) for a Log-Normal prior on the mutant fitness error
+  utilized in the log-likelihood function. If `typeof(σ_mut_prior) <: Matrix`,
+  there should be as many rows in the matrix as unique environments.
 - `λ_prior::Vector{Float64}=[3.0, 3.0]`: Vector with the corresponding
   parameters (`λ_prior[1]` = mean, `λ_prior[2]` = standard deviation) for a
   Log-Normal prior on the λ parameter in the Poisson distribution. The λ
@@ -265,13 +323,13 @@ from a single mutant barcode and all available neutral barcodes.
 Turing.@model function multienv_fitness_lognormal(
     R̲̲⁽ⁿ⁾::Matrix{Int64},
     r̲⁽ᵐ⁾::Vector{Int64},
-    R̲̲::Matrix{Int64},
+    R̲̲::Vector{Vector{Int64}},
     n̲ₜ::Vector{Int64};
     envs::Vector{<:Any},
-    s_pop_prior::Vector{Float64}=[0.0, 2.0],
-    σ_pop_prior::Vector{Float64}=[0.0, 1.0],
-    s_mut_prior::Vector{Float64}=[0.0, 2.0],
-    σ_mut_prior::Vector{Float64}=[0.0, 1.0],
+    s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
+    σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
+    s_mut_prior::VecOrMat{Float64}=[0.0, 2.0],
+    σ_mut_prior::VecOrMat{Float64}=[0.0, 1.0],
     λ_prior::VecOrMat{Float64}=[3.0, 3.0]
 )
     # Check that the number of time points and environments matches
@@ -288,32 +346,61 @@ Turing.@model function multienv_fitness_lognormal(
 
     # Define number of time points
     n_time = length(n̲ₜ)
+    # Define number of neutrals
+    n_neutral = size(R̲̲⁽ⁿ⁾, 2)
 
     ## %%%%%%%%%%%%%% Population mean fitness  %%%%%%%%%%%%%% ##
 
     # Prior on population mean fitness π(s̲ₜ) 
-    s̲ₜ ~ Turing.MvNormal(
-        repeat([s_pop_prior[1]], n_time - 1),
-        LinearAlgebra.I(n_time - 1) .* s_pop_prior[2] .^ 2
-    )
+    if typeof(s_pop_prior) <: Vector
+        s̲ₜ ~ Turing.MvNormal(
+            repeat([s_pop_prior[1]], n_time - 1),
+            LinearAlgebra.I(n_time - 1) .* s_pop_prior[2] .^ 2
+        )
+    elseif typeof(s_pop_prior) <: Matrix
+        s̲ₜ ~ Turing.MvNormal(
+            s_pop_prior[:, 1], LinearAlgebra.Diagonal(s_pop_prior[:, 2] .^ 2)
+        )
+    end # if
+
     # Prior on LogNormal error π(σ̲ₜ)
-    σ̲ₜ ~ Turing.MvLogNormal(
-        repeat([σ_pop_prior[1]], n_time - 1),
-        LinearAlgebra.I(n_time - 1) .* σ_pop_prior[2] .^ 2
-    )
+    if typeof(σ_pop_prior) <: Vector
+        σ̲ₜ ~ Turing.MvLogNormal(
+            repeat([σ_pop_prior[1]], n_time - 1),
+            LinearAlgebra.I(n_time - 1) .* σ_pop_prior[2] .^ 2
+        )
+    elseif typeof(σ_pop_prior) <: Matrix
+        σ̲ₜ ~ Turing.MvNormal(
+            σ_pop_prior[:, 1], LinearAlgebra.Diagonal(σ_pop_prior[:, 2] .^ 2)
+        )
+    end # if
 
     ## %%%%%%%%%%%%%% Mutant fitness  %%%%%%%%%%%%%% ##
 
     # Prior on mutant fitness π(s̲⁽ᵐ⁾)
-    s̲⁽ᵐ⁾ ~ Turing.MvNormal(
-        repeat([s_mut_prior[1]], n_env),
-        LinearAlgebra.I(n_env) .* s_mut_prior[2] .^ 2
-    )
+    if typeof(s_mut_prior) <: Vector
+        s̲⁽ᵐ⁾ ~ Turing.MvNormal(
+            repeat([s_mut_prior[1]], n_mut),
+            LinearAlgebra.I(n_mut) .* s_mut_prior[2] .^ 2
+        )
+    elseif typeof(s_mut_prior) <: Matrix
+        s̲⁽ᵐ⁾ ~ Turing.MvNormal(
+            s_mut_prior[:, 1], LinearAlgebra.Diagonal(s_mut_prior[:, 2] .^ 2)
+        )
+    end # if
+
+
     # Prior on LogNormal error π(σ̲⁽ᵐ⁾)
-    σ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
-        repeat([σ_mut_prior[1]], n_env),
-        LinearAlgebra.I(n_env) .* σ_mut_prior[2] .^ 2
-    )
+    if typeof(σ_mut_prior) <: Vector
+        σ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
+            repeat([σ_mut_prior[1]], n_mut),
+            LinearAlgebra.I(n_mut) .* σ_mut_prior[2] .^ 2
+        )
+    elseif typeof(σ_mut_prior) <: Matrix
+        σ̲⁽ᵐ⁾ ~ Turing.MvNormal(
+            σ_mut_prior[:, 1], LinearAlgebra.Diagonal(σ_mut_prior[:, 2] .^ 2)
+        )
+    end # if
 
     ## %%%%%%%%%%%%%% Barcode frequencies %%%%%%%%%%%%%% ##
 
@@ -344,21 +431,30 @@ Turing.@model function multienv_fitness_lognormal(
 
     # Split neutral and mutant frequency ratios. Note: the @view macro means
     # that there is not allocation to memory on this step.
-    Γ̲̲⁽ⁿ⁾ = @view Γ̲̲[:, 1:size(R̲̲⁽ⁿ⁾, 2)]
-    γ̲⁽ᵐ⁾ = @view Γ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1]
+    Γ̲̲⁽ⁿ⁾ = vec(Γ̲̲[:, 1:n_neutral])
+    γ̲⁽ᵐ⁾ = vec(Γ̲̲[:, n_neutral+1])
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)
-    n̲ₜ ~ Turing.arraydist([Turing.Poisson(sum(Λ̲̲[t, :])) for t = 1:n_time])
+    n̲ₜ ~ Turing.arraydist(Turing.Poisson.(vec(sum(Λ̲̲, dims=2))))
 
-    # Loop through time points
-    for t = 1:n_time
-        # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). Note: We add the
-        # check_args=false option to avoid the recurrent problem of
-        # > Multinomial: p is not a probability vector.
-        # due to rounding errors
-        R̲̲[t, :] ~ Turing.Multinomial(n̲ₜ[t], F̲̲[t, :]; check_args=false)
-    end # for
+    # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). 
+    # Note # 1: We add the check_args=false option to avoid the recurrent
+    # problem of
+    # > Multinomial: p is not a probability vector. 
+    # due to rounding errors 
+    # Note # 2: We use @addlogprob! rather than a broadcasting function of the
+    # form
+    # R̲̲ .~ Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false)
+    # because according to this discussion
+    # (https://discourse.julialang.org/t/making-turing-fast-with-large-numbers-of-parameters/69072/78?u=dlakelan)
+    # broadcasting does not work well when using ReverseDiff.jl
+    Turing.@addlogprob! sum(
+        Turing.logpdf.(
+            Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false),
+            R̲̲
+        ),
+    )
 
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
@@ -367,10 +463,10 @@ Turing.@model function multienv_fitness_lognormal(
     # π(γₜ⁽ⁿ⁾| sₜ, σₜ)
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvLogNormal(
-            repeat(-s̲ₜ, size(Γ̲̲⁽ⁿ⁾, 2)),
-            LinearAlgebra.Diagonal(repeat(σ̲ₜ .^ 2, size(Γ̲̲⁽ⁿ⁾, 2)))
+            repeat(-s̲ₜ, n_neutral),
+            LinearAlgebra.Diagonal(repeat(σ̲ₜ .^ 2, n_neutral))
         ),
-        Γ̲̲⁽ⁿ⁾[:]
+        Γ̲̲⁽ⁿ⁾
     )
 
     # Sample posterior for nutant lineage frequency ratio. Since it is a sample
@@ -383,7 +479,7 @@ Turing.@model function multienv_fitness_lognormal(
             # Build vector for variances
             LinearAlgebra.Diagonal(σ̲⁽ᵐ⁾[env_idx[2:end]] .^ 2)
         ),
-        γ̲⁽ᵐ⁾[:]
+        γ̲⁽ᵐ⁾
     )
     return F̲̲
 end # @model function
