@@ -24,8 +24,4 @@ module utils
 include("utils.jl")
 end # submodule
 
-module viz
-include("viz.jl")
-end # submodule
-
 end # module
