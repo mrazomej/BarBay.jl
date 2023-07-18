@@ -138,8 +138,8 @@ Turing.@model function multienv_fitness_lognormal(
     # Prior on mutant fitness π(s̲⁽ᵐ⁾)
     if typeof(s_mut_prior) <: Vector
         s̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([s_mut_prior[1]], size(R̲̲⁽ᵐ⁾, 2) * n_env),
-            LinearAlgebra.I(size(R̲̲⁽ᵐ⁾, 2) * n_env) .* s_mut_prior[2] .^ 2
+            repeat([s_mut_prior[1]], n_mut * n_env),
+            LinearAlgebra.I(n_mut * n_env) .* s_mut_prior[2] .^ 2
         )
     elseif typeof(s_mut_prior) <: Matrix
         s̲⁽ᵐ⁾ ~ Turing.MvNormal(
@@ -150,8 +150,8 @@ Turing.@model function multienv_fitness_lognormal(
     # Prior on LogNormal error π(σ̲⁽ᵐ⁾)
     if typeof(σ_mut_prior) <: Vector
         σ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
-            repeat([σ_mut_prior[1]], size(R̲̲⁽ᵐ⁾, 2) * n_env),
-            LinearAlgebra.I(size(R̲̲⁽ᵐ⁾, 2) * n_env) .* σ_mut_prior[2] .^ 2
+            repeat([σ_mut_prior[1]], n_mut * n_env),
+            LinearAlgebra.I(n_mut * n_env) .* σ_mut_prior[2] .^ 2
         )
     elseif typeof(σ_mut_prior) <: Matrix
         σ̲⁽ᵐ⁾ ~ Turing.MvNormal(
@@ -165,8 +165,8 @@ Turing.@model function multienv_fitness_lognormal(
     if typeof(λ_prior) <: Vector
         # Prior on Poisson distribtion parameters π(λ)
         Λ̲̲ ~ Turing.MvLogNormal(
-            repeat([λ_prior[1]], length(R̲̲)),
-            LinearAlgebra.I(length(R̲̲)) .* λ_prior[2]^2
+            repeat([λ_prior[1]], sum(length.(R̲̲))),
+            LinearAlgebra.I(sum(length.(R̲̲))) .* λ_prior[2]^2
         )
     elseif typeof(λ_prior) <: Matrix
         # Prior on Poisson distribtion parameters π(λ)
@@ -225,8 +225,8 @@ Turing.@model function multienv_fitness_lognormal(
     # π(γₜ⁽ⁿ⁾| sₜ, σₜ)
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvLogNormal(
-            repeat(-s̲ₜ, size(Γ̲̲⁽ⁿ⁾, 2)),
-            LinearAlgebra.Diagonal(repeat(σ̲ₜ .^ 2, size(Γ̲̲⁽ⁿ⁾, 2)))
+            repeat(-s̲ₜ, n_neutral),
+            LinearAlgebra.Diagonal(repeat(σ̲ₜ .^ 2, n_neutral))
         ),
         Γ̲̲⁽ⁿ⁾
     )
@@ -237,10 +237,10 @@ Turing.@model function multienv_fitness_lognormal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvLogNormal(
             # Build vector for fitness differences
-            vcat([s⁽ᵐ⁾[env_idx] .- s̲ₜ for s⁽ᵐ⁾ in eachcol(s̲⁽ᵐ⁾)]...),
+            vcat([s⁽ᵐ⁾[env_idx[2:end]] .- s̲ₜ for s⁽ᵐ⁾ in eachcol(s̲⁽ᵐ⁾)]...),
             # Build vector for variances
             LinearAlgebra.Diagonal(
-                vcat([σ⁽ᵐ⁾[env_idx] for σ⁽ᵐ⁾ in eachcol(σ̲⁽ᵐ⁾)]...) .^ 2
+                vcat([σ⁽ᵐ⁾[env_idx[2:end]] for σ⁽ᵐ⁾ in eachcol(σ̲⁽ᵐ⁾)]...) .^ 2
             )
         ),
         Γ̲̲⁽ᵐ⁾
@@ -407,8 +407,8 @@ Turing.@model function multienv_fitness_lognormal(
     if typeof(λ_prior) <: Vector
         # Prior on Poisson distribtion parameters π(λ)
         Λ̲̲ ~ Turing.MvLogNormal(
-            repeat([λ_prior[1]], length(R̲̲)),
-            LinearAlgebra.I(length(R̲̲)) .* λ_prior[2]^2
+            repeat([λ_prior[1]], sum(length.(R̲̲))),
+            LinearAlgebra.I(sum(length.(R̲̲))) .* λ_prior[2]^2
         )
     elseif typeof(λ_prior) <: Matrix
         # Prior on Poisson distribtion parameters π(λ)
