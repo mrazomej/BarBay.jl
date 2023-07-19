@@ -3,7 +3,7 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    fitness_lognormal(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; s_pop_prior, σ_pop_prior, s_mut_prior, σ_mut_prior, λ_prior)
+    fitness_lognormal_hierarchical_replicates(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; s_pop_prior, σ_pop_prior, s_mut_prior, σ_mut_prior, λ_prior)
 
 `Turing.jl` model to sample the joint posterior distribution for a competitive
 fitness experiment.
@@ -38,7 +38,6 @@ the number of experimental replicates. For each slice on the `R`-axis, each
   reason it is an independent input parameter is to avoid the `sum` computation
   within the `Turing` model.
 
-## Optional Keyword Arguments
 ## Optional Keyword Arguments
 - `s_pop_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
     correspnding parameters (Vector: `s_pop_prior[1]` = mean, `s_pop_prior[2]` =
@@ -118,7 +117,7 @@ Turing.@model function fitness_lognormal_hierarchical_replicates(
             LinearAlgebra.I((n_time - 1) * n_rep) .* σ_pop_prior[2] .^ 2
         )
     elseif typeof(σ_pop_prior) <: Matrix
-        σ̲ₜ ~ Turing.MvNormal(
+        σ̲ₜ ~ Turing.MvLogNormal(
             σ_pop_prior[:, 1], LinearAlgebra.Diagonal(σ_pop_prior[:, 2] .^ 2)
         )
     end # if

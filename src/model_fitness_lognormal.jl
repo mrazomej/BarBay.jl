@@ -109,7 +109,7 @@ Turing.@model function fitness_lognormal(
             LinearAlgebra.I(n_time - 1) .* σ_pop_prior[2] .^ 2
         )
     elseif typeof(σ_pop_prior) <: Matrix
-        σ̲ₜ ~ Turing.MvNormal(
+        σ̲ₜ ~ Turing.MvLogNormal(
             σ_pop_prior[:, 1], LinearAlgebra.Diagonal(σ_pop_prior[:, 2] .^ 2)
         )
     end # if
@@ -136,7 +136,7 @@ Turing.@model function fitness_lognormal(
             LinearAlgebra.I(n_mut) .* σ_mut_prior[2] .^ 2
         )
     elseif typeof(σ_mut_prior) <: Matrix
-        σ̲⁽ᵐ⁾ ~ Turing.MvNormal(
+        σ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
             σ_mut_prior[:, 1], LinearAlgebra.Diagonal(σ_mut_prior[:, 2] .^ 2)
         )
     end # if
@@ -289,8 +289,8 @@ Turing.@model function fitness_lognormal(
     r̲⁽ᵐ⁾::Vector{Int64},
     R̲̲::Vector{Vector{Int64}},
     n̲ₜ::Vector{Int64};
-    s_pop_prior::Vector{Float64}=[0.0, 2.0],
-    σ_pop_prior::Vector{Float64}=[0.0, 1.0],
+    s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
+    σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
     s_mut_prior::Vector{Float64}=[0.0, 2.0],
     σ_mut_prior::Vector{Float64}=[0.0, 1.0],
     λ_prior::VecOrMat{Float64}=[3.0, 3.0]
@@ -303,15 +303,28 @@ Turing.@model function fitness_lognormal(
     ## %%%%%%%%%%%%%% Population mean fitness  %%%%%%%%%%%%%% ##
 
     # Prior on population mean fitness π(s̲ₜ) 
-    s̲ₜ ~ Turing.MvNormal(
-        repeat([s_pop_prior[1]], n_time - 1),
-        LinearAlgebra.I(n_time - 1) .* s_pop_prior[2] .^ 2
-    )
+    if typeof(s_pop_prior) <: Vector
+        s̲ₜ ~ Turing.MvNormal(
+            repeat([s_pop_prior[1]], n_time - 1),
+            LinearAlgebra.I(n_time - 1) .* s_pop_prior[2] .^ 2
+        )
+    elseif typeof(s_pop_prior) <: Matrix
+        s̲ₜ ~ Turing.MvNormal(
+            s_pop_prior[:, 1], LinearAlgebra.Diagonal(s_pop_prior[:, 2] .^ 2)
+        )
+    end # if
+
     # Prior on LogNormal error π(σ̲ₜ)
-    σ̲ₜ ~ Turing.MvLogNormal(
-        repeat([σ_pop_prior[1]], n_time - 1),
-        LinearAlgebra.I(n_time - 1) .* σ_pop_prior[2] .^ 2
-    )
+    if typeof(σ_pop_prior) <: Vector
+        σ̲ₜ ~ Turing.MvLogNormal(
+            repeat([σ_pop_prior[1]], n_time - 1),
+            LinearAlgebra.I(n_time - 1) .* σ_pop_prior[2] .^ 2
+        )
+    elseif typeof(σ_pop_prior) <: Matrix
+        σ̲ₜ ~ Turing.MvLogNormal(
+            σ_pop_prior[:, 1], LinearAlgebra.Diagonal(σ_pop_prior[:, 2] .^ 2)
+        )
+    end # if
 
     ## %%%%%%%%%%%%%% Mutant fitness  %%%%%%%%%%%%%% ##
 
