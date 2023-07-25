@@ -282,3 +282,120 @@ function group_split_naive_fitness(
 
     return groups
 end # function
+
+@doc raw"""
+    df2mats(data; kwargs)
+
+Function that returns the matarices `R̲̲⁽ⁿ⁾`,  `R̲̲⁽ᵐ⁾`, and  `R̲̲` usually
+taken by the functions in the `model.jl` module. This function is useful to
+prototype new models before properly implementing them. The final user most
+likely won't need to ever call this function.
+
+# Arguments
+- `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
+used to sample from the population mean fitness posterior distribution.
+
+## Optional Keyword Arguments
+- `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
+    identifier. The column may contain any type of entry.
+- `time_col::Symbol=:time`: Name of the column in `data` defining the time point
+  at which measurements were done. The column may contain any type of entry as
+  long as `sort` will resulted in time-ordered names.
+- `count_col::Symbol=:count`: Name of the column in `data` containing the raw
+  barcode count. The column must contain entries of type `Int64`.
+- `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
+  the barcode belongs to a neutral lineage or not. The column must contain
+  entries of type `Bool`.
+- `rm_T0::Bool=false`: Optional argument to remove the first time point from the
+  inference. Commonly, the data from this first time point is of much lower
+  quality. Therefore, removing this first time point might result in a better
+  inference.
+
+# Returns
+- `R̲̲⁽ⁿ⁾::Matrix`: T × N matrix with the neutral barcodes read counts.
+- `R̲̲⁽ᵐ⁾::Matrix`: T × M matrix with the mutant barcodes read counts.
+- `R̲̲::Matrix`: T × B matrix with all barcodes read counts.
+- `n̲ₜ::Vector`: T-dimensional vector with the total number of reads per time
+  point.
+"""
+function data2mats(
+    data::DF.AbstractDataFrame;
+    id_col::Symbol=:barcode,
+    time_col::Symbol=:time,
+    count_col::Symbol=:count,
+    neutral_col::Symbol=:neutral,
+    rm_T0::Bool=false
+)
+    # Extract unique time points
+    timepoints = sort(unique(data[:, time_col]))
+
+    # Remove T0 if indicated
+    if rm_T0
+        if verbose
+            println("Deleting T0 as requested...")
+        end # if 
+        data = data[.!(data[:, time_col] .== first(timepoints)), :]
+    end # if
+
+    # Re-extract unique time points
+    timepoints = sort(unique(data[:, time_col]))
+
+    ## %%%%%%%%%%% Neutral barcodes data %%%%%%%%%%% ##
+
+    # Group data by unique mutant barcode
+    data_group = DF.groupby(data[data[:, neutral_col], :], id_col)
+
+    # Check that all barcodes were measured at all points
+    if any([size(d, 1) for d in data_group] .!= length(timepoints))
+        error("Not all neutral barcodes have reported counts in all time points")
+    end # if
+
+    # Initialize array to save counts for each mutant at time t
+    R̲̲⁽ⁿ⁾ = Matrix{Int64}(
+        undef, length(timepoints), length(data_group)
+    )
+
+    # Loop through each unique barcode
+    for (i, d) in enumerate(data_group)
+        # Sort data by timepoint
+        DF.sort!(d, time_col)
+        # Extract data
+        R̲̲⁽ⁿ⁾[:, i] = d[:, count_col]
+    end # for
+
+    ## %%%%%%%%%%% Mutant barcodes data %%%%%%%%%%% ##
+
+    # Group data by unique mutant barcode
+    data_group = DF.groupby(data[.!data[:, neutral_col], :], id_col)
+
+    # Extract group keys
+    data_keys = first.(values.(keys(data_group)))
+
+    # Check that all barcodes were measured at all points
+    if any([size(d, 1) for d in data_group] .!= length(timepoints))
+        error("Not all mutant barcodes have reported counts in all time points")
+    end # if
+
+    # Initialize array to save counts for each mutant at time t
+    R̲̲⁽ᵐ⁾ = Matrix{Int64}(
+        undef, length(timepoints), length(data_group)
+    )
+
+    # Loop through each unique barcode
+    for (i, d) in enumerate(data_group)
+        # Sort data by timepoint
+        DF.sort!(d, time_col)
+        # Extract data
+        R̲̲⁽ᵐ⁾[:, i] = d[:, count_col]
+    end # for
+
+    ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
+
+    # Concatenate neutral and mutant data matrices
+    R̲̲ = hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)
+
+    # Compute total counts for each run
+    n̲ₜ = vec(sum(R̲̲, dims=2))
+
+    return R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ
+end # function
