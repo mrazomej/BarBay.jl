@@ -143,9 +143,13 @@ Turing.@model function fitness_lognormal_hierarchical_replicates(
     )
 
     # Hyper prior on mutant deviations from hyper prior
-    τ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
-        repeat([τ_prior[1]], n_mut * n_rep),
-        LinearAlgebra.I(n_mut * n_rep) .* τ_prior[2] .^ 2
+    # τ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
+    #     repeat([τ_prior[1]], n_mut * n_rep),
+    #     LinearAlgebra.I(n_mut * n_rep) .* τ_prior[2] .^ 2
+    # )
+    τ̲⁽ᵐ⁾ ~ Turing.filldist(
+        Turing.truncated(Turing.Normal(τ_prior...), lower=0),
+        n_mut * n_rep
     )
 
     # mutant fitness = hyperparameter + deviation
