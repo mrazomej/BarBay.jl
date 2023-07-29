@@ -116,7 +116,7 @@ function vi_joint_fitness(;
     neutral_col::Symbol=:neutral,
     rm_T0::Bool=false,
     advi::Turing.AdvancedVI.VariationalInference=Tuing.ADVI(1, 10_000),
-    opt::Union{Turing.AdvancedVI.DecayedADAGrad,Flux.Optimise.AbstractOptimiser}=Turing.Variational.DecayedADAGrad(1e-2, 1.1, 0.9),
+    opt::Union{Turing.AdvancedVI.TruncatedADAGrad,Turing.AdvancedVI.DecayedADAGrad,Flux.Optimise.AbstractOptimiser}=Turing.Variational.DecayedADAGrad(1e-2, 1.1, 0.9),
     fullrank::Bool=false,
     verbose::Bool=true
 )
@@ -248,7 +248,7 @@ function vi_joint_fitness(;
     end # if
 
     # Write output into memory
-    JLD2.jldsave("$(fname)", dist=q, ids=data_keys)
+    JLD2.jldsave("$(fname)", ids=data_keys, dist=q)
 end # function
 
 function pathfinder_joint_fitness(;
