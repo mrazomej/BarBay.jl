@@ -397,5 +397,11 @@ function data2mats(
     # Compute total counts for each run
     n̲ₜ = vec(sum(R̲̲, dims=2))
 
-    return R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ
+    return Dict(
+        :neutral => R̲̲⁽ⁿ⁾,
+        :mut => R̲̲⁽ᵐ⁾,
+        :bc => R̲̲,
+        :sum => n̲ₜ,
+        :mut_keys => data_keys
+    )
 end # function
