@@ -1,5 +1,5 @@
 @doc raw"""
-    fitness_lognormal(R̲̲, R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, n̲ₜ; s_pop_prior, σ_pop_prior, s_mut_prior, σ_mut_prior, λ_prior)
+    fitness_lognormal(R̲̲, R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, n̲ₜ; s_pop_prior, logσ_pop_prior, s_mut_prior, logσ_mut_prior, logλ_prior)
 
 `Turing.jl` model to sample the joint posterior distribution for a competitive
 fitness experiment.
@@ -37,11 +37,11 @@ fitness experiment.
     standard deviation`) for a Normal prior on the population mean fitness
     values. If `typeof(s_pop_prior) <: Matrix`, there should be as many rows in
     the matrix as pairs of time adjacent time points in dataset.
-- `σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
-    correspnding parameters (Vector: `σ_pop_prior[1]` = mean, `σ_pop_prior[2]` =
-    standard deviation, Matrix: `σ_pop_prior[:, 1] = mean`, `σ_pop_prior[:, 2] =
+- `logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+    correspnding parameters (Vector: `logσ_pop_prior[1]` = mean, `logσ_pop_prior[2]` =
+    standard deviation, Matrix: `logσ_pop_prior[:, 1] = mean`, `logσ_pop_prior[:, 2] =
     standard deviation`) for a Log-Normal prior on the population mean fitness
-    error utilized in the log-likelihood function. If `typeof(σ_pop_prior) <:
+    error utilized in the log-likelihood function. If `typeof(logσ_pop_prior) <:
     Matrix`, there should be as many rows in the matrix as pairs of time
     adjacent time points in dataset.
 - `s_mut_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
@@ -50,19 +50,19 @@ fitness experiment.
     standard deviation`) for a Normal prior on the mutant fitness values. If
     `typeof(s_mut_prior) <: Matrix`, there should be as many rows in the matrix
     as mutant lineages in the dataset.
-- `σ_mut_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+- `logσ_mut_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
   correspnding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
   standard deviation, Matrix: `s_mut_prior[:, 1] = mean`, `s_mut_prior[:, 2] =
   standard deviation`) for a Log-Normal prior on the mutant fitness error
-  utilized in the log-likelihood function. If `typeof(σ_mut_prior) <: Matrix`,
+  utilized in the log-likelihood function. If `typeof(logσ_mut_prior) <: Matrix`,
   there should be as many rows in the matrix as mutant lineages in the dataset.
-- `λ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
-  correspnding parameters (Vector: `λ_prior[1]` = mean, `λ_prior[2]` = standard
-  deviation, Matrix: `λ_prior[:, 1] = mean`, `λ_prior[:, 2] = standard
+- `logλ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
+  correspnding parameters (Vector: `logλ_prior[1]` = mean, `logλ_prior[2]` = standard
+  deviation, Matrix: `logλ_prior[:, 1] = mean`, `logλ_prior[:, 2] = standard
   deviation`) for a Log-Normal prior on the λ parameter in the Poisson
   distribution. The λ parameter can be interpreted as the mean number of barcode
   counts since we assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. If
-  `typeof(λ_prior) <: Matrix`, there should be as many rows in the matrix as
+  `typeof(logλ_prior) <: Matrix`, there should be as many rows in the matrix as
   number of barcodes × number of time points in the dataset.
 """
 Turing.@model function fitness_normal(
@@ -71,10 +71,10 @@ Turing.@model function fitness_normal(
     R̲̲::Vector{Vector{Int64}},
     n̲ₜ::Vector{Int64};
     s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
-    σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
+    logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
     s_mut_prior::VecOrMat{Float64}=[0.0, 2.0],
-    σ_mut_prior::VecOrMat{Float64}=[0.0, 1.0],
-    λ_prior::VecOrMat{Float64}=[3.0, 3.0]
+    logσ_mut_prior::VecOrMat{Float64}=[0.0, 1.0],
+    logλ_prior::VecOrMat{Float64}=[3.0, 3.0]
 )
     # Define number of time points
     n_time = length(n̲ₜ)
@@ -98,14 +98,14 @@ Turing.@model function fitness_normal(
     end # if
 
     # Prior on LogNormal error π(σ̲ₜ)
-    if typeof(σ_pop_prior) <: Vector
+    if typeof(logσ_pop_prior) <: Vector
         logσ̲ₜ ~ Turing.MvNormal(
-            repeat([σ_pop_prior[1]], n_time - 1),
-            LinearAlgebra.I(n_time - 1) .* σ_pop_prior[2] .^ 2
+            repeat([logσ_pop_prior[1]], n_time - 1),
+            LinearAlgebra.I(n_time - 1) .* logσ_pop_prior[2] .^ 2
         )
-    elseif typeof(σ_pop_prior) <: Matrix
+    elseif typeof(logσ_pop_prior) <: Matrix
         logσ̲ₜ ~ Turing.MvNormal(
-            σ_pop_prior[:, 1], LinearAlgebra.Diagonal(σ_pop_prior[:, 2] .^ 2)
+            logσ_pop_prior[:, 1], LinearAlgebra.Diagonal(logσ_pop_prior[:, 2] .^ 2)
         )
     end # if
 
@@ -125,30 +125,30 @@ Turing.@model function fitness_normal(
 
 
     # Prior on LogNormal error π(σ̲⁽ᵐ⁾)
-    if typeof(σ_mut_prior) <: Vector
+    if typeof(logσ_mut_prior) <: Vector
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([σ_mut_prior[1]], n_mut),
-            LinearAlgebra.I(n_mut) .* σ_mut_prior[2] .^ 2
+            repeat([logσ_mut_prior[1]], n_mut),
+            LinearAlgebra.I(n_mut) .* logσ_mut_prior[2] .^ 2
         )
-    elseif typeof(σ_mut_prior) <: Matrix
+    elseif typeof(logσ_mut_prior) <: Matrix
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            σ_mut_prior[:, 1], LinearAlgebra.Diagonal(σ_mut_prior[:, 2] .^ 2)
+            logσ_mut_prior[:, 1], LinearAlgebra.Diagonal(logσ_mut_prior[:, 2] .^ 2)
         )
     end # if
 
 
     ## %%%%%%%%%%%%%% Barcode frequencies %%%%%%%%%%%%%% ##
 
-    if typeof(λ_prior) <: Vector
+    if typeof(logλ_prior) <: Vector
         # Prior on Poisson distribtion parameters π(λ)
         logΛ̲̲ ~ Turing.MvNormal(
-            repeat([λ_prior[1]], sum(length.(R̲̲))),
-            LinearAlgebra.I(sum(length.(R̲̲))) .* λ_prior[2]^2
+            repeat([logλ_prior[1]], sum(length.(R̲̲))),
+            LinearAlgebra.I(sum(length.(R̲̲))) .* logλ_prior[2]^2
         )
-    elseif typeof(λ_prior) <: Matrix
+    elseif typeof(logλ_prior) <: Matrix
         # Prior on Poisson distribtion parameters π(λ)
         logΛ̲̲ ~ Turing.MvNormal(
-            λ_prior[:, 1], LinearAlgebra.Diagonal(λ_prior[:, 2] .^ 2)
+            logλ_prior[:, 1], LinearAlgebra.Diagonal(logλ_prior[:, 2] .^ 2)
         )
     end  # if
 
