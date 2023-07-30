@@ -1,5 +1,5 @@
 @doc raw"""
-    fitness_lognormal(R̲̲, R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, n̲ₜ; s_pop_prior, logσ_pop_prior, s_mut_prior, logσ_mut_prior, logλ_prior)
+    fitness_lognormal(R̲̲, n̲ₜ, n_neutral, n_mut; s_pop_prior, logσ_pop_prior, s_mut_prior, logσ_mut_prior, logλ_prior)
 
 `Turing.jl` model to sample the joint posterior distribution for a competitive
 fitness experiment.
@@ -8,27 +8,22 @@ fitness experiment.
 `[write model here]`
 
 # Arguments
-- `R̲̲⁽ⁿ⁾::Matrix{Int64}`: `T × N` matrix where `T` is the number of time points
-  in the data set and `N` is the number of neutral lineage barcodes. Each column
-  represents the barcode count trajectory for a single neutral lineage.
-  **NOTE**: The model assumes the rows are sorted in order of increasing time.
-- `R̲̲⁽ᵐ⁾::Matrix{Int64}`: `T × M` matrix where `T` is the number of time points
-  in the data set and `M` is the number of mutant lineage barcodes. Each column
-  represents the barcode count trajectory for a single mutant lineage. **NOTE**:
-  The model assumes the rows are sorted in order of increasing time.
-- `R̲̲::Matrix{Int64}`:: `T × B` matrix, where `T` is the number of time points
-  in the data set and `B` is the number of barcodes. Each column represents the
-  barcode count trajectory for a single lineage. **NOTE**: This matrix does not
+- `R̲̲::Vector{Vector{Int64}}`:: `T × B` matrix--split into a vector of vectors
+  for computational efficiency--where `T` is the number of time points in the
+  data set and `B` is the number of barcodes. Each column represents the barcode
+  count trajectory for a single lineage. **NOTE**: This matrix does not
   necessarily need to be equivalent to `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)`. This is because
   `R̲̲⁽ᵐ⁾` can exclude mutant barcodes to perform the joint inference only for a
   subgroup, but `R̲̲` must still contain all counts. Usually, if `R̲̲⁽ᵐ⁾`
   excludes mutant barcodes, `R̲̲` must be of the form `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾,
-  R̲̲⁽ᴹ⁾)`, where `R̲̲⁽ᴹ⁾` is a vector that aggregates all excluded mutant barcodes
-  into a "super barcode."
+  R̲̲⁽ᴹ⁾)`, where `R̲̲⁽ᴹ⁾` is a vector that aggregates all excluded mutant
+  barcodes into a "super barcode."
 - `n̲ₜ::Vector{Int64}`: Vector with the total number of barcode counts for each
   time point. **NOTE**: This vector **must** be equivalent to computing
   `vec(sum(R̲̲, dims=2))`. The reason it is an independent input parameter is to
   avoid the `sum` computation within the `Turing` model.
+- `n_neutral::Int`: Number of neutral lineages in dataset.
+- `n_mut::Int`: Number of mutant lineages in datset.
 
 ## Optional Keyword Arguments
 - `s_pop_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
@@ -66,10 +61,10 @@ fitness experiment.
   number of barcodes × number of time points in the dataset.
 """
 Turing.@model function fitness_normal(
-    R̲̲⁽ⁿ⁾::Matrix{Int64},
-    R̲̲⁽ᵐ⁾::Matrix{Int64},
     R̲̲::Vector{Vector{Int64}},
-    n̲ₜ::Vector{Int64};
+    n̲ₜ::Vector{Int64},
+    n_neutral::Int,
+    n_mut::Int;
     s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
     logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
     s_mut_prior::VecOrMat{Float64}=[0.0, 2.0],
@@ -78,10 +73,6 @@ Turing.@model function fitness_normal(
 )
     # Define number of time points
     n_time = length(n̲ₜ)
-    # Define number of neutrals
-    n_neutral = size(R̲̲⁽ⁿ⁾, 2)
-    # Define numbero f mutants
-    n_mut = size(R̲̲⁽ᵐ⁾, 2)
 
     ## %%%%%%%%%%%%%% Population mean fitness  %%%%%%%%%%%%%% ##
 
