@@ -141,8 +141,8 @@ Turing.@model function multienv_fitness_normal(
     # Prior on LogNormal error π(σ̲⁽ᵐ⁾)
     if typeof(logσ_mut_prior) <: Vector
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([logσ_mut_prior[1]], n_mut),
-            LinearAlgebra.I(n_mut) .* logσ_mut_prior[2] .^ 2
+            repeat([logσ_mut_prior[1]], n_mut * n_env),
+            LinearAlgebra.I(n_mut * n_env) .* logσ_mut_prior[2] .^ 2
         )
     elseif typeof(logσ_mut_prior) <: Matrix
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
