@@ -207,7 +207,7 @@ Turing.@model function multienv_fitness_normal(
 
     ## %%%%%%%%%%%% Reshape arrays to split replicate variables %%%%%%%%%%%% ##
     s̲⁽ᵐ⁾ = reshape(s̲⁽ᵐ⁾, n_env, :)  # n_env × n_mut
-    σ̲⁽ᵐ⁾ = reshape(σ̲⁽ᵐ⁾, n_env, :)  # n_env × n_mut
+    logσ̲⁽ᵐ⁾ = reshape(logσ̲⁽ᵐ⁾, n_env, :)  # n_env × n_mut
 
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
@@ -217,7 +217,7 @@ Turing.@model function multienv_fitness_normal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvNormal(
             repeat(-s̲ₜ, n_neutral),
-            LinearAlgebra.Diagonal(repeat(exp.(σ̲ₜ) .^ 2, n_neutral))
+            LinearAlgebra.Diagonal(repeat(exp.(logσ̲ₜ) .^ 2, n_neutral))
         ),
         logΓ̲̲⁽ⁿ⁾
     )
