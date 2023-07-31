@@ -16,6 +16,7 @@ import Glob
 import DataFrames as DF
 import CSV
 
+using ..utils: data2arrays
 ##
 
 # Export function
@@ -123,7 +124,13 @@ function mcmc_sample(;
     println("Pre-processing data...")
     # Convert from tidy dataframe to model inputs
     data_dict = data2arrays(
-        data, id_col, time_col, count_col, neutral_col, rep_col, rm_T0
+        data;
+        id_col=id_col,
+        time_col=time_col,
+        count_col=time_col,
+        neutral_col=neutral_col,
+        rep_col=rep_col,
+        rm_T0=rm_T0
     )
 
     ## %%%%%%%%%%% MCMC sampling %%%%%%%%%%% ##

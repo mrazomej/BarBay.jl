@@ -10,8 +10,6 @@ end # submodule
 
 module utils
 include("utils.jl")
-using .utils: data2arrays
-export data2arrays
 end # submodule
 
 module mcmc
