@@ -96,7 +96,8 @@ Turing.@model function fitness_normal(
         )
     elseif typeof(logσ_pop_prior) <: Matrix
         logσ̲ₜ ~ Turing.MvNormal(
-            logσ_pop_prior[:, 1], LinearAlgebra.Diagonal(logσ_pop_prior[:, 2] .^ 2)
+            logσ_pop_prior[:, 1],
+            LinearAlgebra.Diagonal(logσ_pop_prior[:, 2] .^ 2)
         )
     end # if
 
@@ -123,7 +124,8 @@ Turing.@model function fitness_normal(
         )
     elseif typeof(logσ_mut_prior) <: Matrix
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            logσ_mut_prior[:, 1], LinearAlgebra.Diagonal(logσ_mut_prior[:, 2] .^ 2)
+            logσ_mut_prior[:, 1],
+            LinearAlgebra.Diagonal(logσ_mut_prior[:, 2] .^ 2)
         )
     end # if
 
