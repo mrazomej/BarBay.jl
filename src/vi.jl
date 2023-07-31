@@ -1,9 +1,6 @@
 # Import Suppressor to silence warnings
 import Suppressor
 
-# Import Flux before Turing to get access to optimizers
-import Flux
-
 # Import libraries relevant for MCMC
 import Turing
 import MCMCChains
@@ -113,7 +110,7 @@ function advi(;
     rep_col::Union{Nothing,Symbol}=nothing,
     rm_T0::Bool=false,
     advi::Turing.AdvancedVI.VariationalInference=Tuing.ADVI(1, 10_000),
-    opt::Union{Turing.AdvancedVI.TruncatedADAGrad,Turing.AdvancedVI.DecayedADAGrad,Flux.Optimise.AbstractOptimiser}=Turing.Variational.DecayedADAGrad(1e-2, 1.1, 0.9),
+    opt::Union{Turing.AdvancedVI.TruncatedADAGrad,Turing.AdvancedVI.DecayedADAGrad}=Turing.Variational.TruncatedADAGrad(),
     fullrank::Bool=false,
     verbose::Bool=true
 )

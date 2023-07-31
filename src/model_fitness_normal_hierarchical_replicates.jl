@@ -170,10 +170,10 @@ Turing.@model function exprep_fitness_normal(
     # originally sampled as a vector for the `Turing.jl` samplers to deal with
     # it. But reshaping it to a matrix simplifies the computation of frequencies
     # and frequency ratios.
-    logΛ̲̲ = reshape(logΛ̲̲, size(R̲̲)...)
+    Λ̲̲ = reshape(exp.(logΛ̲̲), size(R̲̲)...)
 
     # Compute barcode frequencies from Poisson parameters
-    F̲̲ = logΛ̲̲ ./ sum(logΛ̲̲, dims=2)
+    F̲̲ = Λ̲̲ ./ sum(Λ̲̲, dims=2)
 
     # Compute frequency ratios between consecutive time points.
     logΓ̲̲ = log.(F̲̲[2:end, :, :] ./ F̲̲[1:end-1, :, :])
@@ -188,7 +188,7 @@ Turing.@model function exprep_fitness_normal(
         # Prob of total number of barcodes read given the Poisosn distribution
         # parameters π(nₜ | logΛ̲ₜ)
         n̲ₜ[:, r] ~ Turing.arraydist(
-            [Turing.Poisson(sum(logΛ̲̲[t, :, r])) for t = 1:n_time]
+            [Turing.Poisson(sum(Λ̲̲[t, :, r])) for t = 1:n_time]
         )
 
         # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). 
