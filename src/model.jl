@@ -37,6 +37,9 @@ include("./model_fitness_normal.jl")
 # fitness inference in multiple environemnts π(s1⁽ᵐ⁾, s2⁽ᵐ⁾,.. | data)
 include("./model_multienv_fitness_lognormal.jl")
 
+# fitness inference in multiple environemnts π(s1⁽ᵐ⁾, s2⁽ᵐ⁾,.. | data)
+include("./model_multienv_fitness_normal.jl")
+
 # Hierarchical model for multiple experimental replicates π(θ̲ᴹ, s̲ᴹ, s̲ₜ | data)
 include("./model_fitness_lognormal_hierarchical_replicates.jl")
 
