@@ -1,9 +1,9 @@
 # Import Suppressor to silence warnings
 import Suppressor
 
-# Import libraries relevant for MCMC
+# Import libraries relevant for Bayesian inference
 import Turing
-import MCMCChains
+import DynamicPPL
 
 # Import libraries for Pathfinder: Parallel quasi-Newton variational inference
 import Pathfinder
@@ -97,6 +97,12 @@ This function expects the data in a **tidy** format. This means that every row
   default `DecayedADAGrad`.
 - `verbose::Bool=true`: Boolean indicating if the function should print partial
   progress to the screen or not.
+
+# Output
+The output of this function is saved as a `jld2` file with three entries:
+    - `ids`: The list of the mutant ids in the order used for the inference.
+    - `var`: List of variables in the variational multi-variate distribution.
+    - `dist`: Multivariate Normal variational distribution.
 """
 function advi(;
     data::DF.AbstractDataFrame,
@@ -155,24 +161,33 @@ function advi(;
         model_kwargs...
     )
 
+    # Extract model VarInfo
+    varinfo = DynamicPPL.VarInfo(bayes_model)
+
+    # Extract variable names
+    var_keys = keys(varinfo)
+
+    # Extract number of variables per group
+    var_len = [length(varinfo[v]) for v in var_keys]
+
+    # Initialize array to save variable names
+    var_names = []
+
+    # Loop through variables
+    for (i, v) in enumerate(var_keys)
+        # Convert variable to string
+        v = String(Symbol(v))
+        # Add variable names
+        push!(var_names, ["$v[$x]" for x in 1:var_len[i]]...)
+    end # for
 
     # Check if variational problem is meanfield or full-rank
     if !fullrank
         # Optimize meanfield variational distribution
         q = Turing.vi(bayes_model, advi; optimizer=opt)
     else
-        # Obtain number of parameters. This is done in a very inefficient way,
-        # but Turing.jl does not have a straightforward way to access the number
-        # of parameters in a model.
-        # 1. Take one sample from the prior distribution suppressing the output
-        #    warnings.
-        Suppressor.@suppress begin
-            global chn = Turing.sample(bayes_model, Turing.Prior(), 1)
-        end # @suppress
-        # 2. obtain number of parameters from chain size. We subtract one to
-        #    match the correct dimension. The extra element in the chain is the
-        #    evaluation of the log probability.
-        n_param = size(chn, 2) - 1
+        # Obtain number of parameters.
+        n_param = sum(var_len)
 
         # Build getq function
         getq = build_getq(n_param, bayes_model)
@@ -192,7 +207,7 @@ function advi(;
     end # if
 
     # Write output into memory
-    JLD2.jldsave("$(fname)", ids=data_dict[:mut_ids], dist=q)
+    JLD2.jldsave("$(fname)", ids=data_dict[:mut_ids], var=var_names, dist=q)
 end # function
 
 @doc raw"""
