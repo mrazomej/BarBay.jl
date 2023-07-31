@@ -138,12 +138,13 @@ function advi(;
         data;
         id_col=id_col,
         time_col=time_col,
-        count_col=time_col,
+        count_col=count_col,
         neutral_col=neutral_col,
         rep_col=rep_col,
         rm_T0=rm_T0
     )
 
+    ## %%%%%%%%%%% Variational Inference with ADVI %%%%%%%%%%% ##
     if verbose
         println("Initialize Variational Inference Optimization...\n")
     end # if
@@ -197,7 +198,73 @@ function advi(;
     JLD2.jldsave("$(fname)", ids=data_dict[:mut_ids], dist=q)
 end # function
 
-function pathfinder_joint_fitness(;
+@doc raw"""
+    advi(; kwargs)
+
+Function to sample the joint posterior distribution for the fitness value of all
+mutant and neutral linages given a time-series barcode count.
+
+This function expects the data in a **tidy** format. This means that every row
+    represents **a single observation**. For example, if we measure barcode `i`
+    in 4 different time points, each of these four measurements gets an
+    individual row. Furthermore, measurements of barcode `j` over time also get
+    their own individual rows.
+        
+    The `DataFrame` must contain at least the following columns:
+    - `id_col`: Column identifying the ID of the barcode. This can the barcode
+        sequence, for example.
+    - `time_col`: Column defining the measurement time point.
+    - `count_col`: Column with the raw barcode count.
+    - `neutral_col`: Column indicating whether the barcode is from a neutral lineage
+    or not.
+    
+    # Keyword Arguments
+    - `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
+    used to sample from the population mean fitness posterior distribution.
+    - `n_walkers::Int`: Number of walkers (chains) for the MCMC sample.
+    - `n_steps::Int`: Number of steps to take.
+    - `outputname::String`: String to be used to name the `.jld2` output file.
+    - `model::Function`: `Turing.jl` model defining the posterior distribution from
+        which to sample (see `BayesFitness.model` module). This function must take
+        as the first four inputs the following:
+        - `R̲̲::Array{Int64}`:: 2 or 3D array containing the raw barcode counts for
+          all tracked genotypes. The dimensions of this array represent:
+          - dim=1: time.
+          - dim=2: genotype.
+          - dim=3 (optional): experimental repeats
+        - `n̲ₜ::VecOrMat{Int64}`: Array with the total number of barcode counts for
+            each time point (on each experimental repeat, if necessary).
+        - `n_neutral::Int`: Number of neutral lineages.
+        - `n_mut::Int`: Number of neutral lineages.
+
+## Optional Keyword Arguments
+- `model_kwargs::Dict=Dict()`: Extra keyword arguments to be passed to the
+  `model` function.
+- `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
+    identifier. The column may contain any type of entry.
+- `time_col::Symbol=:time`: Name of the column in `data` defining the time point
+  at which measurements were done. The column may contain any type of entry as
+  long as `sort` will resulted in time-ordered names.
+- `count_col::Symbol=:count`: Name of the column in `data` containing the raw
+  barcode count. The column must contain entries of type `Int64`.
+- `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
+  the barcode belongs to a neutral lineage or not. The column must contain
+  entries of type `Bool`.
+- `rep_col::Union{Nothing,Symbol}=nothing`: Optional column in tidy dataframe to
+  specify the experimental repeat for each observation.
+- `rm_T0::Bool=false`: Optional argument to remove the first time point from the
+  inference. Commonly, the data from this first time point is of much lower
+  quality. Therefore, removing this first time point might result in a better
+  inference.
+- `pathfinder::Symbol=:single`: Version of pathfinder to use. Options are
+  `:single` or `:multi`.
+- `ndraws::Int=10`: Number of draws to approximate distribution
+- `pathfinder_kwargs::Dict=Dict()`: Keyword arguments for `pathfinder` or
+  `multipathfinder` functions from the `Pathfinder.jl` package.
+- `verbose::Bool=true`: Boolean indicating if the function should print partial
+  progress to the screen or not.
+"""
+function pathfinder(;
     data::DF.AbstractDataFrame,
     outputname::String,
     model::Function,
@@ -206,88 +273,13 @@ function pathfinder_joint_fitness(;
     time_col::Symbol=:time,
     count_col::Symbol=:count,
     neutral_col::Symbol=:neutral,
+    rep_col::Union{Nothing,Symbol}=nothing,
     rm_T0::Bool=false,
     pathfinder::Symbol=:single,
-    ndraws::Int=1_000,
+    n_draws::Int=10,
     pathfinder_kwargs::Dict=Dict(),
     verbose::Bool=true
 )
-    # Extract unique time points
-    timepoints = sort(unique(data[:, time_col]))
-
-    # Remove T0 if indicated
-    if rm_T0
-        if verbose
-            println("Deleting T0 as requested...")
-        end # if 
-        data = data[.!(data[:, time_col] .== first(timepoints)), :]
-    end # if
-
-    # Re-extract unique time points
-    timepoints = sort(unique(data[:, time_col]))
-
-    if verbose
-        println("Preparing input data...")
-    end # if
-
-    ## %%%%%%%%%%% Neutral barcodes data %%%%%%%%%%% ##
-
-    # Group data by unique mutant barcode
-    data_group = DF.groupby(data[data[:, neutral_col], :], id_col)
-
-    # Check that all barcodes were measured at all points
-    if any([size(d, 1) for d in data_group] .!= length(timepoints))
-        error("Not all neutral barcodes have reported counts in all time points")
-    end # if
-
-    # Initialize array to save counts for each mutant at time t
-    R̲̲⁽ⁿ⁾ = Matrix{Int64}(
-        undef, length(timepoints), length(data_group)
-    )
-
-    # Loop through each unique barcode
-    for (i, d) in enumerate(data_group)
-        # Sort data by timepoint
-        DF.sort!(d, time_col)
-        # Extract data
-        R̲̲⁽ⁿ⁾[:, i] = d[:, count_col]
-    end # for
-
-    ## %%%%%%%%%%% Mutant barcodes data %%%%%%%%%%% ##
-
-    # Group data by unique mutant barcode
-    data_group = DF.groupby(data[.!data[:, neutral_col], :], id_col)
-
-    # Extract group keys
-    data_keys = first.(values.(keys(data_group)))
-
-    # Check that all barcodes were measured at all points
-    if any([size(d, 1) for d in data_group] .!= length(timepoints))
-        error("Not all mutant barcodes have reported counts in all time points")
-    end # if
-
-    # Initialize array to save counts for each mutant at time t
-    R̲̲⁽ᵐ⁾ = Matrix{Int64}(
-        undef, length(timepoints), length(data_group)
-    )
-
-    # Loop through each unique barcode
-    for (i, d) in enumerate(data_group)
-        # Sort data by timepoint
-        DF.sort!(d, time_col)
-        # Extract data
-        R̲̲⁽ᵐ⁾[:, i] = d[:, count_col]
-    end # for
-
-    ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
-
-    # Concatenate neutral and mutant data matrices
-    R̲̲ = hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)
-
-    # Compute total counts for each run
-    n̲ₜ = vec(sum(R̲̲, dims=2))
-
-    ## %%%%%%%%%%% Variational Inference %%%%%%%%%%% ##
     # Define output filename
     fname = "$(outputname).jld2"
 
@@ -296,24 +288,53 @@ function pathfinder_joint_fitness(;
         error("$(fname) was already processed")
     end # if
 
+    # Check if model is hierarchical for experimental replicates
+    if occursin("exprep", "$(model)") & (typeof(rep_col) <: Nothing)
+        error("Hierarchical models for experimental replicates require argument `:rep_col`")
+    end # if
+
+    ## %%%%%%%%%%% Preprocessing data %%%%%%%%%%% ##
+
+    println("Pre-processing data...")
+    # Convert from tidy dataframe to model inputs
+    data_dict = data2arrays(
+        data;
+        id_col=id_col,
+        time_col=time_col,
+        count_col=count_col,
+        neutral_col=neutral_col,
+        rep_col=rep_col,
+        rm_T0=rm_T0
+    )
+
+    ## %%%%%%%%%%% Variational Inference with Pathfinder %%%%%%%%%%% ##
     if verbose
         println("Initialize Variational Inference Optimization...\n")
     end # if
 
     # Define model
-    m = model(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, Vector.(eachrow(R̲̲)), n̲ₜ; model_kwargs...)
-
+    bayes_model = model(
+        data_dict[:bc_count],
+        data_dict[:bc_total],
+        data_dict[:n_neutral],
+        data_dict[:n_mut];
+        model_kwargs...
+    )
 
     # Check which mode of pathfinder to use. This is a little annoying, but it
     # is because of the arguments between both functions not being consistent.
     if pathfinder == :single
-        dist = Pathfinder.pathfinder(m; ndraws=ndraws, pathfinder_kwargs...)
+        dist = Pathfinder.pathfinder(
+            bayes_model; ndraws=n_draws, pathfinder_kwargs...
+        )
     elseif pathfinder == :multi
-        dist = Pathfinder.multipathfinder(m, ndraws; pathfinder_kwargs...)
+        dist = Pathfinder.multipathfinder(
+            bayes_model, n_draws; pathfinder_kwargs...
+        )
     else
         error("pathfinder should either be :single or :multi")
     end
 
     # Write output into memory
-    JLD2.jldsave("$(fname)", dist=dist, ids=data_keys)
+    JLD2.jldsave("$(fname)", ids=data_dict[:mut_ids], dist=dist,)
 end # function
