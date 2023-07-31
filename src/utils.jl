@@ -314,21 +314,21 @@ used to sample from the population mean fitness posterior distribution.
 # Returns
 if `typeof(rep_col) <: Nothing`
     Dictionary with the following entries:
-    - `R̲̲⁽ⁿ⁾::Matrix`: T × N matrix with the neutral barcodes read counts.
-    - `R̲̲⁽ᵐ⁾::Matrix`: T × M matrix with the mutant barcodes read counts.
-    - `R̲̲::Matrix`: T × B matrix with all barcodes read counts.
-    - `n̲ₜ::Vector`: T-dimensional vector with the total number of reads per time
-    point.
-    - `mut_keys`: List of mutant names in the order used to build `R̲̲⁽ᵐ⁾`.
+    - `bc_count::Matrix`: `T × B` matrix with all barcodes read counts. 
+    - `bc_total::Vector`: `T`-dimensional vector with the total number of reads
+    per time point. 
+    - `n_neutral::Int`: Number of neutral lineages.
+    - `n_mut::Int`: Number of mutant lineages.
+    - `mut_keys`: List of mutant names in the order used to build `R̲̲`.
 
 elseif `typeof(rep_col) <: Symbol`
         Dictionary with the following entries:
-        - `R̲̲⁽ⁿ⁾::Array`: T × N × R array with the neutral barcodes read counts.
-        - `R̲̲⁽ᵐ⁾::Array`: T × M array with the mutant barcodes read counts.
-        - `R̲̲::Array`: T × B × R array with all barcodes read counts.
-        - `n̲ₜ::Matrix`: T × R matrix with the total number of reads per time
-        point per repeat
-        - `mut_keys`: List of mutant names in the order used to build `R̲̲⁽ᵐ⁾`.
+        - `bc_count::Array`: `T × B × R` array with all barcodes read counts.
+        - `bc_total::Matrix`: `T × R` matrix with the total number of reads per time
+        point per repeat.
+        - `n_neutral::Int`: Number of neutral lineages.
+        - `n_mut::Int`: Number of mutant lineages.
+        - `mut_keys`: List of mutant names in the order used to build `R̲̲`.
 """
 function data2arrays(
     data::DF.AbstractDataFrame;
@@ -413,11 +413,11 @@ function data2arrays(
         n̲ₜ = vec(sum(R̲̲, dims=2))
 
         return Dict(
-            :neutral => R̲̲⁽ⁿ⁾,
-            :mut => R̲̲⁽ᵐ⁾,
-            :bc => R̲̲,
-            :sum => n̲ₜ,
-            :mut_keys => mut_ids
+            :bc_count => R̲̲,
+            :bc_total => n̲ₜ,
+            :n_neutral => size(R̲̲⁽ⁿ⁾, 2),
+            :n_mut => size(R̲̲⁽ᵐ⁾, 2),
+            :mut_ids => mut_ids
         )
         ### --------------- When repeats are given --------------- ### 
     elseif typeof(rep_col) <: Symbol
@@ -495,10 +495,10 @@ function data2arrays(
         n̲ₜ = reshape(sum(R̲̲, dims=2), length(timepoints), length(reps))
 
         return Dict(
-            :neutral => R̲̲⁽ⁿ⁾,
-            :mut => R̲̲⁽ᵐ⁾,
-            :bc => R̲̲,
-            :sum => n̲ₜ,
+            :bc_count => R̲̲,
+            :bc_total => n̲ₜ,
+            :n_neutral => size(R̲̲⁽ⁿ⁾, 2),
+            :n_mut => size(R̲̲⁽ᵐ⁾, 2),
             :mut_ids => mut_ids
         )
     end # if
