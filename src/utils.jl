@@ -284,12 +284,10 @@ function group_split_naive_fitness(
 end # function
 
 @doc raw"""
-    df2mats(data; kwargs)
+    data2arrays(data; kwargs)
 
-Function that returns the matarices `R̲̲⁽ⁿ⁾`,  `R̲̲⁽ᵐ⁾`, and  `R̲̲` usually
-taken by the functions in the `model.jl` module. This function is useful to
-prototype new models before properly implementing them. The final user most
-likely won't need to ever call this function.
+Function to preprocess the tidy dataframes with the data into the corresponding
+inputs for the models in the `model` submodule.
 
 # Arguments
 - `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
@@ -312,23 +310,19 @@ used to sample from the population mean fitness posterior distribution.
   inference.
 
 # Returns
-if `typeof(rep_col) <: Nothing`
-    Dictionary with the following entries:
-    - `bc_count::Matrix`: `T × B` matrix with all barcodes read counts. 
-    - `bc_total::Vector`: `T`-dimensional vector with the total number of reads
-    per time point. 
-    - `n_neutral::Int`: Number of neutral lineages.
-    - `n_mut::Int`: Number of mutant lineages.
-    - `mut_keys`: List of mutant names in the order used to build `R̲̲`.
+if `typeof(rep_col) <: Nothing` Dictionary with the following entries: -
+    `bc_count::Matrix`: `T × B` matrix with all barcodes read counts. -
+    `bc_total::Vector`: `T`-dimensional vector with the total number of reads
+    per time point. - `n_neutral::Int`: Number of neutral lineages. -
+    `n_mut::Int`: Number of mutant lineages. - `mut_keys`: List of mutant names
+    in the order used to build `R̲̲`.
 
-elseif `typeof(rep_col) <: Symbol`
-        Dictionary with the following entries:
-        - `bc_count::Array`: `T × B × R` array with all barcodes read counts.
-        - `bc_total::Matrix`: `T × R` matrix with the total number of reads per time
-        point per repeat.
-        - `n_neutral::Int`: Number of neutral lineages.
-        - `n_mut::Int`: Number of mutant lineages.
-        - `mut_keys`: List of mutant names in the order used to build `R̲̲`.
+elseif `typeof(rep_col) <: Symbol` Dictionary with the following entries: -
+        `bc_count::Array`: `T × B × R` array with all barcodes read counts. -
+        `bc_total::Matrix`: `T × R` matrix with the total number of reads per
+        time point per repeat. - `n_neutral::Int`: Number of neutral lineages. -
+        `n_mut::Int`: Number of mutant lineages. - `mut_keys`: List of mutant
+        names in the order used to build `R̲̲`.
 """
 function data2arrays(
     data::DF.AbstractDataFrame;
