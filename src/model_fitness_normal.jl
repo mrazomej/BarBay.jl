@@ -156,8 +156,8 @@ Turing.@model function fitness_normal(
     logΓ̲̲ = log.(F̲̲[2:end, :] ./ F̲̲[1:end-1, :])
 
     # Split neutral and mutant frequency ratios. 
-    logΓ̲̲⁽ⁿ⁾ = vec(logΓ̲̲[:, 1:size(R̲̲⁽ⁿ⁾, 2)])
-    logΓ̲̲⁽ᵐ⁾ = vec(logΓ̲̲[:, size(R̲̲⁽ⁿ⁾, 2)+1:size(R̲̲⁽ⁿ⁾, 2)+size(R̲̲⁽ᵐ⁾, 2)])
+    logΓ̲̲⁽ⁿ⁾ = vec(logΓ̲̲[:, 1:n_neutral])
+    logΓ̲̲⁽ᵐ⁾ = vec(logΓ̲̲[:, n_neutral+1:n_neutral+n_mut])
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)
