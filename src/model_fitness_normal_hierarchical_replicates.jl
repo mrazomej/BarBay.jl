@@ -77,7 +77,7 @@ Turing.@model function exprep_fitness_normal(
     s_mut_prior::VecOrMat{Float64}=[0.0, 2.0],
     logσ_mut_prior::VecOrMat{Float64}=[0.0, 1.0],
     logλ_prior::VecOrMat{Float64}=[3.0, 3.0],
-    τ_prior::Vector{Float64}=[0.0, 1.0]
+    logτ_prior::Vector{Float64}=[-2.0, 1.0]
 )
     # Define number of experimental replicates
     n_rep = size(R̲̲, 3)
@@ -131,13 +131,13 @@ Turing.@model function exprep_fitness_normal(
     )
 
     # Hyper prior on mutant deviations from hyper prior
-    τ̲⁽ᵐ⁾ ~ Turing.filldist(
-        Turing.truncated(Turing.Normal(τ_prior...), lower=0),
-        n_mut * n_rep
+    logτ̲⁽ᵐ⁾ ~ Turing.MvNormal(
+        repeat([logτ_prior[1]], n_mut * n_rep),
+        LinearAlgebra.I(n_mut * n_rep) .* logτ_prior[2] .^ 2
     )
 
     # mutant fitness = hyperparameter + deviation
-    s̲⁽ᵐ⁾ = repeat(θ̲⁽ᵐ⁾, n_rep) .+ (τ̲⁽ᵐ⁾ .* θ̲̃⁽ᵐ⁾)
+    s̲⁽ᵐ⁾ = repeat(θ̲⁽ᵐ⁾, n_rep) .+ (exp.(logτ̲⁽ᵐ⁾) .* θ̲̃⁽ᵐ⁾)
 
     # Prior on LogNormal error π(logσ̲⁽ᵐ⁾)
     if typeof(logσ_mut_prior) <: Vector
