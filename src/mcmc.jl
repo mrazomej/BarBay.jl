@@ -18,9 +18,6 @@ import CSV
 
 ##
 
-# Import utils module
-using .utils: data2arrays
-
 # Export function
 
 ##
