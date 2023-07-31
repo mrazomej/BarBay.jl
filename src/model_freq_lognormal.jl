@@ -12,18 +12,7 @@ values on a fitness experiment.
 `[write model here]`
 
 # Arguments
-- `R̲̲⁽ⁿ⁾::Matrix{Int64}`: `T × N` matrix where `T` is the number of time points
-  in the data set and `N` is the number of neutral lineage barcodes. Each column
-  represents the barcode count trajectory for a single neutral lineage.
-  **NOTE**: This is a place-holder variable only used to reuse functions from
-  the `mcmc` module.
-- `R̲̲⁽ᵐ⁾::Matrix{Int64}`: `T × M` matrix where `T` is the number of time points
-  in the data set and `M` is the number of mutant lineage barcodes. Each column
-  represents the barcode count trajectory for a single mutant lineage. **NOTE**:
-  The model assumes the rows are sorted in order of increasing time.
-  **NOTE**: This is a place-holder variable only used to reuse functions from
-  the `mcmc` module.
-- `R̲̲::Vector{Vector{Int64}}`:: `T × B` matrix--split into a vector of vectors
+- `R̲̲::Matrix{Int64}`:: `T × B` matrix--split into a vector of vectors
   for computational efficiency--where `T` is the number of time points in the
   data set and `B` is the number of barcodes. Each column represents the barcode
   count trajectory for a single lineage. **NOTE**: This matrix does not
@@ -37,6 +26,12 @@ values on a fitness experiment.
   time point. **NOTE**: This vector **must** be equivalent to computing
   `vec(sum(R̲̲, dims=2))`. The reason it is an independent input parameter is to
   avoid the `sum` computation within the `Turing` model.
+- `n_neutral::Int`: Number of neutral lineages in dataset. **NOTE** This
+  argument is irrelevant for this function. It is only included to have
+  consistent inputs across models.
+- `n_mut::Int`: Number of mutant lineages in datset. **NOTE** This argument is
+  irrelevant for this function. It is only included to have consistent inputs
+  across models.
 
 ## Optional Keyword Arguments
 - `λ_prior::Vector{Float64}=[3.0, 3.0]`: Vector with the corresponding
@@ -47,10 +42,10 @@ values on a fitness experiment.
     the same prior to **all** mutant fitness error values to be inferred.
 """
 Turing.@model function freq_lognormal(
-    R̲̲⁽ⁿ⁾::Matrix{Int64},
-    R̲̲⁽ᵐ⁾::Matrix{Int64},
-    R̲̲::Vector{Vector{Int64}},
-    n̲ₜ::Vector{Int64};
+    R̲̲::Matrix{Int64},
+    n̲ₜ::Vector{Int64},
+    n_neutral::Int,
+    n_mut::Int;
     λ_prior::VecOrMat{Float64}=[3.0, 3.0]
 )
     ## %%%%%%%%%%%%%% Barcode frequencies %%%%%%%%%%%%%% ##
@@ -58,8 +53,8 @@ Turing.@model function freq_lognormal(
     if typeof(λ_prior) <: Vector
         # Prior on Poisson distribtion parameters π(λ)
         Λ̲̲ ~ Turing.MvLogNormal(
-            repeat([λ_prior[1]], sum(length.(R̲̲))),
-            LinearAlgebra.I(sum(length.(R̲̲))) .* λ_prior[2]^2
+            repeat([λ_prior[1]], length(R̲̲)),
+            LinearAlgebra.I(length(R̲̲)) .* λ_prior[2]^2
         )
     elseif typeof(λ_prior) <: Matrix
         # Prior on Poisson distribtion parameters π(λ)
@@ -72,7 +67,7 @@ Turing.@model function freq_lognormal(
     # originally sampled as a vector for the `Turing.jl` samplers to deal with
     # it. But reshaping it to a matrix simplifies the computation of frequencies
     # and frequency ratios.
-    Λ̲̲ = reshape(Λ̲̲, length(R̲̲), length(first(R̲̲)))
+    Λ̲̲ = reshape(Λ̲̲, size(R̲̲)...)
 
     # Compute barcode frequencies from Poisson parameters
     F̲̲ = Λ̲̲ ./ sum(Λ̲̲, dims=2)
@@ -96,7 +91,7 @@ Turing.@model function freq_lognormal(
     Turing.@addlogprob! sum(
         Turing.logpdf.(
             Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false),
-            R̲̲
+            eachrow(R̲̲)
         ),
     )
 

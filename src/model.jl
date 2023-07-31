@@ -13,17 +13,14 @@ import FillArrays
 ##
 # Export functions
 
-# Export mean fitness model
-export mean_fitness_neutrals_lognormal
-export mean_fitness_neutrals_lognormal_priors
-
-# Export mutant fitness model
-export mutant_fitness_lognormal, mutant_fitness_lognormal_priors
-
 # Export joint fitness models
 export fitness_lognormal
 
 ##
+
+# ============================================================================ # 
+# Include functions
+# ============================================================================ # 
 
 # Population mean fitness inference from neutrals data π(s̲ₜ | data)
 include("./model_freq_lognormal.jl")

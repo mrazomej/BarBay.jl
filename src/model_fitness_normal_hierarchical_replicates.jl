@@ -3,7 +3,7 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    fitness_lognormal_hierarchical_replicates(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲, n̲ₜ; s_pop_prior, logσ_pop_prior, s_mut_prior, logσ_mut_prior, logλ_prior)
+    exprep_fitness_normal(R̲̲, n̲ₜ, n_neutral, n_mut; kwargs)
 
 `Turing.jl` model to sample the joint posterior distribution for a competitive
 fitness experiment.
@@ -12,16 +12,6 @@ fitness experiment.
 `[write model here]`
 
 # Arguments
-- `R̲̲⁽ⁿ⁾::Array{Int64, 3}`: `T × N × R` array where `T` is the number of time
-  points in the data set, `N` is the number of neutral lineage barcodes, and `R`
-  is the number of experimental replicates. For each slice on the `R`-axis, each
-  column represents the barcode count trajectory for a single neutral lineage.
-  **NOTE**: The model assumes the rows are sorted in order of increasing time.
-- `R̲̲⁽ᵐ⁾::Array{Int64, 3}`: `T × M × R` array where `T` is the number of time
-points in the data set, `M` is the number of mutant lineage barcodes, and `R` is
-the number of experimental replicates. For each slice on the `R`-axis, each
-  column represents the barcode count trajectory for a single mutant lineage.
-  **NOTE**: The model assumes the rows are sorted in order of increasing time.
 - `R̲̲::Array{Int64, 3}`:: `T × B × R` where `T` is the number of time points in
   the data set, `B` is the number of barcodes, and `R` is the number of
   experimental replicates. For each slince in the `R` axis, each column
@@ -32,11 +22,12 @@ the number of experimental replicates. For each slice on the `R`-axis, each
   Usually, if `R̲̲⁽ᵐ⁾` excludes mutant barcodes, `R̲̲` must be of the form
   `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾, R̲̲⁽ᴹ⁾)`, where `R̲̲⁽ᴹ⁾` is a vector that aggregates all
   excluded mutant barcodes into a "super barcode."
-- `n̲ₜ::Vector{Vector{Int64}}`: `R` Vectors with the total number of barcode
-  counts for each time point on each experimental replicate. **NOTE**: Each
-  vector vector **must** be equivalent to computing `vec(sum(R̲̲, dims=2))`. The
-  reason it is an independent input parameter is to avoid the `sum` computation
-  within the `Turing` model.
+- `n̲ₜ::Matrix{Int64}`: Matrix with the total number of barcode counts for each
+  time point on each replicate. **NOTE**: This matrix **must** be equivalent to
+  computing `vec(sum(R̲̲, dims=2))`. The reason it is an independent input
+  parameter is to avoid the `sum` computation within the `Turing` model.
+- `n_neutral::Int`: Number of neutral lineages in dataset.
+- `n_mut::Int`: Number of mutant lineages in datset.
 
 ## Optional Keyword Arguments
 - `s_pop_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
@@ -46,12 +37,13 @@ the number of experimental replicates. For each slice on the `R`-axis, each
     values. If `typeof(s_pop_prior) <: Matrix`, there should be as many rows in
     the matrix as pairs of time adjacent time points in dataset.
 - `logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
-    correspnding parameters (Vector: `logσ_pop_prior[1]` = mean, `logσ_pop_prior[2]` =
-    standard deviation, Matrix: `logσ_pop_prior[:, 1] = mean`, `logσ_pop_prior[:, 2] =
-    standard deviation`) for a Log-Normal prior on the population mean fitness
-    error utilized in the log-likelihood function. If `typeof(logσ_pop_prior) <:
-    Matrix`, there should be as many rows in the matrix as pairs of time
-    adjacent time points × number of replicates in dataset.
+    correspnding parameters (Vector: `logσ_pop_prior[1]` = mean,
+    `logσ_pop_prior[2]` = standard deviation, Matrix: `logσ_pop_prior[:, 1] =
+    mean`, `logσ_pop_prior[:, 2] = standard deviation`) for a Log-Normal prior
+    on the population mean fitness error utilized in the log-likelihood
+    function. If `typeof(logσ_pop_prior) <: Matrix`, there should be as many
+    rows in the matrix as pairs of time adjacent time points × number of
+    replicates in dataset.
 - `s_mut_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
     correspnding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
     standard deviation, Matrix: `s_mut_prior[:, 1] = mean`, `s_mut_prior[:, 2] =
@@ -62,24 +54,24 @@ the number of experimental replicates. For each slice on the `R`-axis, each
   correspnding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
   standard deviation, Matrix: `s_mut_prior[:, 1] = mean`, `s_mut_prior[:, 2] =
   standard deviation`) for a Log-Normal prior on the mutant fitness error
-  utilized in the log-likelihood function. If `typeof(logσ_mut_prior) <: Matrix`,
-  there should be as many rows in the matrix as mutant lineages × number of
-  replicates in the dataset.
+  utilized in the log-likelihood function. If `typeof(logσ_mut_prior) <:
+  Matrix`, there should be as many rows in the matrix as mutant lineages ×
+  number of replicates in the dataset.
 - `logλ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
-  correspnding parameters (Vector: `logλ_prior[1]` = mean, `logλ_prior[2]` = standard
-  deviation, Matrix: `logλ_prior[:, 1] = mean`, `logλ_prior[:, 2] = standard
-  deviation`) for a Log-Normal prior on the λ parameter in the Poisson
+  correspnding parameters (Vector: `logλ_prior[1]` = mean, `logλ_prior[2]` =
+  standard deviation, Matrix: `logλ_prior[:, 1] = mean`, `logλ_prior[:, 2] =
+  standard deviation`) for a Log-Normal prior on the λ parameter in the Poisson
   distribution. The λ parameter can be interpreted as the mean number of barcode
   counts since we assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. If
   `typeof(logλ_prior) <: Matrix`, there should be as many rows in the matrix as
   number of barcodes × number of time points × number of replicates in the
   dataset.
 """
-Turing.@model function fitness_lognormal_hierarchical_replicates(
-    R̲̲⁽ⁿ⁾::Array{Int64,3},
-    R̲̲⁽ᵐ⁾::Array{Int64,3},
+Turing.@model function exprep_fitness_normal(
     R̲̲::Array{Int64,3},
-    n̲ₜ::Matrix{Int64};
+    n̲ₜ::Matrix{Int64},
+    n_neutral::Int,
+    n_mut::Int;
     s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
     logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
     s_mut_prior::VecOrMat{Float64}=[0.0, 2.0],
@@ -91,10 +83,6 @@ Turing.@model function fitness_lognormal_hierarchical_replicates(
     n_rep = size(R̲̲, 3)
     # Define number of time points
     n_time = size(R̲̲, 1)
-    # Define number of neutrals
-    n_neutral = size(R̲̲⁽ⁿ⁾, 2)
-    # Define number of mutants
-    n_mut = size(R̲̲⁽ᵐ⁾, 2)
 
     ## %%%%%%%%%%%%%% Population mean fitness  %%%%%%%%%%%%%% ##
 

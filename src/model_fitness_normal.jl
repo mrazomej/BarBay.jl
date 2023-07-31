@@ -8,7 +8,7 @@ fitness experiment.
 `[write model here]`
 
 # Arguments
-- `R̲̲::Vector{Vector{Int64}}`:: `T × B` matrix--split into a vector of vectors
+- `R̲̲::Matrix{Int64}`:: `T × B` matrix--split into a vector of vectors
   for computational efficiency--where `T` is the number of time points in the
   data set and `B` is the number of barcodes. Each column represents the barcode
   count trajectory for a single lineage. **NOTE**: This matrix does not
@@ -61,7 +61,7 @@ fitness experiment.
   number of barcodes × number of time points in the dataset.
 """
 Turing.@model function fitness_normal(
-    R̲̲::Vector{Vector{Int64}},
+    R̲̲::Matrix{Int64},
     n̲ₜ::Vector{Int64},
     n_neutral::Int,
     n_mut::Int;
@@ -133,8 +133,8 @@ Turing.@model function fitness_normal(
     if typeof(logλ_prior) <: Vector
         # Prior on Poisson distribtion parameters π(λ)
         logΛ̲̲ ~ Turing.MvNormal(
-            repeat([logλ_prior[1]], sum(length.(R̲̲))),
-            LinearAlgebra.I(sum(length.(R̲̲))) .* logλ_prior[2]^2
+            repeat([logλ_prior[1]], length(R̲̲)),
+            LinearAlgebra.I(length(R̲̲)) .* logλ_prior[2]^2
         )
     elseif typeof(logλ_prior) <: Matrix
         # Prior on Poisson distribtion parameters π(λ)
@@ -147,7 +147,7 @@ Turing.@model function fitness_normal(
     # originally sampled as a vector for the `Turing.jl` samplers to deal with
     # it. But reshaping it to a matrix simplifies the computation of frequencies
     # and frequency ratios.
-    Λ̲̲ = reshape(exp.(logΛ̲̲), length(R̲̲), length(first(R̲̲)))
+    Λ̲̲ = reshape(exp.(logΛ̲̲), size(R̲̲)...)
 
     # Compute barcode frequencies from Poisson parameters
     F̲̲ = Λ̲̲ ./ sum(Λ̲̲, dims=2)
@@ -178,7 +178,7 @@ Turing.@model function fitness_normal(
     Turing.@addlogprob! sum(
         Turing.logpdf.(
             Turing.Multinomial.(n̲ₜ, eachrow(F̲̲); check_args=false),
-            R̲̲
+            eachrow(R̲̲)
         ),
     )
 
