@@ -144,7 +144,8 @@ function advi(;
         count_col=count_col,
         neutral_col=neutral_col,
         rep_col=rep_col,
-        rm_T0=rm_T0
+        rm_T0=rm_T0,
+        verbose=verbose
     )
 
     ## %%%%%%%%%%% Variational Inference with ADVI %%%%%%%%%%% ##
@@ -211,7 +212,7 @@ function advi(;
 end # function
 
 @doc raw"""
-    advi(; kwargs)
+    pathfinder(; kwargs)
 
 Function to sample the joint posterior distribution for the fitness value of all
 mutant and neutral linages given a time-series barcode count.

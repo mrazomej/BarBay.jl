@@ -130,7 +130,8 @@ function mcmc_sample(;
         count_col=time_col,
         neutral_col=neutral_col,
         rep_col=rep_col,
-        rm_T0=rm_T0
+        rm_T0=rm_T0,
+        verbose=verbose
     )
 
     ## %%%%%%%%%%% MCMC sampling %%%%%%%%%%% ##
