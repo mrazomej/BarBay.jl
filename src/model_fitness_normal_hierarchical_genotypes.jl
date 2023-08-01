@@ -16,7 +16,7 @@ Turing.@model function genotype_fitness_normal(
     logτ_prior::Vector{Float64}=[-2.0, 1.0]
 )
     # Check that the number of assigned genotypes matches number of barcodes
-    if size(R̲̲, 2) != length(genotypes)
+    if n_mut != length(genotypes)
         error("List of genotypes must match number of barcodes")
     end # if
 
@@ -35,8 +35,8 @@ Turing.@model function genotype_fitness_normal(
     # Prior on population mean fitness π(s̲ₜ) 
     if typeof(s_pop_prior) <: Vector
         s̲ₜ ~ Turing.MvNormal(
-            repeat([s_pop_prior[1]], (n_time - 1) * n_rep),
-            LinearAlgebra.I((n_time - 1) * n_rep) .* s_pop_prior[2] .^ 2
+            repeat([s_pop_prior[1]], n_time - 1),
+            LinearAlgebra.I(n_time - 1) .* s_pop_prior[2] .^ 2
         )
     elseif typeof(s_pop_prior) <: Matrix
         s̲ₜ ~ Turing.MvNormal(
@@ -47,8 +47,8 @@ Turing.@model function genotype_fitness_normal(
     # Prior on LogNormal error π(logσ̲ₜ )
     if typeof(logσ_pop_prior) <: Vector
         logσ̲ₜ ~ Turing.MvNormal(
-            repeat([logσ_pop_prior[1]], (n_time - 1) * n_rep),
-            LinearAlgebra.I((n_time - 1) * n_rep) .* logσ_pop_prior[2] .^ 2
+            repeat([logσ_pop_prior[1]], n_time - 1),
+            LinearAlgebra.I(n_time - 1) .* logσ_pop_prior[2] .^ 2
         )
     elseif typeof(logσ_pop_prior) <: Matrix
         logσ̲ₜ ~ Turing.MvNormal(
