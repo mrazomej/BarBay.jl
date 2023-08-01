@@ -1072,3 +1072,120 @@ function build_getq(dim, model)
     return getq
 
 end # function
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Computing naive parameter priors based on neutrals data
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+@doc raw"""
+    naive_prior_neutral(data, rm_T0)
+
+Function to compute a naive set of parameters for the prior distributions of the
+population mean fitness `s̲ₜ` values and the nuisance parameters in the
+log-likelihood functions for the frequency ratios `σ̲ₜ` and `σ̲⁽ᵐ⁾`.
+
+This function expects the data in a **tidy** format. This means that every row
+represents **a single observation**. For example, if we measure barcode `i` in 4
+different time points, each of these four measurements gets an individual row.
+Furthermore, measurements of barcode `j` over time also get their own individual
+rows.
+        
+The `DataFrame` must contain at least the following columns:
+- `id_col`: Column identifying the ID of the barcode. This can the barcode
+    sequence, for example.
+- `time_col`: Column defining the measurement time point.
+- `count_col`: Column with the raw barcode count.
+- `neutral_col`: Column indicating whether the barcode is from a neutral lineage
+or not.
+
+# Arguments
+- `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
+used to sample from the population mean fitness posterior distribution.
+
+## Optional Keyword Arguments
+- `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
+    identifier. The column may contain any type of entry.
+- `time_col::Symbol=:time`: Name of the column in `data` defining the time point
+    at which measurements were done. The column may contain any type of entry as
+    long as `sort` will resulted in time-ordered names.
+- `freq_col::Symbol=:freq`: Name of the column in `data` containing the naive
+    barcode frequency. The column must contain entries of type `Float64`.
+- `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
+    the barcode belongs to a neutral lineage or not. The column must contain
+    entries of type `Bool`.
+- `rm_T0::Bool=false`: Optional argument to remove the first time point from the
+inference. Commonly, the data from this first time point is of much lower
+quality. Therefore, removing this first time point might result in a better
+inference.
+
+# Returns
+- `prior_params::Dict`: Dictionary with **two** entries:
+    - `s_pop_prior`: **Mean** value of the population mean fitness. **NOTE**:
+      This naive empirical method cannot make statements about the expected
+      standard deviation of the population mean fitness. It is up to the
+      researcher to determine this value.
+    - `logσ_pop_prior`: Prior on the nuisance parameter for the log-likelihood
+      functions on the log-frequency ratios. In other words, the mean and
+      standard deviation for the (log)-Normal distribution on the frequency
+      ratios. **NOTE**: Typically, one can use the same estimate for both the
+      neutral and the mutant lineages.
+"""
+function naive_prior_neutral(
+    data::DF.AbstractDataFrame;
+    id_col::Symbol=:barcode,
+    time_col::Symbol=:time,
+    freq_col::Symbol=:freq,
+    neutral_col::Symbol=:neutral,
+    rm_T0::Bool=false
+)
+    # Extract unique time points
+    timepoints = sort(unique(data[:, time_col]))
+
+    # Remove T0 if indicated
+    if rm_T0
+        data = data[.!(data[:, time_col] .== first(timepoints)), :]
+    end # if
+
+    # Re-extract unique time points
+    timepoints = sort(unique(data[:, time_col]))
+
+    # Group data by unique mutant barcode
+    data_group = DF.groupby(data[data[:, neutral_col], :], id_col)
+
+    # Initialize list to save log frequency changes for all neutral barcodes
+    logfreq = []
+
+    # Loop through each neutral barcode
+    for d in data_group
+        # Sort data by time
+        DF.sort!(d, time_col)
+        # Compute log frequency ratio and append to list
+        push!(logfreq, diff(log.(d[:, freq_col])))
+    end # for
+
+    # ========== Population mean fitness prior ========== #  
+    # Generate matrix with log-freq ratios. Rows = time, Cols = neutral barcode
+    logfreq_mat = hcat(logfreq...)
+
+    # Compute mean per time point for approximate mean fitness making sure we to
+    # remove infinities.
+    logfreq_mean = StatsBase.mean.(
+        [x[.!isinf.(x)] for x in eachrow(logfreq_mat)]
+    )
+
+    # Define prior for population mean fitness.
+    s_pop_prior = -logfreq_mean
+
+    # ========== Nuisance log-likelihood parameter priors ========== #  
+
+    # Generate single list of log-frequency ratios to compute prior on logσ
+    logfreq_vec = vcat(logfreq...)
+    # Remove infinities that can come from dividing by zero frequency
+    logfreq_vec = logfreq_vec[.!isinf.(logfreq_vec)]
+
+    # Define priors for nuisance parameters for log-likelihood functions by
+    # computing mean and standard deviation of all measurements
+    logσ_pop_prior = [StatsBase.mean(logfreq_vec), StatsBase.std(logfreq_vec)]
+
+    return Dict(:s_pop_prior => s_pop_prior, :logσ_pop_prior => logσ_pop_prior)
+end # function
