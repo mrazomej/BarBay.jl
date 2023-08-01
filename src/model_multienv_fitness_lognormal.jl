@@ -184,7 +184,9 @@ Turing.@model function multienv_fitness_lognormal(
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)
-    n̲ₜ ~ Turing.arraydist(Turing.Poisson.(vec(sum(Λ̲̲, dims=2))))
+    n̲ₜ ~ Turing.arraydist(
+        Turing.Poisson.(vec(sum(Λ̲̲, dims=2)), check_args=false)
+    )
 
     # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). 
     # Note # 1: We add the check_args=false option to avoid the recurrent
