@@ -308,6 +308,8 @@ used to sample from the population mean fitness posterior distribution.
   inference. Commonly, the data from this first time point is of much lower
   quality. Therefore, removing this first time point might result in a better
   inference.
+- `verbose::Bool=true`: Boolean indicating if printing statements should be
+  made.
 
 # Returns
 if `typeof(rep_col) <: Nothing` Dictionary with the following entries: -
@@ -331,7 +333,8 @@ function data2arrays(
     count_col::Symbol=:count,
     neutral_col::Symbol=:neutral,
     rep_col::Union{Nothing,Symbol}=nothing,
-    rm_T0::Bool=false
+    rm_T0::Bool=false,
+    verbose::Bool=true
 )
     # Extract unique time points
     timepoints = sort(unique(data[:, time_col]))
@@ -406,13 +409,6 @@ function data2arrays(
         # Compute total counts for each run
         n̲ₜ = vec(sum(R̲̲, dims=2))
 
-        return Dict(
-            :bc_count => R̲̲,
-            :bc_total => n̲ₜ,
-            :n_neutral => size(R̲̲⁽ⁿ⁾, 2),
-            :n_mut => size(R̲̲⁽ᵐ⁾, 2),
-            :mut_ids => mut_ids
-        )
         ### --------------- When repeats are given --------------- ### 
     elseif typeof(rep_col) <: Symbol
         ### NOTE: Need to add a verification that all barcodes are reported for 
@@ -488,12 +484,13 @@ function data2arrays(
         # Compute total counts for each run
         n̲ₜ = reshape(sum(R̲̲, dims=2), length(timepoints), length(reps))
 
-        return Dict(
-            :bc_count => R̲̲,
-            :bc_total => n̲ₜ,
-            :n_neutral => size(R̲̲⁽ⁿ⁾, 2),
-            :n_mut => size(R̲̲⁽ᵐ⁾, 2),
-            :mut_ids => mut_ids
-        )
     end # if
+
+    return Dict(
+        :bc_count => R̲̲,
+        :bc_total => n̲ₜ,
+        :n_neutral => size(R̲̲⁽ⁿ⁾, 2),
+        :n_mut => size(R̲̲⁽ᵐ⁾, 2),
+        :mut_ids => mut_ids
+    )
 end # function
