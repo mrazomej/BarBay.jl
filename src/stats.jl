@@ -998,6 +998,18 @@ end # function
 # Define full-rank normal distribution for variational inference
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
+@doc raw"""
+    Function to build a full-rank distribution to be used for ADVI optimization.
+    The code in this function comes from (`Turing.jl
+    tutorial`)[https://turinglang.org/v0.28/tutorials/09-variational-inference/]
+
+# Arguments
+- `dim::Int`: Dimensionality of parameter space.
+- `model::DynamicPPL.model`: Turing model to be fit using ADVI.
+
+# Returns
+Initialized distribution to be used when fitting a full-rank variational model.
+"""
 function build_getq(dim, model)
     # Define base distribution as standard normal.
     base_dist = Turing.DistributionsAD.TuringDiagMvNormal(zeros(dim), ones(dim))
