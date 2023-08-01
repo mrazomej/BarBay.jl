@@ -163,8 +163,8 @@ Turing.@model function fitness_normal(
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)
-    n̲ₜ ~ Turing.arraydist(Turing.Poisson.(sum.(eachrow(Λ̲̲)), check_args=false))
-    # n̲ₜ ~ Turing.arraydist(
+    # n̲ₜ ~ Turing.arraydist(Turing.Poisson.(sum.(eachrow(Λ̲̲)), check_args=false))
+    n̲ₜ ~ Turing.arraydist(
         Turing.Poisson.(vec(sum(Λ̲̲, dims=2)), check_args=false)
     )
 
