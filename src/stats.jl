@@ -85,7 +85,7 @@ end # function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    freq_mutant_ppc(n_ppc, df; param, flatten=true)
+    freq_mutant_ppc(df, n_ppc; kwargs)
 
 Function to compute the **posterior predictive checks** for the barcode
 frequency for adaptive mutants. Our model predicts the frequency at time ``t+1``
@@ -113,13 +113,13 @@ function generates samples out of this distribution.
   - population mean fitness values. NOTE: The number of columns containing
     population mean fitness values determines the number of datapoints where the
     ppc are evaluated.
-  - log-normal likelihood standard deviation.
+  - (log)-normal likelihood standard deviation.
   - mutant initial frequency.
 - `n_ppc::Int`: Number of samples to generate per set of parameters.
 
 ## Optional Arguments
-- `param::Dict{Symbol, Symbol}`: Dictionary indicating the
-  name of the variables in the mcmc chain defining the following variables:
+- `param::Dict{Symbol, Symbol}`: Dictionary indicating the name of the variables
+  in the mcmc chain defining the following variables:
   - `:mutant_mean_fitness`: Variable defining the inferred mutant fitness value
     `s⁽ᵐ⁾`.
   - `:mutant_std_fitness`: Variable defining the standard defining the inferred
@@ -128,6 +128,10 @@ function generates samples out of this distribution.
     mutant.
   - `population_mean_fitness`: Common pattern in all population mean fitness
     variables.
+- `model::Symbol=:lognormal`: Either `:normal` or `:lognormal` to indicate if
+    the model used a normal or lognormal distribution for the likelihood. This
+    is because when using a normal distribution, the nuisance parameters are
+    sampled in log scale and need to be exponentiated.
 - `flatten::Bool=true`: Boolean indicating whether to flatten the output of
   multiple chain into a single column.
 # Returns
@@ -143,6 +147,7 @@ function freq_mutant_ppc(
         :mutant_freq => Symbol("f̲⁽ᵐ⁾[1]"),
         :population_mean_fitness => :s̲ₜ,
     ),
+    model::Symbol=:lognormal,
     flatten::Bool=true
 )
     # Extract variable names for mean fitness
@@ -160,14 +165,31 @@ function freq_mutant_ppc(
 
     # Loop through time points
     for (i, var) in enumerate(mean_vars)
-        # Sample out of posterior distribution
-        f_ppc[:, i+1, :] = f_ppc[:, i, :] .* Random.rand(
-            Distributions.MvLogNormal(
-                df[:, param[:mutant_mean_fitness]] .- df[:, var],
-                LinearAlgebra.Diagonal(df[:, param[:mutant_std_fitness]] .^ 2)
-            ),
-            n_ppc
-        )
+        if model == :lognormal
+            # Sample out of posterior distribution
+            f_ppc[:, i+1, :] = f_ppc[:, i, :] .* Random.rand(
+                Distributions.MvLogNormal(
+                    df[:, param[:mutant_mean_fitness]] .- df[:, var],
+                    LinearAlgebra.Diagonal(
+                        df[:, param[:mutant_std_fitness]] .^ 2
+                    )
+                ),
+                n_ppc
+            )
+        elseif model == :normal
+            # Sample out of posterior distribution
+            f_ppc[:, i+1, :] = f_ppc[:, i, :] .* Random.rand(
+                Distributions.MvLogNormal(
+                    df[:, param[:mutant_mean_fitness]] .- df[:, var],
+                    LinearAlgebra.Diagonal(
+                        exp.(df[:, param[:mutant_std_fitness]]) .^ 2
+                    )
+                ),
+                n_ppc
+            )
+        else
+            error("model must be :normal or :lognormal")
+        end # if
     end # for
 
     if flatten
@@ -180,7 +202,7 @@ function freq_mutant_ppc(
 end # function
 
 @doc raw"""
-    freq_mutant_ppc(n_ppc, df; param, flatten=true)
+    freq_mutant_ppc(chain, n_ppc; kwargs)
 
 Function to compute the **posterior predictive checks** for the barcode
 frequency for adaptive mutants. Our model predicts the frequency at time ``t+1``
@@ -208,13 +230,13 @@ function generates samples out of this distribution.
   - population mean fitness values. NOTE: The number of columns containing
     population mean fitness values determines the number of datapoints where the
     ppc are evaluated.
-  - log-normal likelihood standard deviation.
+  - (log)-normal likelihood standard deviation.
   - mutant initial frequency.
 - `n_ppc::Int`: Number of samples to generate per set of parameters.
 
 ## Optional Arguments
-- `param::Dict{Symbol, Symbol}`: Dictionary indicating the
-  name of the variables in the mcmc chain defining the following variables:
+- `param::Dict{Symbol, Symbol}`: Dictionary indicating the name of the variables
+  in the mcmc chain defining the following variables:
   - `:mutant_mean_fitness`: Variable defining the inferred mutant fitness value
     `s⁽ᵐ⁾`.
   - `:mutant_std_fitness`: Variable defining the standard defining the inferred
@@ -223,6 +245,10 @@ function generates samples out of this distribution.
     mutant.
   - `population_mean_fitness`: Common pattern in all population mean fitness
     variables.
+- `model::Symbol=:lognormal`: Either `:normal` or `:lognormal` to indicate if
+    the model used a normal or lognormal distribution for the likelihood. This
+    is because when using a normal distribution, the nuisance parameters are
+    sampled in log scale and need to be exponentiated.
 - `flatten::Bool=true`: Boolean indicating whether to flatten the output of
   multiple chain into a single column.
 
@@ -239,6 +265,7 @@ function freq_mutant_ppc(
         :mutant_freq => Symbol("f̲⁽ᵐ⁾[1]"),
         :population_mean_fitness => :s̲ₜ,
     ),
+    model::Symbol=:lognormal,
     flatten::Bool=true
 )
     # Extract variable names for mean fitness
@@ -259,14 +286,31 @@ function freq_mutant_ppc(
 
     # Loop through time points
     for (i, var) in enumerate(mean_vars)
-        # Sample out of posterior distribution
-        f_ppc[:, i+1, :] = f_ppc[:, i, :] .* Random.rand(
-            Distributions.MvLogNormal(
-                chain[param[:mutant_mean_fitness]][:] .- chain[var][:],
-                LinearAlgebra.Diagonal(chain[param[:mutant_std_fitness]][:] .^ 2)
-            ),
-            n_ppc
-        )
+        if model == :lognormal
+            # Sample out of posterior distribution
+            f_ppc[:, i+1, :] = f_ppc[:, i, :] .* Random.rand(
+                Distributions.MvLogNormal(
+                    chain[param[:mutant_mean_fitness]][:] .- chain[var][:],
+                    LinearAlgebra.Diagonal(
+                        chain[param[:mutant_std_fitness]][:] .^ 2
+                    )
+                ),
+                n_ppc
+            )
+        elseif model == :normal
+            # Sample out of posterior distribution
+            f_ppc[:, i+1, :] = f_ppc[:, i, :] .* Random.rand(
+                Distributions.MvLogNormal(
+                    chain[param[:mutant_mean_fitness]][:] .- chain[var][:],
+                    LinearAlgebra.Diagonal(
+                        exp.(chain[param[:mutant_std_fitness]][:]) .^ 2
+                    )
+                ),
+                n_ppc
+            )
+        else
+            error("model must be :normal or :lognormal")
+        end # if
     end # for
 
     if flatten
@@ -283,7 +327,7 @@ end # function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    logfreq_ratio_mutant_ppc(df, n_ppc; param, flatten=true)
+    logfreq_ratio_mutant_ppc(df, n_ppc; kwargs)
 
 Function to compute the **posterior predictive checks** for the barcode
 log-frequency ratio for adaptive mutants. Our model predicts the frequency at
@@ -311,19 +355,22 @@ function generates samples out of this distribution.
   - population mean fitness values. NOTE: The number of columns containing
     population mean fitness values determines the number of datapoints where the
     ppc are evaluated.
-  - log-normal likelihood standard deviation.
-  - mutant initial frequency.
+  - (log)-normal likelihood standard deviation.
 - `n_ppc::Int`: Number of samples to generate per set of parameters.
 
 ## Optional Keyword Arguments
-- `param::Dict{Symbol, Symbol}`: Dictionary indicating the
-name of the variables in the mcmc chain defining the following variables:
+- `param::Dict{Symbol, Symbol}`: Dictionary indicating the name of the variables
+in the mcmc chain defining the following variables:
   - `:mutant_mean_fitness`: Variable defining the inferred mutant fitness value
     `s⁽ᵐ⁾`.
   - `:mutant_std_fitness`: Variable defining the standard defining the inferred
     standard deviation on the likelihood function `σ⁽ᵐ⁾`.
   - `population_mean_fitness`: Common pattern in all population mean fitness
     variables.
+- `model::Symbol=:lognormal`: Either `:normal` or `:lognormal` to indicate if
+    the model used a normal or lognormal distribution for the likelihood. This
+    is because when using a normal distribution, the nuisance parameters are
+    sampled in log scale and need to be exponentiated.
 - `flatten::Bool=true`: Boolean indicating whether to flatten the output of
   multiple chain into a single column.
 
@@ -339,6 +386,7 @@ function logfreq_ratio_mutant_ppc(
         :mutant_std_fitness => :σ⁽ᵐ⁾,
         :population_mean_fitness => :s̲ₜ,
     ),
+    model::Symbol=:lognormal,
     flatten::Bool=true
 )
     # Extract variable names for mean fitness
@@ -353,14 +401,31 @@ function logfreq_ratio_mutant_ppc(
 
     # Loop through time points
     for (i, var) in enumerate(mean_vars)
-        # Sample out of posterior distribution
-        logγ_ppc[:, i, :] = Random.rand(
-            Distributions.MvNormal(
-                df[:, param[:mutant_mean_fitness]] .- df[:, var],
-                LinearAlgebra.Diagonal(df[:, param[:mutant_std_fitness]] .^ 2)
-            ),
-            n_ppc
-        )
+        if model == :lognormal
+            # Sample out of posterior distribution
+            logγ_ppc[:, i, :] = Random.rand(
+                Distributions.MvNormal(
+                    df[:, param[:mutant_mean_fitness]] .- df[:, var],
+                    LinearAlgebra.Diagonal(
+                        df[:, param[:mutant_std_fitness]] .^ 2
+                    )
+                ),
+                n_ppc
+            )
+        elseif model == :normal
+            # Sample out of posterior distribution
+            logγ_ppc[:, i, :] = Random.rand(
+                Distributions.MvNormal(
+                    df[:, param[:mutant_mean_fitness]] .- df[:, var],
+                    LinearAlgebra.Diagonal(
+                        exp.(df[:, param[:mutant_std_fitness]]) .^ 2
+                    )
+                ),
+                n_ppc
+            )
+        else
+            error("model must be :normal or :lognormal")
+        end # if
     end # for
 
     if flatten
@@ -373,7 +438,7 @@ function logfreq_ratio_mutant_ppc(
 end # function
 
 @doc raw"""
-    logfreq_ratio_mutant_ppc(chain, n_ppc; param, flatten=true)
+    logfreq_ratio_mutant_ppc(chain, n_ppc; kwargs)
 
 Function to compute the **posterior predictive checks** for the barcode
 log-frequency ratio for adaptive mutants. Our model predicts the frequency at
@@ -401,19 +466,22 @@ function generates samples out of this distribution.
   - population mean fitness values. NOTE: The number of columns containing
     population mean fitness values determines the number of datapoints where the
     ppc are evaluated.
-  - log-normal likelihood standard deviation.
-  - mutant initial frequency.
+  - (log)-normal likelihood standard deviation.
 - `n_ppc::Int`: Number of samples to generate per set of parameters.
 
 ## Optional Arguments
-- `param::Dict{Symbol, Symbol}`: Dictionary indicating the
-name of the variables in the mcmc chain defining the following variables:
+- `param::Dict{Symbol, Symbol}`: Dictionary indicating the name of the variables
+in the mcmc chain defining the following variables:
   - `:mutant_mean_fitness`: Variable defining the inferred mutant fitness value
     `s⁽ᵐ⁾`.
   - `:mutant_std_fitness`: Variable defining the standard defining the inferred
     standard deviation on the likelihood function `σ⁽ᵐ⁾`.
   - `population_mean_fitness`: Common pattern in all population mean fitness
     variables.
+- `model::Symbol=:lognormal`: Either `:normal` or `:lognormal` to indicate if
+  the model used a normal or lognormal distribution for the likelihood. This is
+  because when using a normal distribution, the nuisance parameters are sampled
+  in log scale and need to be exponentiated.
 - `flatten::Bool=true`: Boolean indicating whether to flatten the output of
   multiple chain into a single column.
 
@@ -429,6 +497,7 @@ function logfreq_ratio_mutant_ppc(
         :mutant_std_fitness => :σ⁽ᵐ⁾,
         :population_mean_fitness => :s̲ₜ,
     ),
+    model::Symbol=:lognormal,
     flatten::Bool=true
 )
     # Extract variable names for mean fitness
@@ -446,14 +515,31 @@ function logfreq_ratio_mutant_ppc(
 
     # Loop through time points
     for (i, var) in enumerate(mean_vars)
-        # Sample out of posterior distribution
-        logγ_ppc[:, i, :] = Random.rand(
-            Distributions.MvNormal(
-                chain[param[:mutant_mean_fitness]][:] .- chain[var][:],
-                LinearAlgebra.Diagonal(chain[param[:mutant_std_fitness]][:] .^ 2)
-            ),
-            n_ppc
-        )
+        if model == :lognormal
+            # Sample out of posterior distribution
+            logγ_ppc[:, i, :] = Random.rand(
+                Distributions.MvNormal(
+                    chain[param[:mutant_mean_fitness]][:] .- chain[var][:],
+                    LinearAlgebra.Diagonal(
+                        chain[param[:mutant_std_fitness]][:] .^ 2
+                    )
+                ),
+                n_ppc
+            )
+        elseif model == :normal
+            # Sample out of posterior distribution
+            logγ_ppc[:, i, :] = Random.rand(
+                Distributions.MvNormal(
+                    chain[param[:mutant_mean_fitness]][:] .- chain[var][:],
+                    LinearAlgebra.Diagonal(
+                        exp.(chain[param[:mutant_std_fitness]][:]) .^ 2
+                    )
+                ),
+                n_ppc
+            )
+        else
+            error("model must be either :normal or :lognormal")
+        end # if
     end # for
 
     if flatten
@@ -468,7 +554,7 @@ end # function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    logfreq_ratio_mean_ppc(df, n_ppc, param; flatten=true)
+    logfreq_ratio_popmean_ppc(df, n_ppc; kwargs)
 
 Function to compute the **posterior predictive checks** (better called the
 posterior retrodictive checks) for the barcode log-frequency ratio for neutral
@@ -490,14 +576,14 @@ where ``\sigma^{(n)}`` is the inferred standard deviation for the model. This
 function generates samples out of this distribution.
 
 # Arguments
-- `n_ppc::Int`: Number of samples to generate per set of parameters.
 - `df::DataFrames.DataFrame`: Dataframe containing the MCMC samples for the
   variables needed to compute the posterior predictive checks. The dataframe
   should have MCMC samples for
   - population mean fitness values. NOTE: The number of columns containing
     population mean fitness values determines the number of datapoints where the
     ppc are evaluated.
-  - log-normal likelihood standard deviation.
+  - (log)-normal likelihood standard deviation.
+- `n_ppc::Int`: Number of samples to generate per set of parameters.
 
 ## Optional Arguments
 - `param::Dict{Symbol, Symbol}`: Dictionary indicating the name of the variables
@@ -506,6 +592,10 @@ in the mcmc chain defining the following variables:
     variables.
     - `population_std_fitness`: Common pattern in all standard deviations
       estimates for the likelihood.
+- `model::Symbol=:lognormal`: Either `:normal` or `:lognormal` to indicate if
+    the model used a normal or lognormal distribution for the likelihood. This
+    is because when using a normal distribution, the nuisance parameters are
+    sampled in log scale and need to be exponentiated.
 - `flatten::Bool=true`: Boolean indicating whether to flatten the output of
   multiple chain into a single column.
 
@@ -513,13 +603,14 @@ in the mcmc chain defining the following variables:
 - `log(fₜ₊₁ / fₜ)= s⁽ᵐ⁾ - s̅ₜ::Array{Float64}`: Evaluation of the log frequency
   ratio posterior predictive checks at all times for each MCMC sample.
 """
-function logfreq_ratio_mean_ppc(
+function logfreq_ratio_popmean_ppc(
     df::DF.AbstractDataFrame,
     n_ppc::Int;
     param::Dict{Symbol,Symbol}=Dict(
         :population_mean_fitness => :sₜ,
         :population_std_fitness => :σₜ
     ),
+    model::Symbol=:lognormal,
     flatten::Bool=true
 )
     # Extract variable names for mean fitness
@@ -546,14 +637,27 @@ function logfreq_ratio_mean_ppc(
 
     # Loop through 
     for (i, var) in enumerate(mean_vars)
-        # Sample out of posterior distribution
-        logγ_ppc[:, i, :] = Random.rand(
-            Distributions.MvNormal(
-                -df[:, var],
-                LinearAlgebra.Diagonal(df[:, std_vars[i]] .^ 2)
-            ),
-            n_ppc
-        )
+        if model == :lognormal
+            # Sample out of posterior distribution
+            logγ_ppc[:, i, :] = Random.rand(
+                Distributions.MvNormal(
+                    -df[:, var],
+                    LinearAlgebra.Diagonal(df[:, std_vars[i]] .^ 2)
+                ),
+                n_ppc
+            )
+        elseif model == :normal
+            # Sample out of posterior distribution
+            logγ_ppc[:, i, :] = Random.rand(
+                Distributions.MvNormal(
+                    -df[:, var],
+                    LinearAlgebra.Diagonal(exp.(df[:, std_vars[i]]) .^ 2)
+                ),
+                n_ppc
+            )
+        else
+            error("model must be :normal or :lognormal")
+        end # if
     end # for
 
     if flatten
@@ -566,7 +670,7 @@ function logfreq_ratio_mean_ppc(
 end # function
 
 @doc raw"""
-    logfreq_ratio_mean_ppc(chain, n_ppc; param, flatten=true)
+    logfreq_ratio_popmean_ppc(chain, n_ppc; kwargs)
 
 Function to compute the **posterior predictive checks** (better called the
 posterior retrodictive checks) for the barcode log-frequency ratio for neutral
@@ -588,14 +692,15 @@ where ``\sigma^{(n)}`` is the inferred standard deviation for the model. This
 function generates samples out of this distribution.
 
 # Arguments
-- `n_ppc::Int`: Number of samples to generate per set of parameters.
-- `df::DataFrames.DataFrame`: Dataframe containing the MCMC samples for the
-    variables needed to compute the posterior predictive checks. The dataframe
-    should have MCMC samples for
-    - population mean fitness values. NOTE: The number of columns containing
+- `chain::MCMCChains.Chains`: Chain containing the MCMC samples for the
+  variables needed to compute the posterior predictive checks. The dataframe
+  should have MCMC samples for
+  - mutant relative fitness values.
+  - population mean fitness values. NOTE: The number of columns containing
     population mean fitness values determines the number of datapoints where the
     ppc are evaluated.
-    - log-normal likelihood standard deviation.
+  - (log)-normal likelihood standard deviation.
+- `n_ppc::Int`: Number of samples to generate per set of parameters.
 
 ## Optional Arguments
 - `param::Dict{Symbol, Symbol}`: Dictionary indicating the name of the variables
@@ -604,6 +709,10 @@ in the mcmc chain defining the following variables:
     variables.
     - `population_std_fitness`: Common pattern in all standard deviations
         estimates for the likelihood.
+- `model::Symbol=:lognormal`: Either `:normal` or `:lognormal` to indicate if
+  the model used a normal or lognormal distribution for the likelihood. This is
+  because when using a normal distribution, the nuisance parameters are sampled
+  in log scale and need to be exponentiated.
 - `flatten::Bool=true`: Boolean indicating whether to flatten the output of
     multiple chain into a single column.
 
@@ -611,13 +720,14 @@ in the mcmc chain defining the following variables:
 - `log(fₜ₊₁ / fₜ) = s⁽ᵐ⁾ - s̅ₜ::Array{Float64}`: Evaluation of the log frequency
   ratio posterior predictive checks at all times for each MCMC sample.
 """
-function logfreq_ratio_mean_ppc(
+function logfreq_ratio_popmean_ppc(
     chains::MCMCChains.Chains,
     n_ppc::Int;
     param::Dict{Symbol,Symbol}=Dict(
         :population_mean_fitness => :sₜ,
         :population_std_fitness => :σₜ
     ),
+    model::Symbol=:lognormal,
     flatten::Bool=true
 )
     # Extract variable names for mean fitness
@@ -641,14 +751,27 @@ function logfreq_ratio_mean_ppc(
 
     # Loop through 
     for (i, var) in enumerate(mean_vars)
-        # Sample out of posterior distribution
-        logγ_ppc[:, i, :] = Random.rand(
-            Distributions.MvNormal(
-                -chains[var][:],
-                LinearAlgebra.Diagonal(chains[std_vars[i]][:] .^ 2)
-            ),
-            n_ppc
-        )
+        if model == :lognormal
+            # Sample out of posterior distribution
+            logγ_ppc[:, i, :] = Random.rand(
+                Distributions.MvNormal(
+                    -chains[var][:],
+                    LinearAlgebra.Diagonal(chains[std_vars[i]][:] .^ 2)
+                ),
+                n_ppc
+            )
+        elseif model == :normal
+            # Sample out of posterior distribution
+            logγ_ppc[:, i, :] = Random.rand(
+                Distributions.MvNormal(
+                    -chains[var][:],
+                    LinearAlgebra.Diagonal(exp.(chains[std_vars[i]][:]) .^ 2)
+                ),
+                n_ppc
+            )
+        else
+            error("model must be :normal or :lognormal")
+        end # if
     end # for
 
     if flatten
@@ -666,7 +789,7 @@ end # function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    logfreq_ratio_mutienv_ppc(df, n_ppc, param; flatten=true)
+    logfreq_ratio_mutienv_ppc(df, n_ppc; kwargs)
 
 Function to compute the **posterior predictive checks** for the barcode
 log-frequency ratio for adaptive mutants. Our model predicts the frequency at
@@ -694,8 +817,7 @@ function generates samples out of this distribution.
   - population mean fitness values. NOTE: The number of columns containing
     population mean fitness values determines the number of datapoints where the
     ppc are evaluated.
-  - log-normal likelihood standard deviation.
-  - mutant initial frequency.
+  - (log)-normal likelihood standard deviation.
 - `n_ppc::Int`: Number of samples to generate per set of parameters.
 - `envs::Vector{<:Any}`: List of environments in experiment. This is used to
   index the corresponding fitness from the chain. NOTE: The list of environments
@@ -711,6 +833,10 @@ in the mcmc chain defining the following variables:
     standard deviation on the likelihood function `σ⁽ᵐ⁾`.
   - `population_mean_fitness`: Common pattern in all population mean fitness
     variables.
+- `model::Symbol=:lognormal`: Either `:normal` or `:lognormal` to indicate if
+  the model used a normal or lognormal distribution for the likelihood. This is
+  because when using a normal distribution, the nuisance parameters are sampled
+  in log scale and need to be exponentiated.
 - `flatten::Bool=true`: Boolean indicating whether to flatten the output of
   multiple chain into a single column.
 
@@ -727,6 +853,7 @@ function logfreq_ratio_multienv_ppc(
         :mutant_std_fitness => :σ̲⁽ᵐ⁾,
         :population_mean_fitness => :s̲ₜ,
     ),
+    model::Symbol=:lognormal,
     flatten::Bool=true
 )
     # Find unique environments
@@ -774,14 +901,29 @@ function logfreq_ratio_multienv_ppc(
 
     # Loop through time points
     for (i, var) in enumerate(mean_vars)
-        # Sample out of posterior distribution
-        logγ_ppc[:, i, :] = Random.rand(
-            Distributions.MvNormal(
-                df[:, s_vars[env_idx[i+1]]] .- df[:, var],
-                LinearAlgebra.Diagonal(df[:, σ_vars[env_idx[i+1]]] .^ 2)
-            ),
-            n_ppc
-        )
+        if model == :lognormal
+            # Sample out of posterior distribution
+            logγ_ppc[:, i, :] = Random.rand(
+                Distributions.MvNormal(
+                    df[:, s_vars[env_idx[i+1]]] .- df[:, var],
+                    LinearAlgebra.Diagonal(df[:, σ_vars[env_idx[i+1]]] .^ 2)
+                ),
+                n_ppc
+            )
+        elseif model == :normal
+            # Sample out of posterior distribution
+            logγ_ppc[:, i, :] = Random.rand(
+                Distributions.MvNormal(
+                    df[:, s_vars[env_idx[i+1]]] .- df[:, var],
+                    LinearAlgebra.Diagonal(
+                        exp.(df[:, σ_vars[env_idx[i+1]]] .^ 2)
+                    )
+                ),
+                n_ppc
+            )
+        else
+            error("model must be :normal or :lognormal")
+        end # if
     end # for
 
     if flatten
@@ -793,6 +935,61 @@ function logfreq_ratio_multienv_ppc(
     end # if
 end # function
 
+@doc raw"""
+logfreq_ratio_mutienv_ppc(chain, n_ppc; kwargs)
+
+Function to compute the **posterior predictive checks** (better called the
+posterior retrodictive checks) for the barcode log-frequency ratio for neutral
+lineages. Our model predicts the frequency at time ``t+1`` based on the
+frequency at time ``t`` as
+
+```math
+    f_{t+1}^{(n)} = f_{t}^{(n)} 
+    \exp\left[ \left( - \bar{s}_t \right) \tau \right],
+```
+where ``\bar{s}_t`` is the population mean fitness between time ``t`` and
+``t+1``, and ``\tau`` is the time interval between time ``t`` and ``t+1``. Our
+inference model assumes that
+```math
+    \frac{f_{t+1}^{(n)}}{f_{t}^{(n)}} \sim 
+    \log-\mathcal{N}\left( - \bar{s}_t, \sigma^{(n)} \right),
+```
+where ``\sigma^{(n)}`` is the inferred standard deviation for the model. This
+function generates samples out of this distribution.
+
+# Arguments
+- `chain::MCMCChains.Chains`: Chain containing the MCMC samples for the
+  variables needed to compute the posterior predictive checks. The dataframe
+  should have MCMC samples for
+  - mutant relative fitness values.
+  - population mean fitness values. NOTE: The number of columns containing
+    population mean fitness values determines the number of datapoints where the
+    ppc are evaluated.
+  - (log)-normal likelihood standard deviation.
+- `n_ppc::Int`: Number of samples to generate per set of parameters.
+
+## Optional Arguments
+- `param::Dict{Symbol, Symbol}`: Dictionary indicating the name of the variables
+in the mcmc chain defining the following variables:
+    - `population_mean_fitness`: Common pattern in all population mean fitness
+    variables.
+    - `population_std_fitness`: Common pattern in all standard deviations
+        estimates for the likelihood.
+- `model::Symbol=:lognormal`: Either `:normal` or `:lognormal` to indicate if
+  the model used a normal or lognormal distribution for the likelihood. This is
+  because when using a normal distribution, the nuisance parameters are sampled
+  in log scale and need to be exponentiated.
+- `model::Symbol=:lognormal`: Either `:normal` or `:lognormal` to indicate if
+  the model used a normal or lognormal distribution for the likelihood. This is
+  because when using a normal distribution, the nuisance parameters are sampled
+  in log scale and need to be exponentiated.
+- `flatten::Bool=true`: Boolean indicating whether to flatten the output of
+    multiple chain into a single column.
+
+# Returns
+- `log(fₜ₊₁ / fₜ) = s⁽ᵐ⁾ - s̅ₜ::Array{Float64}`: Evaluation of the log frequency
+  ratio posterior predictive checks at all times for each MCMC sample.
+"""
 function logfreq_ratio_multienv_ppc(
     chain::MCMCChains.Chains,
     n_ppc::Int,
@@ -802,6 +999,7 @@ function logfreq_ratio_multienv_ppc(
         :mutant_std_fitness => :σ̲⁽ᵐ⁾,
         :population_mean_fitness => :s̲ₜ,
     ),
+    model::Symbol=:lognormal,
     flatten::Bool=true
 )
     # Find unique environments
@@ -848,14 +1046,28 @@ function logfreq_ratio_multienv_ppc(
 
     # Loop through time points
     for (i, var) in enumerate(mean_vars)
-        # Sample out of posterior distribution
-        logγ_ppc[:, i, :] = Random.rand(
-            Distributions.MvNormal(
-                chain[s_vars[env_idx[i+1]]][:] .- chain[var][:],
-                LinearAlgebra.Diagonal(chain[σ_vars[env_idx[i+1]]][:] .^ 2)
-            ),
-            n_ppc
-        )
+        if model == :lognormal
+            # Sample out of posterior distribution
+            logγ_ppc[:, i, :] = Random.rand(
+                Distributions.MvNormal(
+                    chain[s_vars[env_idx[i+1]]][:] .- chain[var][:],
+                    LinearAlgebra.Diagonal(chain[σ_vars[env_idx[i+1]]][:] .^ 2)
+                ),
+                n_ppc
+            )
+        elseif model == :normal
+            # Sample out of posterior distribution
+            logγ_ppc[:, i, :] = Random.rand(
+                Distributions.MvNormal(
+                    chain[s_vars[env_idx[i+1]]][:] .- chain[var][:],
+                    LinearAlgebra.Diagonal(
+                        exp.(chain[σ_vars[env_idx[i+1]]][:]) .^ 2
+                    )
+                ),
+                n_ppc
+            )
+        else
+        end # if
     end # for
 
     if flatten
