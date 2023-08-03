@@ -916,7 +916,7 @@ function logfreq_ratio_multienv_ppc(
                 Distributions.MvNormal(
                     df[:, s_vars[env_idx[i+1]]] .- df[:, var],
                     LinearAlgebra.Diagonal(
-                        exp.(df[:, σ_vars[env_idx[i+1]]] .^ 2)
+                        exp.(df[:, σ_vars[env_idx[i+1]]]) .^ 2
                     )
                 ),
                 n_ppc
