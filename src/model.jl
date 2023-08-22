@@ -27,6 +27,7 @@ include("./model_freq_lognormal.jl")
 
 # Population mean fitness inference from neutrals data π(s̲ₜ | data)
 include("./model_neutrals_lognormal.jl")
+include("./model_neutrals_normal.jl")
 
 # fitness inference π(s̲⁽ᵐ⁾, s̲ₜ | data)
 include("./model_fitness_lognormal.jl")

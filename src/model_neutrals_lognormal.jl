@@ -1,5 +1,5 @@
 @doc raw"""
-    mean_fitness_lognormal(R̲̲, R̲̲⁽ⁿ⁾, n̲ₜ; s_pop_prior, σ_pop_prior, λ_prior)
+    neutrals_lognormal(R̲̲, R̲̲⁽ⁿ⁾, n̲ₜ; s_pop_prior, σ_pop_prior, λ_prior)
 
 `Turing.jl` model to sample the joint posterior distribution of the population
 mean fitness for a competitive fitness experiment using only the neutral
@@ -9,9 +9,9 @@ lineages.
 `[write model here]`
 
 # Arguments
-- `R̲̲::Matrix{Int64}`:: `T × B` matrix--split into a vector of vectors
-  for computational efficiency--where `T` is the number of time points in the
-  data set and `B` is the number of barcodes. Each column represents the barcode
+- `R̲̲::Matrix{Int64}`:: `T × B` matrix--split into a vector of vectors for
+  computational efficiency--where `T` is the number of time points in the data
+  set and `B` is the number of barcodes. Each column represents the barcode
   count trajectory for a single lineage. **NOTE**: This matrix does not
   necessarily need to be equivalent to `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)`. This is because
   `R̲̲⁽ᵐ⁾` can exclude mutant barcodes to perform the joint inference only for a
@@ -29,30 +29,35 @@ lineages.
   across models.
 
 ## Optional Keyword Arguments
-- `s_pop_prior::Vector{Float64}=[0.0, 2.0]`: Vector with the correspnding
-    parameters (`s_pop_prior[1]` = mean, `s_pop_prior[2]` = standard deviation)
-    for a Normal prior on the population mean fitness values. **NOTE**: This
-    method assigns the same prior to **all** population mean fitness to be
-    inferred.
-- `σ_pop_prior::Vector{Float64}=[0.0, 1.0]`: Vector with the correspnding
-    parameters (`σ_pop_prior[1]` = mean, `σ_pop_prior[2]` = standard deviation)
-    for a Log-Normal prior on the population mean fitness error utilized in the
-    log-likelihood function. **NOTE**: This method assigns the same prior to
-    **all** population mean fitness errors to be inferred.
-- `λ_prior::Vector{Float64}=[3.0, 3.0]`: Vector with the corresponding
-  parameters (`λ_prior[1]` = mean, `λ_prior[2]` = standard deviation) for a
-  Log-Normal prior on the λ parameter in the Poisson distribution. The λ
-  parameter can be interpreted as the mean number of barcode counts since we
-  assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. **NOTE**: This method assigns
-    the same prior to **all** mutant fitness error values to be inferred.
+- `s_pop_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
+    correspnding parameters (Vector: `s_pop_prior[1]` = mean, `s_pop_prior[2]` =
+    standard deviation, Matrix: `s_pop_prior[:, 1] = mean`, `s_pop_prior[:, 2] =
+    standard deviation`) for a Normal prior on the population mean fitness
+    values. If `typeof(s_pop_prior) <: Matrix`, there should be as many rows in
+    the matrix as pairs of time adjacent time points in dataset.
+- `σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+    correspnding parameters (Vector: `σ_pop_prior[1]` = mean, `σ_pop_prior[2]` =
+    standard deviation, Matrix: `σ_pop_prior[:, 1] = mean`, `σ_pop_prior[:, 2] =
+    standard deviation`) for a Log-Normal prior on the population mean fitness
+    error utilized in the log-likelihood function. If `typeof(σ_pop_prior) <:
+    Matrix`, there should be as many rows in the matrix as pairs of time
+    adjacent time points in dataset.
+- `λ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
+    correspnding parameters (Vector: `λ_prior[1]` = mean, `λ_prior[2]` =
+    standard deviation, Matrix: `λ_prior[:, 1] = mean`, `λ_prior[:, 2] =
+    standard deviation`) for a Log-Normal prior on the λ parameter in the
+    Poisson distribution. The λ parameter can be interpreted as the mean number
+    of barcode counts since we assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`.
+    If `typeof(λ_prior) <: Matrix`, there should be as many rows in the matrix
+    as number of barcodes × number of time points in the dataset.
 """
 Turing.@model function neutrals_lognormal(
     R̲̲::Matrix{Int64},
     n̲ₜ::Vector{Int64},
     n_neutral::Int,
     n_mut::Int=1;
-    s_pop_prior::Vector{Float64}=[0.0, 1.0],
-    σ_pop_prior::Vector{Float64}=[0.0, 0.5],
+    s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
+    σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
     λ_prior::VecOrMat{Float64}=[3.0, 3.0]
 )
     # Define number of time points
@@ -61,15 +66,28 @@ Turing.@model function neutrals_lognormal(
     ## %%%%%%%%%%%%%% Population mean fitness  %%%%%%%%%%%%%% ##
 
     # Prior on population mean fitness π(s̲ₜ) 
-    s̲ₜ ~ Turing.MvNormal(
-        repeat([s_pop_prior[1]], n_time - 1),
-        LinearAlgebra.I(n_time - 1) .* s_pop_prior[2] .^ 2
-    )
+    if typeof(s_pop_prior) <: Vector
+        s̲ₜ ~ Turing.MvNormal(
+            repeat([s_pop_prior[1]], n_time - 1),
+            LinearAlgebra.I(n_time - 1) .* s_pop_prior[2] .^ 2
+        )
+    elseif typeof(s_pop_prior) <: Matrix
+        s̲ₜ ~ Turing.MvNormal(
+            s_pop_prior[:, 1], LinearAlgebra.Diagonal(s_pop_prior[:, 2] .^ 2)
+        )
+    end # if
+
     # Prior on LogNormal error π(σ̲ₜ)
-    σ̲ₜ ~ Turing.MvLogNormal(
-        repeat([σ_pop_prior[1]], n_time - 1),
-        LinearAlgebra.I(n_time - 1) .* σ_pop_prior[2] .^ 2
-    )
+    if typeof(σ_pop_prior) <: Vector
+        σ̲ₜ ~ Turing.MvLogNormal(
+            repeat([σ_pop_prior[1]], n_time - 1),
+            LinearAlgebra.I(n_time - 1) .* σ_pop_prior[2] .^ 2
+        )
+    elseif typeof(σ_pop_prior) <: Matrix
+        σ̲ₜ ~ Turing.MvLogNormal(
+            σ_pop_prior[:, 1], LinearAlgebra.Diagonal(σ_pop_prior[:, 2] .^ 2)
+        )
+    end # if
 
     ## %%%%%%%%%%%%%% Barcode frequencies %%%%%%%%%%%%%% ##
 
