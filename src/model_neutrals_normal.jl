@@ -115,11 +115,10 @@ Turing.@model function neutrals_normal(
     F̲̲ = Λ̲̲ ./ sum(Λ̲̲, dims=2)
 
     # Compute frequency ratios between consecutive time points.
-    Γ̲̲ = F̲̲[2:end, :] ./ F̲̲[1:end-1, :]
+    logΓ̲̲ = log.(F̲̲[2:end, :] ./ F̲̲[1:end-1, :])
 
-    # Split neutral and mutant frequency ratios. Note: the @view macro means
-    # that there is not allocation to memory on this step.
-    Γ̲̲⁽ⁿ⁾ = vec(Γ̲̲[:, 1:n_neutral])
+    # Split neutral and mutant frequency ratios. 
+    logΓ̲̲⁽ⁿ⁾ = vec(logΓ̲̲[:, 1:n_neutral])
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)
