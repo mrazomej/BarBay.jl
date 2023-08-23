@@ -5,6 +5,8 @@ import CSV
 
 # Import basic math
 import StatsBase
+import Distributions
+import Random
 
 # Import function to list files
 import Glob
@@ -493,4 +495,251 @@ function data2arrays(
         :n_mut => size(R̲̲⁽ᵐ⁾, 2),
         :mut_ids => mut_ids
     )
+end # function
+
+@doc raw"""
+
+"""
+function advi2df(
+    dist::Distributions.Sampleable,
+    vars::Vector{<:Any},
+    mut_ids::Vector{<:Any};
+    n_rep::Int=1,
+    envs::Vector{<:Any}=[1],
+    n_samples::Int=10_000
+)
+    # Extract parameters and convert to dataframe
+    df_par = DF.DataFrame(
+        hcat(Distributions.params(dist)...),
+        ["mean", "std"]
+    )
+    # Add variable name
+    df_par[!, :varname] = vars
+
+    # Locate variable groups by identifying the first variable of each group
+    var_groups = replace.(vars[occursin.("[1]", string.(vars))], "[1]" => "")
+
+    # Count how many variables exist per group
+    var_count = [sum(occursin.(vg, string.(vars))) for vg in var_groups]
+
+    # Define number of time points based on number of population mean fitness
+    # variables and the number of repeats
+    n_time = sum(occursin.(first(var_groups), string.(vars))) ÷ n_rep + 1
+
+    # Define number of mutants
+    n_mut = length(mut_ids)
+
+    # Define number of neutral lineages from the total count of frequency
+    # variables
+    n_neutral = (sum(occursin.("Λ", vars)) - (n_mut * n_time * n_rep)) ÷
+                (n_time * n_rep)
+    # Assign neutral IDs. This will be used for the ID of frequency variables
+    neutral_ids = ["neutral$(lpad(x, 3, "0"))" for x = 1:n_neutral]
+
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+    # Add replicate number information
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+    # 1. One repeat should have 5 var_groups. If larger, it is an error
+    if (n_rep == 1) .& (length(var_groups) == 7)
+        # Report that this must be a hierarchical model
+        error("This seems like a hierarchical model with multiple repeats")
+
+        # 2. One repeat and 5 var_groups: Standard single-dataset model
+    elseif (n_rep == 1) .& (length(var_groups) == 5)
+        # Define variable types
+        vtypes = ["pop_mean", "pop_error", "mut_fitness", "mut_error", "freq"]
+        # Repeat variable type var_count times and add it to dataframe
+        df_par[!, :var_type] = vcat(
+            [repeat([vtypes[i]], var_count[i]) for i in eachindex(var_count)]...
+        )
+
+        # Add repeat information. NOTE: This is to have a consistent dataframe
+        # for all possible models
+        df_par[!, :rep] .= "R1"
+
+        # 3. More than one repeat and 7 var_groups: Hierarchical model for
+        #    experimental replicates
+    elseif (n_rep > 1) .& (length(var_groups) == 7)
+        # Define variable types
+        vtypes = ["pop_mean", "pop_error", "mut_hyperfitness", "mut_noncenter",
+            "mut_deviations", "mut_error", "freq"]
+        # Repeat variable type var_count times and add it to dataframe
+        df_par[!, :var_type] = vcat(
+            [repeat([vtypes[i]], var_count[i]) for i in eachindex(var_count)]...
+        )
+        # Initialize array to define replicate information
+        rep = Vector{String}(undef, length(vars))
+        # Initialize array to define time information
+        time = Vector{Int64}(undef, length(vars))
+        # Loop through variables
+        for (i, vt) in enumerate(vtypes)
+            # Locate variables
+            var_idx = df_par.var_type .== vt
+            # Check if there's no hyper parameter and no freq
+            if !occursin("hyper", vt)
+                # Add corresponding replicate information
+                rep[var_idx] = vcat(
+                    [repeat(["R$j"], var_count[i] ÷ n_rep) for j = 1:n_rep]...
+                )
+            else
+                rep[var_idx] .= "N/A"
+            end # if
+        end # for
+        # Add repeat information to dataframe
+        df_par[!, :rep] = rep
+    end # if
+
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+    # Add environment information
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+    # 1. Single environment case
+    if length(envs) == 1
+        # Add environment information. NOTE: This is to have a consistent
+        # dataframe structure
+        df_par[!, :env] .= first(envs)
+    elseif length(envs) > 1
+        # Add environment variable (to be modofied later)
+        df_par[!, :env] .= first(envs)
+        # Loop through variables
+        for (i, var) in enumerate(unique(df_par.var_type))
+            # Locate variables
+            var_idx = df_par.var_type .== var
+            # Check cases
+            # 1. population mean fitness-related variables
+            if occursin("pop", var)
+                df_par[var_idx, :env] = repeat(envs[2:end], n_rep)
+                # 2. frequency-related variables
+            elseif occursin("freq", var)
+                df_par[var_idx, :env] = repeat(
+                    envs, (n_mut + n_neutral) * n_rep
+                )
+                # 3. mutant fitness-related variables
+            else
+                df_par[var_idx, :env] = repeat(
+                    unique(envs), sum(var_idx) ÷ length(unique(envs))
+                )
+            end # if
+        end # for
+    end # if
+
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+    # Add mutant id information
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+    # Add mutant id column. To be modified
+    df_par[:, :id] .= "N/A"
+
+    # Loop through variables
+    for (i, var) in enumerate(unique(df_par.var_type))
+        # Locate variables
+        var_idx = df_par.var_type .== var
+        # Check cases
+        # 1. population mean fitness-related variables
+        if occursin("pop", var)
+            continue
+            # 2. frequency-related variables
+        elseif occursin("freq", var)
+            df_par[var_idx, :id] = repeat(
+                vcat(
+                    [repeat([x], n_time)
+                     for x in [string.(neutral_ids); string.(mut_ids)]]...
+                ),
+                n_rep
+            )
+            # 3. mutant hyperfitness-related variables
+        elseif occursin("hyper", var)
+            df_par[var_idx, :id] = vcat(
+                [repeat([x], length(unique(envs))) for x in mut_ids]...
+            )
+            # 4. mutant fitness-related variables
+        else
+            df_par[var_idx, :id] = repeat(
+                vcat(
+                    [repeat([x], length(unique(envs))) for x in mut_ids]...
+                ),
+                n_rep
+            )
+        end # if
+    end # for
+
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+    # Add per-replicate fitness effect variables (for hierarchical models)
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+    if (n_rep > 1) .& (length(var_groups) == 7)
+        # Sample θ̲ variables
+        θ_mat = hcat(
+            [
+                Random.rand(Distributions.Normal(x...), n_samples)
+                for x in eachrow(
+                    df_par[
+                        df_par.var_type.=="mut_hyperfitness",
+                        [:mean, :std]
+                    ]
+                )
+            ]...
+        )
+
+        # Sample τ̲ variables
+        τ_mat = exp.(
+            hcat(
+                [
+                    Random.rand(Distributions.Normal(x...), n_samples)
+                    for x in eachrow(
+                        df_par[
+                            df_par.var_type.=="mut_deviations",
+                            [:mean, :std]
+                        ]
+                    )
+                ]...
+            )
+        )
+
+        # Sample θ̲̃ variables
+        θ_tilde_mat = hcat(
+            [
+                Random.rand(Distributions.Normal(x...), n_samples)
+                for x in eachrow(
+                    df_par[
+                        df_par.var_type.=="mut_noncenter",
+                        [:mean, :std]
+                    ]
+                )
+            ]...
+        )
+
+
+        # Compute individual strains fitness values
+        s_mat = hcat(repeat([θ_mat], n_rep)...) .+ (τ_mat .* θ_tilde_mat)
+
+        # Compute mean and standard deviation and turn into dataframe
+        df_s = DF.DataFrame(
+            hcat(
+                [StatsBase.median.(eachcol(s_mat)),
+                    StatsBase.std.(eachcol(s_mat))]...
+            ),
+            ["mean", "std"]
+        )
+
+        # To add the rest of the columns, we will use the τ variables that have
+        # the same length. Let's locate such variables
+        τ_idx = occursin.("τ", string.(vars))
+
+        # Add extra columns
+        DF.insertcols!(
+            df_s,
+            :varname => replace.(df_par[τ_idx, :varname], "logτ" => "s"),
+            :var_type .=> "mut_fitness",
+            :rep => df_par[τ_idx, :rep],
+            :env => df_par[τ_idx, :env],
+            :id => df_par[τ_idx, :id]
+        )
+
+        # Append dataframes
+        DF.append!(df_par, df_s)
+    end # if
+
+    return df_par
 end # function
