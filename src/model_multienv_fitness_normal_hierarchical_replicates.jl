@@ -3,6 +3,80 @@
 # π(θ̲ᴹ₁, θ̲ᴹ₂,…, s̲ᴹ, s̲ₜ | data)
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
+@doc raw"""
+multienv_exprep_fitness_normal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64},
+                               n_neutral::Int, n_mut::Int; kwargs...)
+
+Defines a hierarchical model to estimate fitness effects in a competitive
+fitness experiment with different environments across growth-dilution cycles
+over multiple experimental replicates. 
+
+# Arguments
+- `R̲̲::Array{Int64, 3}`:: `T × B × R` where `T` is the number of time points in
+  the data set, `B` is the number of barcodes, and `R` is the number of
+  experimental replicates. For each slice in the `R` axis, each column
+  represents the barcode count trajectory for a single lineage.
+- `n̲ₜ::Matrix{Int64}`: Matrix with the total number of barcode counts for each
+  time point on each replicate. **NOTE**: This matrix **must** be equivalent to
+  computing `vec(sum(R̲̲, dims=2))`.
+- `n_neutral::Int`: Number of neutral lineages in dataset.  
+- `n_mut::Int`: Number of mutant lineages in dataset.
+
+## Keyword Arguments
+- `envs::Vector{<:Any}`: List of environments for each time point in dataset.
+  NOTE: The length must be equal to that of the number of rows in `n̲t` to have
+  one environment per time point.
+
+## Optional Keyword Arguments
+- `s_pop_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `s_pop_prior[1]` = mean, `s_pop_prior[2]` =
+  standard deviation, Matrix: `s_pop_prior[:, 1]` = mean, `s_pop_prior[:, 2]` =
+  standard deviation) for a Normal prior on the population mean fitness values.
+  If `typeof(s_pop_prior) <: Matrix`, there should be as many rows in the matrix
+  as pairs of time adjacent time points in dataset.  
+- `logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `logσ_pop_prior[1]` = mean,
+  `logσ_pop_prior[2]` = standard deviation, Matrix: `logσ_pop_prior[:, 1]` =
+  mean, `logσ_pop_prior[:, 2]` = standard deviation) for a Normal prior on the
+  population mean fitness error utilized in the log-likelihood function. If
+  `typeof(logσ_pop_prior) <: Matrix`, there should be as many rows in the matrix
+  as pairs of time adjacent time points × number of replicates in dataset.
+- `s_mut_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
+  standard deviation, Matrix: `s_mut_prior[:, 1]` = mean, `s_mut_prior[:, 2]` =
+  standard deviation) for a Normal prior on the mutant fitness values. If
+  `typeof(s_mut_prior) <: Matrix`, there should be as many rows in the matrix as
+  number of mutant lineages × number of replicates in the dataset. 
+- `logσ_mut_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
+  standard deviation, Matrix: `s_mut_prior[:, 1]` = mean, `s_mut_prior[:, 2]` =
+  standard deviation) for a Normal prior on the mutant fitness error utilized in
+  the log-likelihood function. If `typeof(logσ_mut_prior) <: Matrix`, there
+  should be as many rows in the matrix as mutant lineages × number of replicates
+  in the dataset.
+- `logλ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `logλ_prior[1]` = mean, `logλ_prior[2]` =
+  standard deviation, Matrix: `logλ_prior[:, 1]` = mean, `logλ_prior[:, 2]` =
+  standard deviation) for a Normal prior on the λ parameter in the Poisson
+  distribution. The λ parameter can be interpreted as the mean number of barcode
+  counts since we assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. If
+  `typeof(logλ_prior) <: Matrix`, there should be as many rows in the matrix as
+  number of barcodes × number of time points × number of replicates in the
+  dataset.
+  
+## Latent Variables
+- Population mean fitness per timepoint.
+- Mutant hyper-fitness effects per environment. 
+- Mutant fitness effects per environment per experimental replicate.
+- λ dispersion parameters per barcode and timepoint.
+  
+## Notes
+- Models hyper-fitness effects as normally distributed.
+- Models fitness effects as normally distributed.
+- Utilizes a Poisson observation model for barcode counts.  
+- Can estimate time-varying and environment-specific fitness effects.
+- Setting informative priors is recommended for stable convergence.
+"""
 Turing.@model function multienv_exprep_fitness_normal(
     R̲̲::Array{Int64,3},
     n̲ₜ::Matrix{Int64},

@@ -3,81 +3,73 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-multienv_fitness_normal(R̲̲::Matrix{Int64}, n̲t::Vector{Int64},  
-                        n_neutral::Int64, n_mut::Int64; kwargs...)
+multienv_fitness_normal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64},  
+                        n_neutral::Int, n_mut::Int; kwargs...)
 
-Defines a `Turing.jl` model to estimate fitness effects in a competitive fitness
-experiment with different environments across growth-dilution cycles.
+Defines a model to estimate fitness effects in a competitive fitness experiment
+with different environments across growth-dilution cycles.
 
-# Arguments
+# Arguments  
 - `R̲̲::Matrix{Int64}`:: `T × B` matrix--split into a vector of vectors for
   computational efficiency--where `T` is the number of time points in the data
   set and `B` is the number of barcodes. Each column represents the barcode
-  count trajectory for a single lineage. **NOTE**: This matrix does not
-  necessarily need to be equivalent to `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)`. This is because
-  `R̲̲⁽ᵐ⁾` can exclude mutant barcodes to perform the joint inference only for a
-  subgroup, but `R̲̲` must still contain all counts. Usually, if `R̲̲⁽ᵐ⁾`
-  excludes mutant barcodes, `R̲̲` must be of the form `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾,
-  R̲̲⁽ᴹ⁾)`, where `R̲̲⁽ᴹ⁾` is a vector that aggregates all excluded mutant
-  barcodes into a "super barcode."
+  count trajectory for a single lineage.
 - `n̲ₜ::Vector{Int64}`: Vector with the total number of barcode counts for each
   time point. **NOTE**: This vector **must** be equivalent to computing
-  `vec(sum(R̲̲, dims=2))`. The reason it is an independent input parameter is to
-  avoid the `sum` computation within the `Turing` model.
-- `n_neutral::Int`: Number of neutral lineages in dataset.
-- `n_mut::Int`: Number of mutant lineages in datset.
+  `vec(sum(R̲̲, dims=2))`.
+- `n_neutral::Int`: Number of neutral lineages in dataset. 
+- `n_mut::Int`: Number of mutant lineages in dataset.
 
 ## Keyword Arguments
 - `envs::Vector{<:Any}`: List of environments for each time point in dataset.
-  NOTE: The length must be equal to that of `n̲ₜ` to have one environment per
+  NOTE: The length must be equal to that of `n̲t` to have one environment per
   time point.
-
+  
 ## Optional Keyword Arguments
 - `s_pop_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
-    correspnding parameters (Vector: `s_pop_prior[1]` = mean, `s_pop_prior[2]` =
-    standard deviation, Matrix: `s_pop_prior[:, 1] = mean`, `s_pop_prior[:, 2] =
-    standard deviation`) for a Normal prior on the population mean fitness
-    values. If `typeof(s_pop_prior) <: Matrix`, there should be as many rows in
-    the matrix as pairs of time adjacent time points in dataset.
-- `σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
-    correspnding parameters (Vector: `σ_pop_prior[1]` = mean, `σ_pop_prior[2]` =
-    standard deviation, Matrix: `σ_pop_prior[:, 1] = mean`, `σ_pop_prior[:, 2] =
-    standard deviation`) for a Log-Normal prior on the population mean fitness
-    error utilized in the log-likelihood function. If `typeof(σ_pop_prior) <:
-    Matrix`, there should be as many rows in the matrix as pairs of time
-    adjacent time points in dataset.
+  corresponding parameters (Vector: `s_pop_prior[1]` = mean, `s_pop_prior[2]` =
+  standard deviation, Matrix: `s_pop_prior[:, 1]` = mean, `s_pop_prior[:, 2]` =
+  standard deviation) for a Normal prior on the population mean fitness values.
+  If `typeof(s_pop_prior) <: Matrix`, there should be as many rows in the matrix
+  as pairs of adjacent time points in dataset.
+- `logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `logσ_pop_prior[1]` = mean,
+  `logσ_pop_prior[2]` = standard deviation, Matrix: `σ_pop_prior[:, 1]` = mean,
+  `logσ_pop_prior[:, 2]` = standard deviation) for a Normal prior on the
+  population mean fitness log-error utilized in the log-likelihood function. If
+  `typeof(logσ_pop_prior) <: Matrix`, there should be as many rows in the matrix
+  as pairs of adjacent time points in dataset.  
 - `s_mut_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
-    correspnding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
-    standard deviation, Matrix: `s_mut_prior[:, 1] = mean`, `s_mut_prior[:, 2] =
-    standard deviation`) for a Normal prior on the mutant fitness values. If
-    `typeof(s_mut_prior) <: Matrix`, there should be as many rows in the matrix
-    as mutant lineages × number of unique environments in the dataset.
-- `σ_mut_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
-  correspnding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
-  standard deviation, Matrix: `s_mut_prior[:, 1] = mean`, `s_mut_prior[:, 2] =
-  standard deviation`) for a Log-Normal prior on the mutant fitness error
-  utilized in the log-likelihood function. If `typeof(σ_mut_prior) <: Matrix`,
-  there should be as many rows in the matrix as mutant lineages × number of
-  unique environments in the dataset.
-- `λ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
-  correspnding parameters (Vector: `λ_prior[1]` = mean, `λ_prior[2]` = standard
-  deviation, Matrix: `λ_prior[:, 1] = mean`, `λ_prior[:, 2] = standard
-  deviation`) for a Log-Normal prior on the λ parameter in the Poisson
-  distribution. The λ parameter can be interpreted as the mean number of barcode
-  counts since we assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. If
+  corresponding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
+  standard deviation, Matrix: `s_mut_prior[:, 1]` = mean, `s_mut_prior[:, 2]` =
+  standard deviation) for a Normal prior on the mutant fitness values. If
+  `typeof(s_mut_prior) <: Matrix`, there should be as many rows in the matrix as
+  mutant lineages × number of unique environments in the dataset.
+- `logσ_mut_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `logσ_mut_prior[1]` = mean,
+  `logσ_mut_prior[2]` = standard deviation, Matrix: `logσ_mut_prior[:, 1]` =
+  mean, `logσ_mut_prior[:, 2]` = standard deviation) for a Normal prior on the
+  mutant fitness log-error utilized in the log-likelihood function. If
+  `typeof(logσ_mut_prior) <: Matrix`, there should be as many rows in the matrix
+  as mutant lineages × number of unique environments in the dataset.
+- `logλ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `logλ_prior[1]` = mean, `logλ_prior[2]` =
+  standard deviation, Matrix: `logλ_prior[:, 1]` = mean, `logλ_prior[:, 2]` =
+  standard deviation) for a Normal prior on the log of the λ parameter in the
+  Poisson distribution. The λ parameter can be interpreted as the mean number of
+  barcode counts since we assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. If
   `typeof(λ_prior) <: Matrix`, there should be as many rows in the matrix as
   number of barcodes × number of time points in the dataset.
-
-## Defined model
-- Posterior distributions for:
-    - Population mean fitness per timepoint
-    - Mutant fitness effects per environment
-    - λ dispersion parameters per barcode and timepoint
-
-# Notes
-- Models fitness effects as normally distributed.  
+  
+## Latent Variables 
+- Population mean fitness per timepoint
+- Mutant fitness effects per environment
+- λ dispersion parameters per barcode and timepoint
+  
+## Notes
+- Models fitness effects as normally distributed. 
 - Utilizes a Poisson observation model for barcode counts.
-- Can estimate time-varying and environment-specific fitness effects.
+- Can estimate time-varying and environment-specific fitness effects.  
 - Setting informative priors is recommended for stable convergence.
 """
 Turing.@model function multienv_fitness_normal(
