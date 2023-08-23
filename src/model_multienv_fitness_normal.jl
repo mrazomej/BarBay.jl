@@ -3,18 +3,16 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    multienv_fitness_normal(R̲̲, n̲ₜ, n_neutral, n_mut; kwargs)
+multienv_fitness_normal(R̲̲::Matrix{Int64}, n̲t::Vector{Int64},  
+                        n_neutral::Int64, n_mut::Int64; kwargs...)
 
-`Turing.jl` model to sample the joint posterior distribution for a competitive
-fitness experiment with different environments on each growth-dilution cycle.
-
-# Model
-`[write model here]`
+Defines a `Turing.jl` model to estimate fitness effects in a competitive fitness
+experiment with different environments across growth-dilution cycles.
 
 # Arguments
-- `R̲̲::Matrix{Int64}`:: `T × B` matrix--split into a vector of vectors
-  for computational efficiency--where `T` is the number of time points in the
-  data set and `B` is the number of barcodes. Each column represents the barcode
+- `R̲̲::Matrix{Int64}`:: `T × B` matrix--split into a vector of vectors for
+  computational efficiency--where `T` is the number of time points in the data
+  set and `B` is the number of barcodes. Each column represents the barcode
   count trajectory for a single lineage. **NOTE**: This matrix does not
   necessarily need to be equivalent to `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)`. This is because
   `R̲̲⁽ᵐ⁾` can exclude mutant barcodes to perform the joint inference only for a
@@ -69,6 +67,18 @@ fitness experiment with different environments on each growth-dilution cycle.
   counts since we assume any barcode count `n⁽ᵇ⁾ ~ Poisson(λ⁽ᵇ⁾)`. If
   `typeof(λ_prior) <: Matrix`, there should be as many rows in the matrix as
   number of barcodes × number of time points in the dataset.
+
+## Defined model
+- Posterior distributions for:
+    - Population mean fitness per timepoint
+    - Mutant fitness effects per environment
+    - λ dispersion parameters per barcode and timepoint
+
+# Notes
+- Models fitness effects as normally distributed.  
+- Utilizes a Poisson observation model for barcode counts.
+- Can estimate time-varying and environment-specific fitness effects.
+- Setting informative priors is recommended for stable convergence.
 """
 Turing.@model function multienv_fitness_normal(
     R̲̲::Matrix{Int64},
