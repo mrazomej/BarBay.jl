@@ -47,5 +47,9 @@ include("./model_fitness_lognormal_hierarchical_replicates.jl")
 # Hierarchical model for multiple experimental replicates π(θ̲ᴹ, s̲ᴹ, s̲ₜ | data)
 include("./model_fitness_normal_hierarchical_replicates.jl")
 
+# Hierarchical model for multiple environments and multiple experimental
+# replicates π(θ̲ᴹ₁, θ̲ᴹ₂,…, s̲ᴹ, s̲ₜ | data)
+include("./model_multienv_fitness_normal_hierarchical_replicates.jl")
+
 # Hierarchical model for genotypes on a single experiment π(θ̲ᴹ, s̲ᴹ, s̲ₜ | data)
 include("./model_fitness_normal_hierarchical_genotypes.jl")
