@@ -30,20 +30,24 @@ import UnPack
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    matrix_quantile_range(quantile, matrix; dim=2)
+matrix_quantile_range(quantile, matrix; dim=2) 
 
-Function to compute the quantile ranges of matrix `mat` over dimension `dim`.
-For example, if `quantile[1] = 0.95`, This function returns the `0.025` and
-`0.975` quantiles that capture 95 percent of the entires on the matrix.
+Function to compute the quantile ranges of matrix `matrix` over dimension `dim`.
+
+For example, if `quantile[1] = 0.95`, this function returns the `0.025` and 
+`0.975` quantiles that capture 95 percent of the entries in the matrix.
 
 # Arguments
 - `quantile::Vector{<:AbstractFloat}`: List of quantiles to extract from the
-  posterior predictive checks.
+  posterior predictive checks.  
 - `matrix::Matrix{<:Real}`: Array over which to compute quantile ranges.
 
-# Optional arguments
-- `dim::Int=2`: Dimension over which to compute quantiles. Defualt = 1, i.e.,
+# Keyword Arguments
+- `dim::Int=2`: Dimension over which to compute quantiles. Default is 2, i.e. 
   columns.
+
+# Returns
+- `qs`: Matrix with requested quantiles over specified dimension.
 """
 function matrix_quantile_range(
     quantile::Vector{<:AbstractFloat}, matrix::Matrix{T}; dims::Int=2
