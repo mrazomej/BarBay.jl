@@ -498,7 +498,57 @@ function data2arrays(
 end # function
 
 @doc raw"""
+advi2df(dist, vars, mut_ids; n_rep=1, envs=[1], n_samples=10_000)
 
+Convert the output of automatic differentiation variational inference (ADVI) to
+a tidy dataframe.
+
+# Arguments
+- `dist::Distributions.Sampleable`: The ADVI posterior sampleable distribution
+  object.
+- `vars::Vector{<:Any}`: Vector of variable/parameter names from the ADVI run. 
+- `mut_ids::Vector{<:Any}`: Vector of mutant strain IDs.
+
+## Oprtional Keyword Arguments
+- `n_rep::Int=1`: Number of experimental replicates. Default is 1. 
+- `envs::Vector{<:Any}=[1]`: Vector of environment ids for each timepoint.
+  Default is a single environment [1].
+- `n_samples::Int=10_000`: Number of posterior samples to draw used for
+  hierarchical models. Default is 10,000.
+
+# Returns
+- `df::DataFrames.DataFrame`: DataFrame containing summary statistics of
+posterior samples for each parameter. Columns include:
+    - `mean, std`: posterior mean and standard deviation for each of the
+      variables.
+    - `varname`: parameter name from the ADVI posterior distribution.
+    - `var_type`: Description of the type of parameter. The types are:
+        - `pop_mean`: Population mean fitness value `s̲ₜ`.
+        - `pop_error`: (Nuisance parameter) Log of standard deviation in the
+          likelihood function for the neutral lineages.
+        - `mut_fitness`: Mutant relative fitness `s⁽ᵐ⁾`.
+        - `mut_hyperfitness`: For hierarchical models, mutant hyper parameter
+          that connects the fitness over multiple experimental replicates
+          `θ⁽ᵐ⁾`.
+        - `mut_noncenter`: (Nuisance parameter) For hierarchical models,
+          non-centered samples used to connect the experimental replicates to
+          the hyperparameter `θ̃⁽ᵐ⁾`.
+        - `mut_deviations`: (Nuisance parameter) For hierarchicaal models,
+          samples that define the log of the deviation from the hyper parameter
+          fitness value `logτ⁽ᵐ⁾`.
+        - `mut_error`: (Nuisance parameter) Log of standard deviation in the
+          likelihood function for the mutant lineages.
+        - `freq`: (Nuisance parameter) Log of the Poisson parameter used to
+          define the frequency of each lineage.
+    - rep: Experimental replicate number.
+    - env: Environment for each parameter.
+    - id: Mutant or neutral strain ID.
+
+# Notes
+- Converts multivariate posterior into summarized dataframe format.
+- Adds metadata like parameter type, replicate, strain ID, etc.
+- Can handle models with multiple replicates and environments.
+- Useful for post-processing ADVI results for further analysis and plotting.
 """
 function advi2df(
     dist::Distributions.Sampleable,
