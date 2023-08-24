@@ -32,40 +32,40 @@ using ..utils: data2arrays
     advi(; kwargs)
 
 Function to sample the joint posterior distribution for the fitness value of all
-mutant and neutral linages given a time-series barcode count.
+mutant and neutral lineages given a time-series barcode count.
 
 This function expects the data in a **tidy** format. This means that every row
-    represents **a single observation**. For example, if we measure barcode `i` in 4
-    different time points, each of these four measurements gets an individual row.
-    Furthermore, measurements of barcode `j` over time also get their own individual
-    rows.
+represents **a single observation**. For example, if we measure barcode `i` in 4
+different time points, each of these four measurements gets an individual row.
+Furthermore, measurements of barcode `j` over time also get their own individual
+rows. 
         
-    The `DataFrame` must contain at least the following columns:
-    - `id_col`: Column identifying the ID of the barcode. This can the barcode
-        sequence, for example.
-    - `time_col`: Column defining the measurement time point.
-    - `count_col`: Column with the raw barcode count.
-    - `neutral_col`: Column indicating whether the barcode is from a neutral lineage
-    or not.
-    
-    # Keyword Arguments
-    - `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
-    used to sample from the population mean fitness posterior distribution.
-    - `n_walkers::Int`: Number of walkers (chains) for the MCMC sample.
-    - `n_steps::Int`: Number of steps to take.
-    - `outputname::String`: String to be used to name the `.jld2` output file.
-    - `model::Function`: `Turing.jl` model defining the posterior distribution from
-        which to sample (see `BayesFitness.model` module). This function must take
-        as the first four inputs the following:
-        - `R̲̲::Array{Int64}`:: 2 or 3D array containing the raw barcode counts for
-          all tracked genotypes. The dimensions of this array represent:
-          - dim=1: time.
-          - dim=2: genotype.
-          - dim=3 (optional): experimental repeats
-        - `n̲ₜ::VecOrMat{Int64}`: Array with the total number of barcode counts for
-            each time point (on each experimental repeat, if necessary).
-        - `n_neutral::Int`: Number of neutral lineages.
-        - `n_mut::Int`: Number of neutral lineages.
+The `DataFrame` must contain at least the following columns:
+- `id_col`: Column identifying the ID of the barcode. This can be the barcode
+    sequence, for example.
+- `time_col`: Column defining the measurement time point.  
+- `count_col`: Column with the raw barcode count.
+- `neutral_col`: Column indicating whether the barcode is from a neutral lineage
+or not.
+
+# Keyword Arguments
+- `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
+used to sample from the population mean fitness posterior distribution.
+- `n_walkers::Int`: Number of walkers (chains) for the MCMC sample.
+- `n_steps::Int`: Number of steps to take.
+- `outputname::String`: String to be used to name the `.jld2` output file.
+- `model::Function`: `Turing.jl` model defining the posterior distribution from
+    which to sample (see `BayesFitness.model` module). This function must take
+    as the first four inputs the following:
+    - `R̲̲::Array{Int64}`: 2 or 3D array containing the raw barcode counts for
+        all tracked genotypes. The dimensions of this array represent:  
+        - dim=1: time.
+        - dim=2: genotype.
+        - dim=3 (optional): experimental repeats
+    - `n̲t::VecOrMat{Int64}`: Array with the total number of barcode counts for
+        each time point (on each experimental repeat, if necessary).
+    - `n_neutral::Int`: Number of neutral lineages.
+    - `n_mut::Int`: Number of neutral lineages.
 
 ## Optional Keyword Arguments
 - `model_kwargs::Dict=Dict()`: Extra keyword arguments to be passed to the
@@ -74,12 +74,12 @@ This function expects the data in a **tidy** format. This means that every row
     identifier. The column may contain any type of entry.
 - `time_col::Symbol=:time`: Name of the column in `data` defining the time point
   at which measurements were done. The column may contain any type of entry as
-  long as `sort` will resulted in time-ordered names.
+  long as `sort` will result in time-ordered names.
 - `count_col::Symbol=:count`: Name of the column in `data` containing the raw
   barcode count. The column must contain entries of type `Int64`.
 - `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
   the barcode belongs to a neutral lineage or not. The column must contain
-  entries of type `Bool`.
+  entries of type `Bool`.  
 - `rep_col::Union{Nothing,Symbol}=nothing`: Optional column in tidy dataframe to
   specify the experimental repeat for each observation.
 - `rm_T0::Bool=false`: Optional argument to remove the first time point from the
@@ -94,14 +94,14 @@ This function expects the data in a **tidy** format. This means that every row
   = Turing.Variational.DecayedADAGrad(1e-2, 1.1, 0.9)`: Algorithm used to
   compute the model gradient and update the parameters. `Turing.ADVI` can take
   `Flux.jl` optimizers. But the recommended algorithm used in `Stan` is the
-  default `DecayedADAGrad`.
+  default `DecayedADAGrad`.  
 - `verbose::Bool=true`: Boolean indicating if the function should print partial
   progress to the screen or not.
-
+  
 # Output
-The output of this function is saved as a `jld2` file with three entries:
-    - `ids`: The list of the mutant ids in the order used for the inference.
-    - `var`: List of variables in the variational multi-variate distribution.
+The output of this function is saved as a `jld2` file with three entries: 
+    - `ids`: The list of the mutant ids in the order used for the inference. 
+    - `var`: List of variables in the variational multi-variate distribution. 
     - `dist`: Multivariate Normal variational distribution.
 """
 function advi(;
