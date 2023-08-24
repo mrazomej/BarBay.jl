@@ -48,12 +48,12 @@ over multiple experimental replicates.
   `typeof(s_mut_prior) <: Matrix`, there should be as many rows in the matrix as
   number of mutant lineages × number of replicates in the dataset. 
 - `logσ_mut_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
-  corresponding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
-  standard deviation, Matrix: `s_mut_prior[:, 1]` = mean, `s_mut_prior[:, 2]` =
-  standard deviation) for a Normal prior on the mutant fitness error utilized in
-  the log-likelihood function. If `typeof(logσ_mut_prior) <: Matrix`, there
-  should be as many rows in the matrix as mutant lineages × number of replicates
-  in the dataset.
+  corresponding parameters (Vector: `logσ_mut_prior[1]` = mean,
+  `logσ_mut_prior[2]` = standard deviation, Matrix: `logσ_mut_prior[:, 1]` =
+  mean, `logσ_mut_prior[:, 2]` = standard deviation) for a Normal prior on the
+  mutant fitness error utilized in the log-likelihood function. If
+  `typeof(logσ_mut_prior) <: Matrix`, there should be as many rows in the matrix
+  as mutant lineages × number of replicates in the dataset.
 - `logλ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
   corresponding parameters (Vector: `logλ_prior[1]` = mean, `logλ_prior[2]` =
   standard deviation, Matrix: `logλ_prior[:, 1]` = mean, `logλ_prior[:, 2]` =
@@ -67,7 +67,8 @@ over multiple experimental replicates.
 ## Latent Variables
 - Population mean fitness per timepoint.
 - Mutant hyper-fitness effects per environment. 
-- Mutant fitness effects per environment per experimental replicate.
+- Non-centered samples for each of the experimental replicates.
+- Deviations from the hyper parameter value for each experimental replicate.
 - λ dispersion parameters per barcode and timepoint.
   
 ## Notes
