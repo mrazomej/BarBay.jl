@@ -563,8 +563,9 @@ function advi2df(
         hcat(Distributions.params(dist)...),
         ["mean", "std"]
     )
-    # Add variable name
-    df_par[!, :varname] = vars
+    # Add variable name. Notice that we use deepcopy to avoid the modification
+    # of the original variable
+    df_par[!, :varname] = deepcopy(vars)
 
     # Locate variable groups by identifying the first variable of each group
     var_groups = replace.(vars[occursin.("[1]", string.(vars))], "[1]" => "")
