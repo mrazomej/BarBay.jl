@@ -288,12 +288,12 @@ end # function
 @doc raw"""
     data2arrays(data; kwargs)
 
-Function to preprocess the tidy dataframes with the data into the corresponding
-inputs for the models in the `model` submodule.
+Function to preprocess the tidy dataframe `data` into the corresponding inputs
+for the models in the `model` submodule.
 
 # Arguments
-- `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
-used to sample from the population mean fitness posterior distribution.
+- `data::DataFrames.AbstractDataFrame`: Tidy dataframe with the data to be used
+  for sampling the model posterior distribution. 
 
 ## Optional Keyword Arguments
 - `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
