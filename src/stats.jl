@@ -1324,11 +1324,13 @@ used to sample from the population mean fitness posterior distribution.
 - `time_col::Symbol=:time`: Name of the column in `data` defining the time point
     at which measurements were done. The column may contain any type of entry as
     long as `sort` will resulted in time-ordered names.
-- `freq_col::Symbol=:freq`: Name of the column in `data` containing the naive
-    barcode frequency. The column must contain entries of type `Float64`.
+- `count_col::Symbol=:count`: Name of the column in `data` containing raw counts
+    per barcode. The column must contain entries of type `<: Int`.
 - `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
     the barcode belongs to a neutral lineage or not. The column must contain
     entries of type `Bool`.
+- `pseudocount::Int=1`: Pseudo counts to add to raw counts to avoid dividing by
+  zero. This is useful if some of the barcodes go extinct.
 - `rm_T0::Bool=false`: Optional argument to remove the first time point from the
 inference. Commonly, the data from this first time point is of much lower
 quality. Therefore, removing this first time point might result in a better
@@ -1350,10 +1352,14 @@ function naive_prior_neutral(
     data::DF.AbstractDataFrame;
     id_col::Symbol=:barcode,
     time_col::Symbol=:time,
-    freq_col::Symbol=:freq,
+    count_col::Symbol=:count,
     neutral_col::Symbol=:neutral,
+    pseudocount::Int=0,
     rm_T0::Bool=false
 )
+    # Deep copy data to avoid any changes to original
+    data = deepcopy(data)
+
     # Extract unique time points
     timepoints = sort(unique(data[:, time_col]))
 
@@ -1365,7 +1371,23 @@ function naive_prior_neutral(
     # Re-extract unique time points
     timepoints = sort(unique(data[:, time_col]))
 
-    # Group data by unique mutant barcode
+    # Add pseudocount to count column
+    data[:, count_col] = data[:, count_col] .+ pseudocount
+
+    # Compute total counts
+    data_sum = DF.combine(DF.groupby(data, time_col), count_col => sum)
+
+    # Drop columns that might interfere
+    data = data[:, DF.Not([Symbol(string(count_col) * "_sum"), :freq])]
+
+    # Add total count sum
+    DF.leftjoin!(data, data_sum; on=time_col)
+
+    # Compute frequency with pseudo counts
+    data[!, :freq] = data[:, count_col] ./
+                     data[:, Symbol(string(count_col) * "_sum")]
+
+    # Group data by unique neutral barcode
     data_group = DF.groupby(data[data[:, neutral_col], :], id_col)
 
     # Initialize list to save log frequency changes for all neutral barcodes
@@ -1376,7 +1398,7 @@ function naive_prior_neutral(
         # Sort data by time
         DF.sort!(d, time_col)
         # Compute log frequency ratio and append to list
-        push!(logfreq, diff(log.(d[:, freq_col])))
+        push!(logfreq, diff(log.(d[:, :freq] .+ pseudocount)))
     end # for
 
     # ========== Population mean fitness prior ========== #  
