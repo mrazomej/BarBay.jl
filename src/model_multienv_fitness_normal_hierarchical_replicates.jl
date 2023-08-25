@@ -186,11 +186,11 @@ Turing.@model function multienv_exprep_fitness_normal(
             repeat([logλ_prior[1]], length(R̲̲)),
             LinearAlgebra.I(length(R̲̲)) .* logλ_prior[2]^2
         )
-    elseif typeof(logλ_prior) <: Array{Int64,3}
+    elseif typeof(logλ_prior) <: Matrix
         # Prior on Poisson distribtion parameters π(λ)
         logΛ̲̲ ~ Turing.MvNormal(
-            logλ_prior[:, 1, :][:],
-            LinearAlgebra.Diagonal(logλ_prior[:, 2, :][:] .^ 2)
+            logλ_prior[:, 1],
+            LinearAlgebra.Diagonal(logλ_prior[:, 2] .^ 2)
         )
     end  # if
 
