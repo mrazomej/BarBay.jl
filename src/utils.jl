@@ -522,7 +522,7 @@ posterior samples for each parameter. Columns include:
     - `mean, std`: posterior mean and standard deviation for each of the
       variables.
     - `varname`: parameter name from the ADVI posterior distribution.
-    - `var_type`: Description of the type of parameter. The types are:
+    - `vartype`: Description of the type of parameter. The types are:
         - `pop_mean`: Population mean fitness value `s̲ₜ`.
         - `pop_error`: (Nuisance parameter) Log of standard deviation in the
           likelihood function for the neutral lineages.
@@ -601,7 +601,7 @@ function advi2df(
         # Define variable types
         vtypes = ["pop_mean", "pop_error", "mut_fitness", "mut_error", "freq"]
         # Repeat variable type var_count times and add it to dataframe
-        df_par[!, :var_type] = vcat(
+        df_par[!, :vartype] = vcat(
             [repeat([vtypes[i]], var_count[i]) for i in eachindex(var_count)]...
         )
 
@@ -616,7 +616,7 @@ function advi2df(
         vtypes = ["pop_mean", "pop_error", "mut_hyperfitness", "mut_noncenter",
             "mut_deviations", "mut_error", "freq"]
         # Repeat variable type var_count times and add it to dataframe
-        df_par[!, :var_type] = vcat(
+        df_par[!, :vartype] = vcat(
             [repeat([vtypes[i]], var_count[i]) for i in eachindex(var_count)]...
         )
         # Initialize array to define replicate information
@@ -626,7 +626,7 @@ function advi2df(
         # Loop through variables
         for (i, vt) in enumerate(vtypes)
             # Locate variables
-            var_idx = df_par.var_type .== vt
+            var_idx = df_par.vartype .== vt
             # Check if there's no hyper parameter and no freq
             if !occursin("hyper", vt)
                 # Add corresponding replicate information
@@ -654,9 +654,9 @@ function advi2df(
         # Add environment variable (to be modofied later)
         df_par[!, :env] .= first(envs)
         # Loop through variables
-        for (i, var) in enumerate(unique(df_par.var_type))
+        for (i, var) in enumerate(unique(df_par.vartype))
             # Locate variables
-            var_idx = df_par.var_type .== var
+            var_idx = df_par.vartype .== var
             # Check cases
             # 1. population mean fitness-related variables
             if occursin("pop", var)
@@ -683,9 +683,9 @@ function advi2df(
     df_par[:, :id] .= "N/A"
 
     # Loop through variables
-    for (i, var) in enumerate(unique(df_par.var_type))
+    for (i, var) in enumerate(unique(df_par.vartype))
         # Locate variables
-        var_idx = df_par.var_type .== var
+        var_idx = df_par.vartype .== var
         # Check cases
         # 1. population mean fitness-related variables
         if occursin("pop", var)
@@ -726,7 +726,7 @@ function advi2df(
                 Random.rand(Distributions.Normal(x...), n_samples)
                 for x in eachrow(
                     df_par[
-                        df_par.var_type.=="mut_hyperfitness",
+                        df_par.vartype.=="mut_hyperfitness",
                         [:mean, :std]
                     ]
                 )
@@ -740,7 +740,7 @@ function advi2df(
                     Random.rand(Distributions.Normal(x...), n_samples)
                     for x in eachrow(
                         df_par[
-                            df_par.var_type.=="mut_deviations",
+                            df_par.vartype.=="mut_deviations",
                             [:mean, :std]
                         ]
                     )
@@ -754,7 +754,7 @@ function advi2df(
                 Random.rand(Distributions.Normal(x...), n_samples)
                 for x in eachrow(
                     df_par[
-                        df_par.var_type.=="mut_noncenter",
+                        df_par.vartype.=="mut_noncenter",
                         [:mean, :std]
                     ]
                 )
@@ -782,7 +782,7 @@ function advi2df(
         DF.insertcols!(
             df_s,
             :varname => replace.(df_par[τ_idx, :varname], "logτ" => "s"),
-            :var_type .=> "mut_fitness",
+            :vartype .=> "mut_fitness",
             :rep => df_par[τ_idx, :rep],
             :env => df_par[τ_idx, :env],
             :id => df_par[τ_idx, :id]
