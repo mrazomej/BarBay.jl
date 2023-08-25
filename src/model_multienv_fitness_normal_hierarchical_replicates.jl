@@ -152,8 +152,7 @@ Turing.@model function multienv_exprep_fitness_normal(
 
     # Non-centered samples
     θ̲̃⁽ᵐ⁾ ~ Turing.MvNormal(
-        repeat([0], n_env * n_mut * n_rep),
-        LinearAlgebra.I(n_env * n_mut * n_rep)
+        zeros(n_env * n_mut * n_rep), LinearAlgebra.I(n_env * n_mut * n_rep)
     )
 
     # Hyper prior on mutant deviations from hyper prior
@@ -257,14 +256,10 @@ Turing.@model function multienv_exprep_fitness_normal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvNormal(
             # Build array for MvNormal mean
-            permutedims(cat(repeat([-s̲ₜ], n_neutral)..., dims=3), [1, 3, 2])[:],
+            vcat(repeat.(eachcol(s̲ₜ), n_neutral)...),
             # Build array for MvNormal variance
             LinearAlgebra.Diagonal(
-                permutedims(
-                    cat(
-                        repeat([exp.(logσ̲ₜ) .^ 2], n_neutral)..., dims=3
-                    ), [1, 3, 2]
-                )[:]
+                vcat(repeat.(eachcol(exp.(logσ̲ₜ) .^ 2), n_neutral)...)
             )
         ),
         logΓ̲̲⁽ⁿ⁾
@@ -278,7 +273,7 @@ Turing.@model function multienv_exprep_fitness_normal(
         Turing.MvNormal(
             # Build vector for fitness differences
             s̲⁽ᵐ⁾[env_idx[2:end], :, :][:] .-
-            permutedims(cat(repeat([s̲ₜ], n_mut)..., dims=3), [1, 3, 2])[:],
+            vcat(repeat.(eachcol(s̲ₜ), n_mut)...),
             # Build vector for variances
             LinearAlgebra.Diagonal(
                 exp.(logσ̲⁽ᵐ⁾[env_idx[2:end], :, :])[:] .^ 2
