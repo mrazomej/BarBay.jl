@@ -127,7 +127,7 @@ function mcmc_sample(;
         data;
         id_col=id_col,
         time_col=time_col,
-        count_col=time_col,
+        count_col=count_col,
         neutral_col=neutral_col,
         rep_col=rep_col,
         rm_T0=rm_T0,
