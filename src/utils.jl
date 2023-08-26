@@ -17,8 +17,6 @@ import MCMCChains
 # Import library to load JLD2 files
 import JLD2
 
-# Import functions from other modules
-import BayesFitness.stats: naive_fitness
 ##
 
 @doc raw"""
@@ -202,84 +200,6 @@ function group_split(
     for i = 1:n_groups
         # Select elements for group
         groups[i] = data_combine[:, groupby_col][i:n_groups:end]
-    end # for
-
-    return groups
-end # function
-
-@doc raw"""
-    group_split(data, n_groups; kwargs)
-
-Function to split a set of labels into `n_group` subgroups sorted by a naive
-estimate of the fitness value.
-
-# Arguments
-- `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
-used to infer the fitness values on mutants. The `DataFrame` must contain at
-least the following columns:
-    - `id_col`: Column identifying the ID of the barcode. This can the barcode
-    sequence, for example.
-    - `time_col`: Column defining the measurement time point.
-    - `count_col`: Column with the raw barcode count.
-    - `neutral_col`: Column indicating whether the barcode is from a neutral
-    lineage or not.
-- `n_groups::Int`: Number of groups in which to split the data.
-
-## Optional Keyword Arguments
-- `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
-    identifier. The column may contain any type of entry.
-- `time_col::Symbol=:time`: Name of the column in `data` defining the time point
-  at which measurements were done. The column may contain any type of entry as
-  long as `sort` will resulted in time-ordered names.
-- `count_col::Symbol=:count`: Name of the column in `data` containing the raw
-  barcode count. The column must contain entries of type `Int64`.
-- `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
-  the barcode belongs to a neutral lineage or not. The column must contain
-  entries of type `Bool`.
-- `rm_T0::Bool=false`: Optional argument to remove the first time point from the
-inference. Commonly, the data from this first time point is of much lower
-quality. Therefore, removing this first time point might result in a better
-inference.
-- `pseudo_count::Int=1`: Pseudo count number to add to all counts. This is
-  useful to avoid divisions by zero.
-
-# Returns
-- `groups::Vector{Vector{typeof(data[groupby_col][1])}}`: Vectors containing the
-different groups in which to split the dataset.
-"""
-function group_split_naive_fitness(
-    data::DF.AbstractDataFrame,
-    n_groups::Int;
-    id_col::Symbol=:barcode,
-    time_col::Symbol=:time,
-    count_col::Symbol=:count,
-    neutral_col::Symbol=:neutral,
-    rm_T0::Bool=false,
-    pseudo_count::Int=1
-)
-    # Compute naive fitness estimate
-    data_fitness = naive_fitness(
-        data;
-        id_col=id_col,
-        time_col=time_col,
-        count_col=count_col,
-        neutral_col=neutral_col,
-        rm_T0=rm_T0,
-        pseudo_count=pseudo_count
-    )
-
-    # Sort data by sort_col 
-    DF.sort!(data_fitness, :fitness, rev=true)
-
-    # Initialize vector to save groups
-    groups = Vector{
-        Vector{typeof(data_fitness[:, id_col][1])}
-    }(undef, n_groups)
-
-    # Loop through groups
-    for i = 1:n_groups
-        # Select elements for group
-        groups[i] = data_fitness[:, id_col][i:n_groups:end]
     end # for
 
     return groups
