@@ -1398,7 +1398,7 @@ function naive_prior_neutral(
         # Sort data by time
         DF.sort!(d, time_col)
         # Compute log frequency ratio and append to list
-        push!(logfreq, diff(log.(d[:, :freq] .+ pseudocount)))
+        push!(logfreq, diff(log.(d[:, :freq])))
     end # for
 
     # ========== Population mean fitness prior ========== #  
