@@ -18,10 +18,13 @@ import DynamicPPL
 # Import library to return unconstrained versions of distributions
 using Bijectors
 
-
 # Import libraries for convenient array indexing
 import ComponentArrays
 import UnPack
+
+# Import needed function from the utils module
+using ..utils: data2arrays
+
 ##
 
 
@@ -1294,11 +1297,12 @@ end # function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    naive_prior_neutral(data, rm_T0)
+    naive_prior(data; kwargs)
 
 Function to compute a naive set of parameters for the prior distributions of the
-population mean fitness `s̲ₜ` values and the nuisance parameters in the
-log-likelihood functions for the frequency ratios `σ̲ₜ` and `σ̲⁽ᵐ⁾`.
+population mean fitness `s̲ₜ` values, the nuisance parameters in the
+log-likelihood functions for the frequency ratios `logσ̲ₜ`, and the log of the
+Poisson parameters for the observation model `logΛ̲̲`
 
 This function expects the data in a **tidy** format. This means that every row
 represents **a single observation**. For example, if we measure barcode `i` in 4
@@ -1313,6 +1317,9 @@ The `DataFrame` must contain at least the following columns:
 - `count_col`: Column with the raw barcode count.
 - `neutral_col`: Column indicating whether the barcode is from a neutral lineage
 or not.
+- `rep_col`: (Optional) For hierarchical models to be build with multiple
+  experimental replicates, this column defines which observations belong to
+  which replicate.
 
 # Arguments
 - `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
@@ -1329,6 +1336,8 @@ used to sample from the population mean fitness posterior distribution.
 - `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
     the barcode belongs to a neutral lineage or not. The column must contain
     entries of type `Bool`.
+- `rep_col::Union{Nothing,Symbol}=nothing`: (Optional) Column indicating the
+  experimental replicates each point belongs to.
 - `pseudocount::Int=1`: Pseudo counts to add to raw counts to avoid dividing by
   zero. This is useful if some of the barcodes go extinct.
 - `rm_T0::Bool=false`: Optional argument to remove the first time point from the
@@ -1342,18 +1351,25 @@ inference.
       This naive empirical method cannot make statements about the expected
       standard deviation of the population mean fitness. It is up to the
       researcher to determine this value.
-    - `logσ_pop_prior`: Prior on the nuisance parameter for the log-likelihood
-      functions on the log-frequency ratios. In other words, the mean and
-      standard deviation for the (log)-Normal distribution on the frequency
-      ratios. **NOTE**: Typically, one can use the same estimate for both the
-      neutral and the mutant lineages.
+    - `logσ_pop_prior`: **Mean** value on the nuisance parameter for the
+      log-likelihood functions on the log-frequency ratios. In other words, the
+      mean for the (log)-Normal distribution on the frequency ratios. **NOTE**:
+      This naive empirical method cannot make statements about the expected
+      standard deviation of the population mean fitness. It is up to the
+      researcher to determine this value. **NOTE**: Typically, one can use the
+      same estimate for both the neutral and the mutant lineages.
+    - `logλ_prior`: **Mean** value of the nuisance parameter for the Poisson
+      observation model parameter. **NOTE**: This naive empirical method cannot
+      make statements about the expected standard deviation of the population
+      mean fitness. It is up to the researcher to determine this value.
 """
-function naive_prior_neutral(
+function naive_prior(
     data::DF.AbstractDataFrame;
     id_col::Symbol=:barcode,
     time_col::Symbol=:time,
     count_col::Symbol=:count,
     neutral_col::Symbol=:neutral,
+    rep_col::Union{Nothing,Symbol}=nothing,
     pseudocount::Int=0,
     rm_T0::Bool=false
 )
@@ -1374,56 +1390,119 @@ function naive_prior_neutral(
     # Add pseudocount to count column
     data[:, count_col] = data[:, count_col] .+ pseudocount
 
-    # Compute total counts
-    data_sum = DF.combine(DF.groupby(data, time_col), count_col => sum)
+    # Convert data to arrays
+    data_mats = data2arrays(
+        data;
+        id_col=id_col,
+        time_col=time_col,
+        count_col=count_col,
+        neutral_col=neutral_col,
+        rep_col=rep_col,
+        verbose=false
+    )
 
-    # Drop columns that might interfere
-    data = data[:, DF.Not([Symbol(string(count_col) * "_sum"), :freq])]
+    if typeof(rep_col) <: Nothing
+        # Compute frequencies
+        data_mats[:freq] = data_mats[:bc_count] ./ data_mats[:bc_total]
 
-    # Add total count sum
-    DF.leftjoin!(data, data_sum; on=time_col)
+        # Extract neutral lineages frequencies
+        neutral_freq = data_mats[:freq][:, 1:data_mats[:n_neutral]]
 
-    # Compute frequency with pseudo counts
-    data[!, :freq] = data[:, count_col] ./
-                     data[:, Symbol(string(count_col) * "_sum")]
+        # Compute log-frequency ratios
+        neutral_logfreq = log.(
+            neutral_freq[2:end, :] ./ neutral_freq[1:end-1, :]
+        )
+    else
+        # Initialize array to save frequencies
+        freqs = Array{Float64}(undef, size(data_mats[:bc_count])...)
 
-    # Group data by unique neutral barcode
-    data_group = DF.groupby(data[data[:, neutral_col], :], id_col)
+        # Compute frequencies
+        freqlist = [
+            x ./ data_mats[:bc_total]
+            for x in eachslice(data_mats[:bc_count]; dims=2)
+        ]
 
-    # Initialize list to save log frequency changes for all neutral barcodes
-    logfreq = []
+        # Loop through each slice of freqs
+        for (i, freq) in enumerate(freqlist)
+            freqs[:, i, :] = freq
+        end # for
 
-    # Loop through each neutral barcode
-    for d in data_group
-        # Sort data by time
-        DF.sort!(d, time_col)
-        # Compute log frequency ratio and append to list
-        push!(logfreq, diff(log.(d[:, :freq])))
-    end # for
+        # Assign frequencies
+        data_mats[:freq] = freqs
+
+        # Extract neutral lineages frequencies
+        neutral_freq = data_mats[:freq][:, 1:data_mats[:n_neutral], :]
+        # Compute log-frequency ratios
+        neutral_logfreq = log.(
+            neutral_freq[2:end, :, :] ./ neutral_freq[1:end-1, :, :]
+        )
+    end # if
 
     # ========== Population mean fitness prior ========== #  
-    # Generate matrix with log-freq ratios. Rows = time, Cols = neutral barcode
-    logfreq_mat = hcat(logfreq...)
 
     # Compute mean per time point for approximate mean fitness making sure we to
     # remove infinities.
-    logfreq_mean = StatsBase.mean.(
-        [x[.!isinf.(x)] for x in eachrow(logfreq_mat)]
-    )
+    if typeof(rep_col) <: Nothing
+        logfreq_mean = StatsBase.mean.(
+            [x[.!isinf.(x)] for x in eachrow(neutral_logfreq)]
+        )
+    else
+        # Initialize array to save means
+        logfreq_mean = Matrix{Float64}(
+            undef, size(neutral_logfreq)[1], size(neutral_logfreq)[3]
+        )
+
+        # Loop through time points
+        for i = 1:size(neutral_logfreq)[1]
+            # Loop through replicates
+            for k = 1:size(neutral_logfreq)[3]
+                logfreq_mean[i, k] = StatsBase.mean(
+                    neutral_logfreq[i, :, k][.!isinf.(neutral_logfreq[i, :, k])]
+                )
+            end # for
+        end # for
+    end # if
 
     # Define prior for population mean fitness.
-    s_pop_prior = -logfreq_mean
+    s_pop_prior = -logfreq_mean[:]
 
     # ========== Nuisance log-likelihood parameter priors ========== #  
 
-    # Generate single list of log-frequency ratios to compute prior on logσ
-    logfreq_vec = vcat(logfreq...)
-    # Remove infinities that can come from dividing by zero frequency
-    logfreq_vec = logfreq_vec[.!isinf.(logfreq_vec)]
+    # Compute mean per time point for approximate mean fitness making sure we to
+    # remove infinities.
+    if typeof(rep_col) <: Nothing
+        logfreq_std = StatsBase.std.(
+            [x[.!isinf.(x)] for x in eachrow(neutral_logfreq)]
+        )
+    else
+        # Initialize array to save means
+        logfreq_std = Matrix{Float64}(
+            undef, size(neutral_logfreq)[1], size(neutral_logfreq)[3]
+        )
 
-    # Define priors for nuisance parameters for log-likelihood functions by
-    # computing mean and standard deviation of all measurements
-    logσ_pop_prior = [StatsBase.mean(logfreq_vec), StatsBase.std(logfreq_vec)]
+        # Loop through time points
+        for i = 1:size(neutral_logfreq)[1]
+            # Loop through replicates
+            for k = 1:size(neutral_logfreq)[3]
+                logfreq_std[i, k] = StatsBase.std(
+                    neutral_logfreq[i, :, k][.!isinf.(neutral_logfreq[i, :, k])]
+                )
+            end # for
+        end # for
+    end # if
 
-    return Dict(:s_pop_prior => s_pop_prior, :logσ_pop_prior => logσ_pop_prior)
+    # Define prior for population mean fitness.
+    logσ_pop_prior = -logfreq_std[:]
+
+
+    #== Nuisance parameter for the Poisson–distribution observational model ==#
+
+    logλ_prior = log.(data_mats[:bc_count])[:]
+
+    return Dict(
+        :s_pop_prior => s_pop_prior,
+        :logσ_pop_prior => logσ_pop_prior,
+        :logλ_prior => logλ_prior,
+    )
+
 end # function
