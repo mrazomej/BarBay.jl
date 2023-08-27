@@ -237,7 +237,7 @@ Turing.@model function exprep_fitness_lognormal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvLogNormal(
             # Build array for MvLogNormal mean
-            vcat(repeat.(eachcol(s̲ₜ), n_neutral)...),
+            -vcat(repeat.(eachcol(s̲ₜ), n_neutral)...),
             # Build array for MvLogNormal variance
             LinearAlgebra.Diagonal(
                 vcat(repeat.(eachcol(σ̲ₜ .^ 2), n_neutral)...)
