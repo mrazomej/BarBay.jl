@@ -231,14 +231,10 @@ Turing.@model function exprep_fitness_normal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvNormal(
             # Build array for MvLogNormal mean
-            permutedims(cat(repeat([-s̲ₜ], n_neutral)..., dims=3), [1, 3, 2])[:],
+            -vcat(repeat.(eachcol(s̲ₜ), n_neutral)...),
             # Build array for MvLogNormal variance
             LinearAlgebra.Diagonal(
-                permutedims(
-                    cat(
-                        repeat([exp.(logσ̲ₜ) .^ 2], n_neutral)..., dims=3
-                    ), [1, 3, 2]
-                )[:]
+                vcat(repeat.(eachcol(exp.(logσ̲ₜ) .^ 2), n_neutral)...)
             )
         ),
         logΓ̲̲⁽ⁿ⁾
@@ -253,12 +249,12 @@ Turing.@model function exprep_fitness_normal(
             permutedims(
                 cat(repeat([s̲⁽ᵐ⁾], (n_time - 1))..., dims=3), [3, 1, 2]
             )[:] .-
-            permutedims(cat(repeat([s̲ₜ], n_mut)..., dims=3), [1, 3, 2])[:],
+            vcat(repeat.(eachcol(s̲ₜ), n_mut)...),
             # Build vector for variances
             LinearAlgebra.Diagonal(
                 permutedims(
                     cat(
-                        repeat([exp.(logσ̲⁽ᵐ⁾)], (n_time - 1))..., dims=3
+                        repeat([exp.(logσ̲⁽ᵐ⁾) .^ 2], (n_time - 1))..., dims=3
                     ), [3, 1, 2]
                 )[:]
             )
