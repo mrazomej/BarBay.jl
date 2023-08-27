@@ -220,8 +220,11 @@ Turing.@model function exprep_fitness_normal(
     # Reshape to have a matrix with columns for each replicate
     s̲ₜ = reshape(s̲ₜ, :, n_rep)          # n_time × n_rep
     logσ̲ₜ = reshape(logσ̲ₜ, :, n_rep)          # n_time × n_rep
-    s̲⁽ᵐ⁾ = reshape(s̲⁽ᵐ⁾, :, n_rep)     # n_mut × n_rep
-    logσ̲⁽ᵐ⁾ = reshape(logσ̲⁽ᵐ⁾, :, n_rep)     # n_mut × n_rep
+
+
+    # Repeat each value (n_time - 1) for each mutant on each replicate
+    s̲⁽ᵐ⁾ = vcat([repeat([s⁽ᵐ⁾], (n_time - 1)) for s⁽ᵐ⁾ in s̲⁽ᵐ⁾]...)
+    logσ̲⁽ᵐ⁾ = vcat([repeat([logσ⁽ᵐ⁾], (n_time - 1)) for logσ⁽ᵐ⁾ in logσ̲⁽ᵐ⁾]...)
 
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
@@ -246,21 +249,11 @@ Turing.@model function exprep_fitness_normal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvNormal(
             # Build vector for fitness differences
-            permutedims(
-                cat(repeat([s̲⁽ᵐ⁾], (n_time - 1))..., dims=3), [3, 1, 2]
-            )[:] .-
-            vcat(repeat.(eachcol(s̲ₜ), n_mut)...),
+            s̲⁽ᵐ⁾ .- vcat(repeat.(eachcol(s̲ₜ), n_mut)...),
             # Build vector for variances
-            LinearAlgebra.Diagonal(
-                permutedims(
-                    cat(
-                        repeat([exp.(logσ̲⁽ᵐ⁾) .^ 2], (n_time - 1))..., dims=3
-                    ), [3, 1, 2]
-                )[:]
-            )
+            LinearAlgebra.Diagonal(exp.(logσ̲⁽ᵐ⁾) .^ 2)
         ),
         logΓ̲̲⁽ᵐ⁾
     )
-
-    return s̲⁽ᵐ⁾
+    return
 end # @model function
