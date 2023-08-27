@@ -215,7 +215,7 @@ Turing.@model function multienv_exprep_fitness_normal(
         # Prob of total number of barcodes read given the Poisosn distribution
         # parameters π(nₜ | logΛ̲ₜ)
         n̲ₜ[:, r] ~ Turing.arraydist(
-            [Turing.Poisson(sum(Λ̲̲[t, :, r], check_args=false)) for t = 1:n_time]
+            [Turing.Poisson(sum(Λ̲̲[t, :, r]); check_args=false) for t = 1:n_time]
         )
 
         # Prob of reads given parameters π(R̲ₜ | nₜ, f̲ₜ). 
