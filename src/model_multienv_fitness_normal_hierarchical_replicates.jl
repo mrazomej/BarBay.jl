@@ -256,7 +256,7 @@ Turing.@model function multienv_exprep_fitness_normal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvNormal(
             # Build array for MvNormal mean
-            vcat(repeat.(eachcol(s̲ₜ), n_neutral)...),
+            -vcat(repeat.(eachcol(s̲ₜ), n_neutral)...),
             # Build array for MvNormal variance
             LinearAlgebra.Diagonal(
                 vcat(repeat.(eachcol(exp.(logσ̲ₜ) .^ 2), n_neutral)...)
