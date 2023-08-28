@@ -11,12 +11,6 @@ import Random
 # Import function to list files
 import Glob
 
-# Import package to handle MCMCChains
-import MCMCChains
-
-# Import library to load JLD2 files
-import JLD2
-
 ##
 
 @doc raw"""
