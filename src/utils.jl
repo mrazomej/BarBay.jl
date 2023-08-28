@@ -241,6 +241,8 @@ a tidy dataframe.
 - `n_rep::Int=1`: Number of experimental replicates. Default is 1. 
 - `envs::Vector{<:Any}=[1]`: Vector of environment ids for each timepoint.
   Default is a single environment [1].
+- `genotypes::Vector{<:Any}=[1]`: Vector of genotype IDs for each mutant. This
+  is used for hierarchical models on genotypes. Default is a single genotype.
 - `n_samples::Int=10_000`: Number of posterior samples to draw used for
   hierarchical models. Default is 10,000.
 
@@ -276,6 +278,7 @@ posterior samples for each parameter. Columns include:
 - Converts multivariate posterior into summarized dataframe format.
 - Adds metadata like parameter type, replicate, strain ID, etc.
 - Can handle models with multiple replicates and environments.
+- Can handle models with hierarchical structure on genotypes.
 - Useful for post-processing ADVI results for further analysis and plotting.
 """
 function advi2df(
@@ -284,13 +287,17 @@ function advi2df(
     mut_ids::Vector{<:Any};
     n_rep::Int=1,
     envs::Vector{<:Any}=[1],
+    genotypes::Vector{<:Any}=[1],
     n_samples::Int=10_000
 )
+    # Check if genotypes are given that there's enough of them
+    if (length(genotypes) > 1) & (length(genotypes) ≠ length(mut_ids))
+        error("The list of genotypes given does not match the list of mutant barcodes")
+    end # if
+
     # Extract parameters and convert to dataframe
-    df_par = DF.DataFrame(
-        hcat(Distributions.params(dist)...),
-        ["mean", "std"]
-    )
+    df_par = DF.DataFrame(hcat(dist.dist.m, dist.dist.σ), ["mean", "std"])
+
     # Add variable name. Notice that we use deepcopy to avoid the modification
     # of the original variable
     df_par[!, :varname] = deepcopy(vars)
@@ -298,8 +305,11 @@ function advi2df(
     # Locate variable groups by identifying the first variable of each group
     var_groups = replace.(vars[occursin.("[1]", string.(vars))], "[1]" => "")
 
+    # Define ranges for each variable
+    var_range = dist.transform.ranges_out
+
     # Count how many variables exist per group
-    var_count = [sum(occursin.(vg, string.(vars))) for vg in var_groups]
+    var_count = length.(var_range)
 
     # Define number of time points based on number of population mean fitness
     # variables and the number of repeats
@@ -310,8 +320,9 @@ function advi2df(
 
     # Define number of neutral lineages from the total count of frequency
     # variables
-    n_neutral = (sum(occursin.("Λ", vars)) - (n_mut * n_time * n_rep)) ÷
-                (n_time * n_rep)
+    n_neutral = (first(var_count[occursin.("Λ", var_groups)]) -
+                 (n_mut * n_time * n_rep)) ÷ (n_time * n_rep)
+
     # Assign neutral IDs. This will be used for the ID of frequency variables
     neutral_ids = ["neutral$(lpad(x, 3, "0"))" for x = 1:n_neutral]
 
@@ -319,15 +330,28 @@ function advi2df(
     # Add replicate number information
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
-    # 1. One repeat should have 5 var_groups. If larger, it is an error
-    if (n_rep == 1) .& (length(var_groups) == 7)
-        # Report that this must be a hierarchical model
-        error("This seems like a hierarchical model with multiple repeats")
-
-        # 2. One repeat and 5 var_groups: Standard single-dataset model
-    elseif (n_rep == 1) .& (length(var_groups) == 5)
+    # 1. One repeat and 5 var_groups: Standard single-dataset model
+    if (n_rep == 1) .& (length(var_groups) == 5)
+        println("Single replicate non-hierarchical model...")
         # Define variable types
         vtypes = ["pop_mean", "pop_error", "mut_fitness", "mut_error", "freq"]
+        # Repeat variable type var_count times and add it to dataframe
+        df_par[!, :vartype] = vcat(
+            [repeat([vtypes[i]], var_count[i]) for i in eachindex(var_count)]...
+        )
+
+        # Add repeat information. NOTE: This is to have a consistent dataframe
+        # for all possible models
+        df_par[!, :rep] .= "R1"
+
+        # 2. One repeat should have 5 var_groups. If larger, it is an error
+    elseif (n_rep == 1) .& (length(var_groups) == 7)
+        # Report that this must be a hierarchical model
+        println("Single replicate genotype hierarchical model...")
+        # Define variable types
+        vtypes = ["pop_mean", "pop_error", "mut_hyperfitness", "mut_noncenter",
+            "mut_deviations", "mut_error", "freq"]
+
         # Repeat variable type var_count times and add it to dataframe
         df_par[!, :vartype] = vcat(
             [repeat([vtypes[i]], var_count[i]) for i in eachindex(var_count)]...
@@ -340,6 +364,8 @@ function advi2df(
         # 3. More than one repeat and 7 var_groups: Hierarchical model for
         #    experimental replicates
     elseif (n_rep > 1) .& (length(var_groups) == 7)
+        # Report this must be a hierarchical model
+        println("Hierarchical model on experimental replciates")
         # Define variable types
         vtypes = ["pop_mean", "pop_error", "mut_hyperfitness", "mut_noncenter",
             "mut_deviations", "mut_error", "freq"]
@@ -427,13 +453,14 @@ function advi2df(
                 ),
                 n_rep
             )
-            # 3. mutant hyperfitness-related variables
-        elseif occursin("hyper", var)
+            # 3. mutant hyperfitness-related variables for hierarchical models
+            #    on experimental replicates
+        elseif occursin("hyper", var) & (n_rep > 1)
             df_par[var_idx, :id] = vcat(
                 [repeat([x], length(unique(envs))) for x in mut_ids]...
             )
             # 4. mutant fitness-related variables
-        else
+        elseif (occursin("mut_", var)) .& (!occursin("hyper", var))
             df_par[var_idx, :id] = repeat(
                 vcat(
                     [repeat([x], length(unique(envs))) for x in mut_ids]...
@@ -444,7 +471,8 @@ function advi2df(
     end # for
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
-    # Add per-replicate fitness effect variables (for hierarchical models)
+    # Add per-replicate fitness effect variables 
+    # (for hierarchical models on experimental replicates)
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
     if (n_rep > 1) .& (length(var_groups) == 7)
@@ -492,6 +520,89 @@ function advi2df(
 
         # Compute individual strains fitness values
         s_mat = hcat(repeat([θ_mat], n_rep)...) .+ (τ_mat .* θ_tilde_mat)
+
+        # Compute mean and standard deviation and turn into dataframe
+        df_s = DF.DataFrame(
+            hcat(
+                [StatsBase.median.(eachcol(s_mat)),
+                    StatsBase.std.(eachcol(s_mat))]...
+            ),
+            ["mean", "std"]
+        )
+
+        # To add the rest of the columns, we will use the τ variables that have
+        # the same length. Let's locate such variables
+        τ_idx = occursin.("τ", string.(vars))
+
+        # Add extra columns
+        DF.insertcols!(
+            df_s,
+            :varname => replace.(df_par[τ_idx, :varname], "logτ" => "s"),
+            :vartype .=> "mut_fitness",
+            :rep => df_par[τ_idx, :rep],
+            :env => df_par[τ_idx, :env],
+            :id => df_par[τ_idx, :id]
+        )
+
+        # Append dataframes
+        DF.append!(df_par, df_s)
+    end # if
+
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+    # Add per strain fitness effect variables 
+    # (for hierarchical models on genotypes)
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+    if (n_rep == 1) .& (length(var_groups) == 7)
+        # Find unique genotypes
+        geno_unique = unique(genotypes)
+        # Define genotype indexes
+        geno_idx = indexin(genotypes, geno_unique)
+
+        # Sample θ̲ variables
+        θ_mat = hcat(
+            [
+                Random.rand(Distributions.Normal(x...), n_samples)
+                for x in eachrow(
+                    df_par[
+                        df_par.vartype.=="mut_hyperfitness",
+                        [:mean, :std]
+                    ]
+                )
+            ]...
+        )
+
+        # Sample τ̲ variables
+        τ_mat = exp.(
+            hcat(
+                [
+                    Random.rand(Distributions.Normal(x...), n_samples)
+                    for x in eachrow(
+                        df_par[
+                            df_par.vartype.=="mut_deviations",
+                            [:mean, :std]
+                        ]
+                    )
+                ]...
+            )
+        )
+
+        # Sample θ̲̃ variables
+        θ_tilde_mat = hcat(
+            [
+                Random.rand(Distributions.Normal(x...), n_samples)
+                for x in eachrow(
+                    df_par[
+                        df_par.vartype.=="mut_noncenter",
+                        [:mean, :std]
+                    ]
+                )
+            ]...
+        )
+
+
+        # Compute individual strains fitness values
+        s_mat = θ_mat[:, geno_idx] .+ (τ_mat .* θ_tilde_mat)
 
         # Compute mean and standard deviation and turn into dataframe
         df_s = DF.DataFrame(
