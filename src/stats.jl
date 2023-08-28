@@ -1091,7 +1091,7 @@ end # function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    naive_fitness(data; id_col, time_col, count_col, neutral_col, pseudo_count)
+    naive_fitness(data; id_col, time_col, count_col, neutral_col, pseudocount)
 
 Function to compute a naive estimate of mutant fitness data based on counts. The
 fitness estimate is computed as
@@ -1128,7 +1128,7 @@ least the following columns:
 inference. Commonly, the data from this first time point is of much lower
 quality. Therefore, removing this first time point might result in a better
 inference.
-- `pseudo_count::Int=1`: Pseudo count number to add to all counts. This is
+- `pseudocount::Int=1`: Pseudo count number to add to all counts. This is
   useful to avoid divisions by zero.
 
 # Returns
@@ -1143,7 +1143,7 @@ function naive_fitness(
     count_col::Symbol=:count,
     neutral_col::Symbol=:neutral,
     rm_T0::Bool=false,
-    pseudo_count::Int=1
+    pseudocount::Int=1
 )
     # Keep only the needed data to work with
     data = data[:, [id_col, time_col, count_col, neutral_col]]
@@ -1157,7 +1157,7 @@ function naive_fitness(
     end # if
 
     # Add pseudo-count to each barcode to avoid division by zero
-    data[:, count_col] .+= pseudo_count
+    data[:, count_col] .+= pseudocount
 
     # Extract total counts per barcode
     data_total = DF.combine(DF.groupby(data, time_col), count_col => sum)
@@ -1370,7 +1370,7 @@ function naive_prior(
     count_col::Symbol=:count,
     neutral_col::Symbol=:neutral,
     rep_col::Union{Nothing,Symbol}=nothing,
-    pseudocount::Int=0,
+    pseudocount::Int=1,
     rm_T0::Bool=false
 )
     # Deep copy data to avoid any changes to original
