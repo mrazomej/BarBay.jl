@@ -72,7 +72,7 @@ Turing.@model function genotype_fitness_normal(
     end # if
 
     # Non-centered samples
-    θ̲̃⁽ᵐ⁾ ~ Turing.MvNormal(repeat([0], n_mut), LinearAlgebra.I(n_mut))
+    θ̲̃⁽ᵐ⁾ ~ Turing.MvNormal(zeros(n_mut), LinearAlgebra.I(n_mut))
 
     # Hyper prior on mutant deviations from hyper-fitness
     logτ̲⁽ᵐ⁾ ~ Turing.MvNormal(
@@ -173,7 +173,7 @@ Turing.@model function genotype_fitness_normal(
             vcat([s⁽ᵐ⁾ .- s̲ₜ for s⁽ᵐ⁾ in s̲⁽ᵐ⁾]...),
             # Build vector for variances
             LinearAlgebra.Diagonal(
-                vcat([repeat([σ], n_time - 1) for σ in exp.(logσ̲⁽ᵐ⁾)]...) .^ 2
+                vcat([repeat([σ^2], n_time - 1) for σ in exp.(logσ̲⁽ᵐ⁾)]...)
             )
         ),
         logΓ̲̲⁽ᵐ⁾
