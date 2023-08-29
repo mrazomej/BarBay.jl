@@ -565,7 +565,7 @@ Turing.@model function multienv_exprep_fitness_normal(
         )
     end # for
 
-    ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
+    # ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
     # Loop through replicates
     for rep = 1:n_rep
@@ -595,8 +595,8 @@ Turing.@model function multienv_exprep_fitness_normal(
         Turing.@addlogprob! Turing.logpdf(
             Turing.MvNormal(
                 # Build vector for fitness differences
-                s̲⁽ᵐ⁾[env_idx[rep][2:end], :, rep][:] .-
-                vcat(repeat(s̲ₜ[time_ranges[rep]], n_mut)...),
+                s̲⁽ᵐ⁾[env_idx[rep][2:end], :, rep])[:] .-
+                reduce(vcat, repeat(s̲ₜ[time_ranges[rep]], n_mut)),
                 # Build vector for variances
                 LinearAlgebra.Diagonal(
                     exp.(logσ̲⁽ᵐ⁾[env_idx[rep][2:end], :, rep])[:] .^ 2
