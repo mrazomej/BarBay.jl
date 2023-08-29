@@ -1412,30 +1412,56 @@ function naive_prior(
         neutral_logfreq = log.(
             neutral_freq[2:end, :] ./ neutral_freq[1:end-1, :]
         )
-    else
-        # Initialize array to save frequencies
-        freqs = Array{Float64}(undef, size(data_mats[:bc_count])...)
+    elseif typeof(rep_col) <: Symbol
+        # Check if all replicates had the same number of time points
+        if typeof(data_mats[:bc_count]) <: Array{Int64,3}
+            # Initialize array to save frequencies
+            freqs = Array{Float64}(undef, size(data_mats[:bc_count])...)
 
-        # Compute frequencies
-        freqlist = [
-            x ./ data_mats[:bc_total]
-            for x in eachslice(data_mats[:bc_count]; dims=2)
-        ]
+            # Compute frequencies
+            freqlist = [
+                x ./ data_mats[:bc_total]
+                for x in eachslice(data_mats[:bc_count]; dims=2)
+            ]
 
-        # Loop through each slice of freqs
-        for (i, freq) in enumerate(freqlist)
-            freqs[:, i, :] = freq
-        end # for
+            # Loop through each slice of freqs
+            for (i, freq) in enumerate(freqlist)
+                freqs[:, i, :] = freq
+            end # for
 
-        # Assign frequencies
-        data_mats[:freq] = freqs
+            # Assign frequencies
+            data_mats[:freq] = freqs
 
-        # Extract neutral lineages frequencies
-        neutral_freq = data_mats[:freq][:, 1:data_mats[:n_neutral], :]
-        # Compute log-frequency ratios
-        neutral_logfreq = log.(
-            neutral_freq[2:end, :, :] ./ neutral_freq[1:end-1, :, :]
-        )
+            # Extract neutral lineages frequencies
+            neutral_freq = data_mats[:freq][:, 1:data_mats[:n_neutral], :]
+            # Compute log-frequency ratios
+            neutral_logfreq = log.(
+                neutral_freq[2:end, :, :] ./ neutral_freq[1:end-1, :, :]
+            )
+        elseif typeof(data_mats[:bc_count]) <: Vector{Matrix{Int64}}
+            # Define number of replicates
+            global n_rep = length(data_mats[:bc_count])
+
+            # Compute frequencies
+            data_mats[:freq] = [
+                data_mats[:bc_count][rep] ./ data_mats[:bc_total][rep]
+                for rep in 1:n_rep
+            ]
+
+            # Extract neutral lineages frequencies
+            neutral_freq = [
+                data_mats[:freq][rep][:, 1:data_mats[:n_neutral]]
+                for rep = 1:n_rep
+            ]
+            # Compute log-frequency ratios
+            neutral_logfreq = [
+                log.(
+                    neutral_freq[rep][2:end, :] ./
+                    neutral_freq[rep][1:end-1, :]
+                )
+                for rep = 1:n_rep
+            ]
+        end # if
     end # if
 
     # ========== Population mean fitness prior ========== #  
@@ -1446,21 +1472,33 @@ function naive_prior(
         logfreq_mean = StatsBase.mean.(
             [x[.!isinf.(x)] for x in eachrow(neutral_logfreq)]
         )
-    else
-        # Initialize array to save means
-        logfreq_mean = Matrix{Float64}(
-            undef, size(neutral_logfreq)[1], size(neutral_logfreq)[3]
-        )
+    elseif typeof(rep_col) <: Symbol
+        # Check if all replicates have the same number of time points
+        if typeof(data_mats[:bc_count]) <: Array{Int64,3}
+            # Initialize array to save means
+            logfreq_mean = Matrix{Float64}(
+                undef, size(neutral_logfreq)[1], size(neutral_logfreq)[3]
+            )
 
-        # Loop through time points
-        for i = 1:size(neutral_logfreq)[1]
-            # Loop through replicates
-            for k = 1:size(neutral_logfreq)[3]
-                logfreq_mean[i, k] = StatsBase.mean(
-                    neutral_logfreq[i, :, k][.!isinf.(neutral_logfreq[i, :, k])]
-                )
+            # Loop through time points
+            for i = 1:size(neutral_logfreq)[1]
+                # Loop through replicates
+                for k = 1:size(neutral_logfreq)[3]
+                    logfreq_mean[i, k] = StatsBase.mean(
+                        neutral_logfreq[i, :, k][
+                            .!isinf.(neutral_logfreq[i, :, k])
+                        ]
+                    )
+                end # for
             end # for
-        end # for
+        elseif typeof(data_mats[:bc_count]) <: Vector{Matrix{Int64}}
+            # Compute mean per time point per replicate
+            logfreq_mean = vcat([
+                StatsBase.mean.(
+                    [x[.!isinf.(x)] for x in eachrow(nlf)]
+                ) for nlf in neutral_logfreq
+            ]...)
+        end # if
     end # if
 
     # Define prior for population mean fitness.
@@ -1474,21 +1512,33 @@ function naive_prior(
         logfreq_std = StatsBase.std.(
             [x[.!isinf.(x)] for x in eachrow(neutral_logfreq)]
         )
-    else
-        # Initialize array to save means
-        logfreq_std = Matrix{Float64}(
-            undef, size(neutral_logfreq)[1], size(neutral_logfreq)[3]
-        )
+    elseif typeof(rep_col) <: Symbol
+        # Check if all replicates have the same number of time points
+        if typeof(data_mats[:bc_count]) <: Array{Int64,3}
+            # Initialize array to save means
+            logfreq_std = Matrix{Float64}(
+                undef, size(neutral_logfreq)[1], size(neutral_logfreq)[3]
+            )
 
-        # Loop through time points
-        for i = 1:size(neutral_logfreq)[1]
-            # Loop through replicates
-            for k = 1:size(neutral_logfreq)[3]
-                logfreq_std[i, k] = StatsBase.std(
-                    neutral_logfreq[i, :, k][.!isinf.(neutral_logfreq[i, :, k])]
-                )
+            # Loop through time points
+            for i = 1:size(neutral_logfreq)[1]
+                # Loop through replicates
+                for k = 1:size(neutral_logfreq)[3]
+                    logfreq_std[i, k] = StatsBase.std(
+                        neutral_logfreq[i, :, k][
+                            .!isinf.(neutral_logfreq[i, :, k])
+                        ]
+                    )
+                end # for
             end # for
-        end # for
+        elseif typeof(data_mats[:bc_count]) <: Vector{Matrix{Int64}}
+            # Compute mean per time point per replicate
+            logfreq_std = vcat([
+                StatsBase.std.(
+                    [x[.!isinf.(x)] for x in eachrow(nlf)]
+                ) for nlf in neutral_logfreq
+            ]...)
+        end # if
     end # if
 
     # Define prior for population mean fitness.
@@ -1497,7 +1547,16 @@ function naive_prior(
 
     #== Nuisance parameter for the Poisson–distribution observational model ==#
 
-    logλ_prior = log.(data_mats[:bc_count])[:]
+    # Compute mean per time point for approximate mean fitness making sure we to
+    # remove infinities.
+    if (typeof(rep_col) <: Nothing) |
+       (typeof(data_mats[:bc_count]) <: Array{Int64,3})
+        logλ_prior = log.(data_mats[:bc_count])[:]
+    elseif typeof(data_mats[:bc_count]) <: Vector{Matrix{Int64}}
+        logλ_prior = vcat(
+            [log.(data_mats[:bc_count][rep])[:] for rep = 1:n_rep]...
+        )
+    end # if
 
     return Dict(
         :s_pop_prior => s_pop_prior,
