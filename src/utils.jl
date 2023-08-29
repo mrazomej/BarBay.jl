@@ -14,7 +14,7 @@ import Glob
 ##
 
 @doc raw"""
-    data2arrays(data; kwargs)
+    data_to_arrays(data; kwargs)
 
 Function to preprocess the tidy dataframe `data` into the corresponding inputs
 for the models in the `model` submodule.
@@ -56,7 +56,7 @@ elseif `typeof(rep_col) <: Symbol` Dictionary with the following entries: -
         `n_mut::Int`: Number of mutant lineages. - `mut_keys`: List of mutant
         names in the order used to build `R̲̲`.
 """
-function data2arrays(
+function data_to_arrays(
     data::DF.AbstractDataFrame;
     id_col::Symbol=:barcode,
     time_col::Symbol=:time,
@@ -139,7 +139,7 @@ function data2arrays(
         # Compute total counts for each run
         n̲ₜ = vec(sum(R̲̲, dims=2))
 
-        ### --------------- When repeats are given --------------- ### 
+        ### --------------- When replicates are given --------------- ### 
     elseif typeof(rep_col) <: Symbol
         ### NOTE: Need to add a verification that all barcodes are reported for 
         # all time points
@@ -226,7 +226,7 @@ function data2arrays(
 end # function
 
 @doc raw"""
-advi2df(dist, vars, mut_ids; n_rep=1, envs=[1], n_samples=10_000)
+advi_to_df(dist, vars, mut_ids; n_rep=1, envs=[1], n_samples=10_000)
 
 Convert the output of automatic differentiation variational inference (ADVI) to
 a tidy dataframe.
@@ -281,7 +281,7 @@ posterior samples for each parameter. Columns include:
 - Can handle models with hierarchical structure on genotypes.
 - Useful for post-processing ADVI results for further analysis and plotting.
 """
-function advi2df(
+function advi_to_df(
     dist::Distributions.Sampleable,
     vars::Vector{<:Any},
     mut_ids::Vector{<:Any};

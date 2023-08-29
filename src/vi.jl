@@ -22,7 +22,7 @@ import CSV
 using ..stats: build_getq
 
 # Import needed function from the utils module
-using ..utils: data2arrays
+using ..utils: data_to_arrays
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 # Running MCMC for full joint fitness inference π(s̲⁽ᵐ⁾, s̲ₜ | data)
@@ -137,7 +137,7 @@ function advi(;
 
     println("Pre-processing data...")
     # Convert from tidy dataframe to model inputs
-    data_dict = data2arrays(
+    data_dict = data_to_arrays(
         data;
         id_col=id_col,
         time_col=time_col,
@@ -310,7 +310,7 @@ function pathfinder(;
 
     println("Pre-processing data...")
     # Convert from tidy dataframe to model inputs
-    data_dict = data2arrays(
+    data_dict = data_to_arrays(
         data;
         id_col=id_col,
         time_col=time_col,

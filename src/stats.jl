@@ -23,7 +23,7 @@ import ComponentArrays
 import UnPack
 
 # Import needed function from the utils module
-using ..utils: data2arrays
+using ..utils: data_to_arrays
 
 ##
 
@@ -1391,7 +1391,7 @@ function naive_prior(
     data[:, count_col] = data[:, count_col] .+ pseudocount
 
     # Convert data to arrays
-    data_mats = data2arrays(
+    data_mats = data_to_arrays(
         data;
         id_col=id_col,
         time_col=time_col,
