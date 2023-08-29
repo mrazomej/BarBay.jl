@@ -141,79 +141,151 @@ function data_to_arrays(
 
         ### --------------- When replicates are given --------------- ### 
     elseif typeof(rep_col) <: Symbol
-        ### NOTE: Need to add a verification that all barcodes are reported for 
-        # all time points
 
-        ## %%%%%%%%%%% Neutral barcodes data %%%%%%%%%%% ##
+        ## === Check if all replicates have the same number of time points === #
+        # Group data by replicate
+        data_rep_group = DF.groupby(data, rep_col)
+        # Define number of time points per replicate
+        n_rep_time = [length(unique(d[:, time_col])) for d in data_rep_group]
 
-        # Extract neutral data
-        data_neutral = @view data[data[:, neutral_col], :]
-        # Extract unique time points
-        timepoints = sort(unique(data_neutral[:, time_col]))
-        # Extract unique IDs
-        ids = unique(data_neutral[:, id_col])
-        # Extract unique reps
-        reps = unique(data_neutral[:, rep_col])
+        if length(unique(n_rep_time)) == 1
 
-        # Initialize array to save counts for each mutant at time t
-        R̲̲⁽ⁿ⁾ = Array{Int64,3}(
-            undef, length(timepoints), length(ids), length(reps)
-        )
+            ## %%%%%%%%%%% Neutral barcodes data %%%%%%%%%%% ##
 
-        # Loop through each unique id
-        for (j, id) in enumerate(ids)
-            # Loop through each unique rep
-            for (k, rep) in enumerate(reps)
-                # Extract data
-                d = data_neutral[
-                    (data_neutral[:, id_col].==id).&(data_neutral[:, rep_col].==rep),
-                    :]
-                # Sort data by timepoint
-                DF.sort!(d, time_col)
-                # Extract data
-                R̲̲⁽ⁿ⁾[:, j, k] = d[:, count_col]
+            # Extract neutral data
+            data_neutral = @view data[data[:, neutral_col], :]
+            # Extract unique time points
+            timepoints = sort(unique(data_neutral[:, time_col]))
+            # Extract unique IDs
+            ids = unique(data_neutral[:, id_col])
+            # Extract unique reps
+            reps = unique(data_neutral[:, rep_col])
+
+            # Initialize array to save counts for each mutant at time t
+            R̲̲⁽ⁿ⁾ = Array{Int64,3}(
+                undef, length(timepoints), length(ids), length(reps)
+            )
+
+            # Loop through each unique id
+            for (j, id) in enumerate(ids)
+                # Loop through each unique rep
+                for (k, rep) in enumerate(reps)
+                    # Extract data
+                    d = data_neutral[
+                        (data_neutral[:, id_col].==id).&(data_neutral[:, rep_col].==rep),
+                        :]
+                    # Sort data by timepoint
+                    DF.sort!(d, time_col)
+                    # Extract data
+                    R̲̲⁽ⁿ⁾[:, j, k] = d[:, count_col]
+                end # for
             end # for
-        end # for
 
-        ## %%%%%%%%%%% Mutant barcodes data %%%%%%%%%%% ##
+            ## %%%%%%%%%%% Mutant barcodes data %%%%%%%%%%% ##
 
-        # Extract neutral data
-        data_mut = @view data[.!data[:, neutral_col], :]
-        # Extract unique time points
-        timepoints = sort(unique(data_mut[:, time_col]))
-        # Extract unique IDs
-        mut_ids = sort(unique(data_mut[:, id_col]))
-        # Extract unique reps
-        reps = sort(unique(data_mut[:, rep_col]))
+            # Extract neutral data
+            data_mut = @view data[.!data[:, neutral_col], :]
+            # Extract unique time points
+            timepoints = sort(unique(data_mut[:, time_col]))
+            # Extract unique IDs
+            mut_ids = sort(unique(data_mut[:, id_col]))
+            # Extract unique reps
+            reps = sort(unique(data_mut[:, rep_col]))
 
-        # Initialize array to save counts for each mutant at time t
-        R̲̲⁽ᵐ⁾ = Array{Int64,3}(
-            undef, length(timepoints), length(mut_ids), length(reps)
-        )
+            # Initialize array to save counts for each mutant at time t
+            R̲̲⁽ᵐ⁾ = Array{Int64,3}(
+                undef, length(timepoints), length(mut_ids), length(reps)
+            )
 
-        # Loop through each unique id
-        for (j, id) in enumerate(mut_ids)
-            # Loop through each unique rep
-            for (k, rep) in enumerate(reps)
-                # Extract data
-                d = data_mut[
-                    (data_mut[:, id_col].==id).&(data_mut[:, rep_col].==rep),
-                    :]
-                # Sort data by timepoint
-                DF.sort!(d, time_col)
-                # Extract data
-                R̲̲⁽ᵐ⁾[:, j, k] = d[:, count_col]
+            # Loop through each unique id
+            for (j, id) in enumerate(mut_ids)
+                # Loop through each unique rep
+                for (k, rep) in enumerate(reps)
+                    # Extract data
+                    d = data_mut[
+                        (data_mut[:, id_col].==id).&(data_mut[:, rep_col].==rep),
+                        :]
+                    # Sort data by timepoint
+                    DF.sort!(d, time_col)
+                    # Extract data
+                    R̲̲⁽ᵐ⁾[:, j, k] = d[:, count_col]
+                end # for
             end # for
-        end # for
 
-        ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
+            ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
 
-        # Concatenate neutral and mutant data matrices
-        R̲̲ = cat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾; dims=2)
+            # Concatenate neutral and mutant data matrices
+            R̲̲ = cat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾; dims=2)
 
-        # Compute total counts for each run
-        n̲ₜ = reshape(sum(R̲̲, dims=2), length(timepoints), length(reps))
+            # Compute total counts for each run
+            n̲ₜ = reshape(sum(R̲̲, dims=2), length(timepoints), length(reps))
 
+        else
+            # Initialize Vector to save matrix for each replicate
+            R̲̲ = Vector{Matrix{Int64}}(undef, length(n_rep_time))
+
+            # Loop through replicates
+            for (rep, d_rep) in enumerate(data_rep_group)
+                ## %%%%%%%%%%% Neutral barcodes data %%%%%%%%%%% ##
+
+                # Group data by unique mutant barcode
+                data_group = DF.groupby(d_rep[d_rep[:, neutral_col], :], id_col)
+
+                # Check that all barcodes were measured at all points
+                if any([size(d, 1) for d in data_group] .!= n_rep_time[rep])
+                    error("Not all neutral barcodes have reported counts in all time points")
+                end # if
+
+                # Initialize array to save counts for each mutant at time t
+                R̲̲⁽ⁿ⁾ = Matrix{Int64}(
+                    undef, n_rep_time[rep], length(data_group)
+                )
+
+                # Loop through each unique barcode
+                for (i, d) in enumerate(data_group)
+                    # Sort data by timepoint
+                    DF.sort!(d, time_col)
+                    # Extract data
+                    R̲̲⁽ⁿ⁾[:, i] = d[:, count_col]
+                end # for
+
+                ## %%%%%%%%%%% Mutant barcodes data %%%%%%%%%%% ##
+
+                # Group data by unique mutant barcode
+                data_group = DF.groupby(
+                    d_rep[.!d_rep[:, neutral_col], :], id_col
+                )
+
+                # Extract group keys
+                mut_ids = first.(values.(keys(data_group)))
+
+                # Check that all barcodes were measured at all points
+                if any([size(d, 1) for d in data_group] .!= n_rep_time[rep])
+                    error("Not all mutant barcodes have reported counts in all time points")
+                end # if
+
+                # Initialize array to save counts for each mutant at time t
+                R̲̲⁽ᵐ⁾ = Matrix{Int64}(
+                    undef, n_rep_time[rep], length(data_group)
+                )
+
+                # Loop through each unique barcode
+                for (i, d) in enumerate(data_group)
+                    # Sort data by timepoint
+                    DF.sort!(d, time_col)
+                    # Extract data
+                    R̲̲⁽ᵐ⁾[:, i] = d[:, count_col]
+                end # for
+
+                ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
+
+                # Concatenate neutral and mutant data matrices
+                R̲̲[rep] = hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)
+
+            end # for
+            # Compute total counts for each run
+            n̲ₜ = vec.(sum.(R̲̲, dims=2))
+        end #if
     end # if
 
     return Dict(
