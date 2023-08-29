@@ -170,10 +170,10 @@ Turing.@model function genotype_fitness_normal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvNormal(
             # Build vector for fitness differences
-            vcat([s⁽ᵐ⁾ .- s̲ₜ for s⁽ᵐ⁾ in s̲⁽ᵐ⁾]...),
+            reduce(vcat, [s⁽ᵐ⁾ .- s̲ₜ for s⁽ᵐ⁾ in s̲⁽ᵐ⁾]),
             # Build vector for variances
             LinearAlgebra.Diagonal(
-                vcat([repeat([σ^2], n_time - 1) for σ in exp.(logσ̲⁽ᵐ⁾)]...)
+                reduce(vcat, [repeat([σ^2], n_time - 1) for σ in exp.(logσ̲⁽ᵐ⁾)])
             )
         ),
         logΓ̲̲⁽ᵐ⁾

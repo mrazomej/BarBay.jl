@@ -257,10 +257,10 @@ Turing.@model function multienv_exprep_fitness_normal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvNormal(
             # Build array for MvNormal mean
-            -vcat(repeat.(eachcol(s̲ₜ), n_neutral)...),
+            -reduce(vcat, repeat.(eachcol(s̲ₜ), n_neutral)),
             # Build array for MvNormal variance
             LinearAlgebra.Diagonal(
-                vcat(repeat.(eachcol(exp.(logσ̲ₜ) .^ 2), n_neutral)...)
+                reduce(vcat, repeat.(eachcol(exp.(logσ̲ₜ) .^ 2), n_neutral))
             )
         ),
         logΓ̲̲⁽ⁿ⁾
@@ -274,7 +274,7 @@ Turing.@model function multienv_exprep_fitness_normal(
         Turing.MvNormal(
             # Build vector for fitness differences
             s̲⁽ᵐ⁾[env_idx[2:end], :, :][:] .-
-            vcat(repeat.(eachcol(s̲ₜ), n_mut)...),
+            reduce(vcat, repeat.(eachcol(s̲ₜ), n_mut)),
             # Build vector for variances
             LinearAlgebra.Diagonal(
                 exp.(logσ̲⁽ᵐ⁾[env_idx[2:end], :, :])[:] .^ 2
@@ -576,7 +576,7 @@ Turing.@model function multienv_exprep_fitness_normal(
         Turing.@addlogprob! Turing.logpdf(
             Turing.MvNormal(
                 # Build array for MvNormal mean
-                -vcat(repeat(s̲ₜ[time_ranges[rep]], n_neutral)...),
+                -reduce(vcat, repeat(s̲ₜ[time_ranges[rep]], n_neutral)),
                 # Build array for MvNormal variance
                 LinearAlgebra.Diagonal(
                     vcat(
