@@ -533,7 +533,7 @@ Turing.@model function multienv_exprep_fitness_normal(
     s̲⁽ᵐ⁾ = reshape(s̲⁽ᵐ⁾, n_env, n_mut, n_rep)     # n_env × n_mut × n_rep
     logσ̲⁽ᵐ⁾ = reshape(logσ̲⁽ᵐ⁾, n_env, n_mut, n_rep)     # n_env × n_mut × n_rep
 
-    ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
+    ## %%%%%%%%%%%%% Log-Likelihood functions for observations %%%%%%%%%%%%%% ##
 
     # Loop through replicates
     for rep = 1:n_rep
@@ -565,7 +565,7 @@ Turing.@model function multienv_exprep_fitness_normal(
         )
     end # for
 
-    # ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
+    ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
     # Loop through replicates
     for rep = 1:n_rep
@@ -579,10 +579,11 @@ Turing.@model function multienv_exprep_fitness_normal(
                 -reduce(vcat, repeat(s̲ₜ[time_ranges[rep]], n_neutral)),
                 # Build array for MvNormal variance
                 LinearAlgebra.Diagonal(
-                    vcat(
+                    reduce(
+                        vcat,
                         repeat(
                             exp.(logσ̲ₜ[time_ranges[rep]]) .^ 2, n_neutral
-                        )...
+                        )
                     )
                 )
             ),
