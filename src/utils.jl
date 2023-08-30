@@ -440,7 +440,7 @@ function advi_to_df(
         #    experimental replicates
     elseif (n_rep > 1) .& (length(var_groups) == 7)
         # Report this must be a hierarchical model
-        println("Hierarchical model on experimental replciates")
+        println("Hierarchical model on experimental replicates")
         # Define variable types
         vtypes = ["pop_mean", "pop_error", "bc_hyperfitness", "bc_noncenter",
             "bc_deviations", "bc_error", "freq"]
