@@ -3,7 +3,7 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-exprep_fitness_lognormal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64},  
+replicate_fitness_lognormal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64},  
                          n_neutral::Int, n_mut::Int; kwargs...)
 
 Defines a hierarchical model to estimate fitness effects in a competitive
@@ -72,7 +72,7 @@ replicates.
 - Can estimate time-varying and environment-specific fitness effects.
 - Setting informative priors is recommended for stable convergence.
 """
-Turing.@model function exprep_fitness_lognormal(
+Turing.@model function replicate_fitness_lognormal(
     R̲̲::Array{Int64,3},
     n̲ₜ::Matrix{Int64},
     n_neutral::Int,

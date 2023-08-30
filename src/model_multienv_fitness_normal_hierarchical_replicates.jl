@@ -4,7 +4,7 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-multienv_exprep_fitness_normal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64},
+multienv_replicate_fitness_normal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64},
                                n_neutral::Int, n_mut::Int; kwargs...)
 
 Defines a hierarchical model to estimate fitness effects in a competitive
@@ -79,7 +79,7 @@ over multiple experimental replicates.
 - Can estimate time-varying and environment-specific fitness effects.
 - Setting informative priors is recommended for stable convergence.
 """
-Turing.@model function multienv_exprep_fitness_normal(
+Turing.@model function multienv_replicate_fitness_normal(
     R̲̲::Array{Int64,3},
     n̲ₜ::Matrix{Int64},
     n_neutral::Int,
@@ -292,7 +292,7 @@ end # @model function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-multienv_exprep_fitness_normal(R̲̲::Vector{Matrix{Int64}},
+multienv_replicate_fitness_normal(R̲̲::Vector{Matrix{Int64}},
                                n̲ₜ::Vector{Vector{Int64}}, n_neutral::Int,
                                n_mut::Int; kwargs...)
 
@@ -370,7 +370,7 @@ over multiple experimental replicates.
 - Can estimate time-varying and environment-specific fitness effects.
 - Setting informative priors is recommended for stable convergence.
 """
-Turing.@model function multienv_exprep_fitness_normal(
+Turing.@model function multienv_replicate_fitness_normal(
     R̲̲::Vector{Matrix{Int64}},
     n̲ₜ::Vector{Vector{Int64}},
     n_neutral::Int,

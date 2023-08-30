@@ -115,7 +115,7 @@ function mcmc_sample(;
     end # if
 
     # Check if model is hierarchical for experimental replicates
-    if occursin("exprep", "$(model)") & (typeof(rep_col) <: Nothing)
+    if occursin("replicate", "$(model)") & (typeof(rep_col) <: Nothing)
         error("Hierarchical models for experimental replicates require argument `:rep_col`")
     end # if
 
