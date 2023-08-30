@@ -109,7 +109,8 @@ Turing.@model function exprep_fitness_normal(
         )
     elseif typeof(logσ_pop_prior) <: Matrix
         logσ̲ₜ ~ Turing.MvNormal(
-            logσ_pop_prior[:, 1], LinearAlgebra.Diagonal(logσ_pop_prior[:, 2] .^ 2)
+            logσ_pop_prior[:, 1],
+            LinearAlgebra.Diagonal(logσ_pop_prior[:, 2] .^ 2)
         )
     end # if
 
@@ -186,6 +187,8 @@ Turing.@model function exprep_fitness_normal(
     logΓ̲̲⁽ⁿ⁾ = vec(logΓ̲̲[:, 1:n_neutral, :])
     logΓ̲̲⁽ᵐ⁾ = vec(logΓ̲̲[:, n_neutral+1:n_neutral+n_mut, :])
 
+    ## %%%%%%%%%%%%% Log-Likelihood functions for observations %%%%%%%%%%%%%% ##
+
     # Loop through replicates
     for r = 1:n_rep
         # Prob of total number of barcodes read given the Poisosn distribution
@@ -221,11 +224,6 @@ Turing.@model function exprep_fitness_normal(
     s̲ₜ = reshape(s̲ₜ, :, n_rep)          # n_time × n_rep
     logσ̲ₜ = reshape(logσ̲ₜ, :, n_rep)          # n_time × n_rep
 
-
-    # Repeat each value (n_time - 1) for each mutant on each replicate
-    s̲⁽ᵐ⁾ = vcat([repeat([s⁽ᵐ⁾], (n_time - 1)) for s⁽ᵐ⁾ in s̲⁽ᵐ⁾]...)
-    logσ̲⁽ᵐ⁾ = vcat([repeat([logσ⁽ᵐ⁾], (n_time - 1)) for logσ⁽ᵐ⁾ in logσ̲⁽ᵐ⁾]...)
-
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
     # Sample posterior for neutral lineage frequency ratio. Since it is a sample
@@ -234,10 +232,10 @@ Turing.@model function exprep_fitness_normal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvNormal(
             # Build array for MvLogNormal mean
-            -vcat(repeat.(eachcol(s̲ₜ), n_neutral)...),
+            -reduce(vcat, repeat.(eachcol(s̲ₜ), n_neutral)),
             # Build array for MvLogNormal variance
             LinearAlgebra.Diagonal(
-                vcat(repeat.(eachcol(exp.(logσ̲ₜ) .^ 2), n_neutral)...)
+                reduce(vcat, repeat.(eachcol(exp.(logσ̲ₜ) .^ 2), n_neutral))
             )
         ),
         logΓ̲̲⁽ⁿ⁾
@@ -249,9 +247,15 @@ Turing.@model function exprep_fitness_normal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvNormal(
             # Build vector for fitness differences
-            s̲⁽ᵐ⁾ .- vcat(repeat.(eachcol(s̲ₜ), n_mut)...),
+            reduce(vcat, [repeat([s⁽ᵐ⁾], (n_time - 1)) for s⁽ᵐ⁾ in s̲⁽ᵐ⁾]) .-
+            reduce(vcat, repeat.(eachcol(s̲ₜ), n_mut)),
             # Build vector for variances
-            LinearAlgebra.Diagonal(exp.(logσ̲⁽ᵐ⁾) .^ 2)
+            LinearAlgebra.Diagonal(
+                reduce(
+                    vcat,
+                    [repeat([σ⁽ᵐ⁾^2], (n_time - 1)) for σ⁽ᵐ⁾ in exp.(logσ̲⁽ᵐ⁾)]
+                )
+            )
         ),
         logΓ̲̲⁽ᵐ⁾
     )
