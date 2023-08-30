@@ -205,5 +205,5 @@ function advi(;
     end # if
 
     # Write output into memory
-    JLD2.jldsave("$(fname)", ids=data_dict[:mut_ids], var=var_names, dist=q)
+    JLD2.jldsave("$(fname)", ids=data_dict[:bc_ids], var=var_names, dist=q)
 end # function

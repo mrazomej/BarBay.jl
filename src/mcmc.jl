@@ -162,5 +162,5 @@ function mcmc_sample(;
         println("Saving $(fname) chain...")
     end # if
     # Write output into memory
-    JLD2.jldsave("$(fname)", ids=data_dict[:mut_ids], chain=chain)
+    JLD2.jldsave("$(fname)", ids=data_dict[:bc_ids], chain=chain)
 end # function

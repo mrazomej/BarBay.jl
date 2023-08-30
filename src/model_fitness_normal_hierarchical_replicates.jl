@@ -35,17 +35,17 @@ replicates.
   population mean fitness error utilized in the log-likelihood function. If
   `typeof(logσ_pop_prior) <: Matrix`, there should be as many rows in the matrix
   as pairs of time adjacent time points × number of replicates in dataset.
-- `s_mut_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
-  corresponding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
-  standard deviation, Matrix: `s_mut_prior[:, 1]` = mean, `s_mut_prior[:, 2]` =
+- `s_bc_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `s_bc_prior[1]` = mean, `s_bc_prior[2]` =
+  standard deviation, Matrix: `s_bc_prior[:, 1]` = mean, `s_bc_prior[:, 2]` =
   standard deviation) for a Normal prior on the mutant fitness values. If
-  `typeof(s_mut_prior) <: Matrix`, there should be as many rows in the matrix as
+  `typeof(s_bc_prior) <: Matrix`, there should be as many rows in the matrix as
   number of mutant lineages × number of replicates in the dataset. 
-- `logσ_mut_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
-  corresponding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
-  standard deviation, Matrix: `s_mut_prior[:, 1]` = mean, `s_mut_prior[:, 2]` =
+- `logσ_bc_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `s_bc_prior[1]` = mean, `s_bc_prior[2]` =
+  standard deviation, Matrix: `s_bc_prior[:, 1]` = mean, `s_bc_prior[:, 2]` =
   standard deviation) for a Normal prior on the mutant fitness error utilized in
-  the log-likelihood function. If `typeof(logσ_mut_prior) <: Matrix`, there
+  the log-likelihood function. If `typeof(logσ_bc_prior) <: Matrix`, there
   should be as many rows in the matrix as mutant lineages × number of replicates
   in the dataset.
 - `logλ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
@@ -77,8 +77,8 @@ Turing.@model function replicate_fitness_normal(
     n_mut::Int;
     s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
     logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
-    s_mut_prior::VecOrMat{Float64}=[0.0, 2.0],
-    logσ_mut_prior::VecOrMat{Float64}=[0.0, 1.0],
+    s_bc_prior::VecOrMat{Float64}=[0.0, 2.0],
+    logσ_bc_prior::VecOrMat{Float64}=[0.0, 1.0],
     logλ_prior::VecOrMat{Float64}=[3.0, 3.0],
     logτ_prior::Vector{Float64}=[-2.0, 1.0]
 )
@@ -117,14 +117,14 @@ Turing.@model function replicate_fitness_normal(
     ## %%%%%%%%%%%%%% Mutant fitness  %%%%%%%%%%%%%% ##
 
     # Hyper prior on mutant fitness π(θ̲⁽ᵐ⁾) 
-    if typeof(s_mut_prior) <: Vector
+    if typeof(s_bc_prior) <: Vector
         θ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([s_mut_prior[1]], n_mut),
-            LinearAlgebra.I(n_mut) .* s_mut_prior[2] .^ 2
+            repeat([s_bc_prior[1]], n_mut),
+            LinearAlgebra.I(n_mut) .* s_bc_prior[2] .^ 2
         )
-    elseif typeof(s_mut_prior) <: Matrix
+    elseif typeof(s_bc_prior) <: Matrix
         θ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            s_mut_prior[:, 1], LinearAlgebra.Diagonal(s_mut_prior[:, 2] .^ 2)
+            s_bc_prior[:, 1], LinearAlgebra.Diagonal(s_bc_prior[:, 2] .^ 2)
         )
     end # if
 
@@ -144,14 +144,14 @@ Turing.@model function replicate_fitness_normal(
     s̲⁽ᵐ⁾ = repeat(θ̲⁽ᵐ⁾, n_rep) .+ (exp.(logτ̲⁽ᵐ⁾) .* θ̲̃⁽ᵐ⁾)
 
     # Prior on LogNormal error π(logσ̲⁽ᵐ⁾)
-    if typeof(logσ_mut_prior) <: Vector
+    if typeof(logσ_bc_prior) <: Vector
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([logσ_mut_prior[1]], n_mut * n_rep),
-            LinearAlgebra.I(n_mut * n_rep) .* logσ_mut_prior[2] .^ 2
+            repeat([logσ_bc_prior[1]], n_mut * n_rep),
+            LinearAlgebra.I(n_mut * n_rep) .* logσ_bc_prior[2] .^ 2
         )
-    elseif typeof(logσ_mut_prior) <: Matrix
+    elseif typeof(logσ_bc_prior) <: Matrix
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            logσ_mut_prior[:, 1], LinearAlgebra.Diagonal(logσ_mut_prior[:, 2] .^ 2)
+            logσ_bc_prior[:, 1], LinearAlgebra.Diagonal(logσ_bc_prior[:, 2] .^ 2)
         )
     end # if
     ## %%%%%%%%%%%%%% Barcode frequencies %%%%%%%%%%%%%% ##
@@ -300,17 +300,17 @@ replicates.
   population mean fitness error utilized in the log-likelihood function. If
   `typeof(logσ_pop_prior) <: Matrix`, there should be as many rows in the matrix
   as pairs of time adjacent time points × number of replicates in dataset.
-- `s_mut_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
-  corresponding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
-  standard deviation, Matrix: `s_mut_prior[:, 1]` = mean, `s_mut_prior[:, 2]` =
+- `s_bc_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `s_bc_prior[1]` = mean, `s_bc_prior[2]` =
+  standard deviation, Matrix: `s_bc_prior[:, 1]` = mean, `s_bc_prior[:, 2]` =
   standard deviation) for a Normal prior on the mutant fitness values. If
-  `typeof(s_mut_prior) <: Matrix`, there should be as many rows in the matrix as
+  `typeof(s_bc_prior) <: Matrix`, there should be as many rows in the matrix as
   number of mutant lineages × number of replicates in the dataset. 
-- `logσ_mut_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
-  corresponding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
-  standard deviation, Matrix: `s_mut_prior[:, 1]` = mean, `s_mut_prior[:, 2]` =
+- `logσ_bc_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `s_bc_prior[1]` = mean, `s_bc_prior[2]` =
+  standard deviation, Matrix: `s_bc_prior[:, 1]` = mean, `s_bc_prior[:, 2]` =
   standard deviation) for a Normal prior on the mutant fitness error utilized in
-  the log-likelihood function. If `typeof(logσ_mut_prior) <: Matrix`, there
+  the log-likelihood function. If `typeof(logσ_bc_prior) <: Matrix`, there
   should be as many rows in the matrix as mutant lineages × number of replicates
   in the dataset.
 - `logλ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
@@ -342,8 +342,8 @@ Turing.@model function replicate_fitness_normal(
     n_mut::Int;
     s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
     logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
-    s_mut_prior::VecOrMat{Float64}=[0.0, 2.0],
-    logσ_mut_prior::VecOrMat{Float64}=[0.0, 1.0],
+    s_bc_prior::VecOrMat{Float64}=[0.0, 2.0],
+    logσ_bc_prior::VecOrMat{Float64}=[0.0, 1.0],
     logλ_prior::VecOrMat{Float64}=[3.0, 3.0],
     logτ_prior::Vector{Float64}=[-2.0, 1.0]
 )
@@ -406,14 +406,14 @@ Turing.@model function replicate_fitness_normal(
     ## %%%%%%%%%%%%%% Mutant fitness  %%%%%%%%%%%%%% ##
 
     # Hyper prior on mutant fitness π(θ̲⁽ᵐ⁾) 
-    if typeof(s_mut_prior) <: Vector
+    if typeof(s_bc_prior) <: Vector
         θ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([s_mut_prior[1]], n_mut),
-            LinearAlgebra.I(n_mut) .* s_mut_prior[2] .^ 2
+            repeat([s_bc_prior[1]], n_mut),
+            LinearAlgebra.I(n_mut) .* s_bc_prior[2] .^ 2
         )
-    elseif typeof(s_mut_prior) <: Matrix
+    elseif typeof(s_bc_prior) <: Matrix
         θ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            s_mut_prior[:, 1], LinearAlgebra.Diagonal(s_mut_prior[:, 2] .^ 2)
+            s_bc_prior[:, 1], LinearAlgebra.Diagonal(s_bc_prior[:, 2] .^ 2)
         )
     end # if
 
@@ -433,15 +433,15 @@ Turing.@model function replicate_fitness_normal(
     s̲⁽ᵐ⁾ = repeat(θ̲⁽ᵐ⁾, n_rep) .+ (exp.(logτ̲⁽ᵐ⁾) .* θ̲̃⁽ᵐ⁾)
 
     # Prior on LogNormal error π(logσ̲⁽ᵐ⁾)
-    if typeof(logσ_mut_prior) <: Vector
+    if typeof(logσ_bc_prior) <: Vector
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([logσ_mut_prior[1]], n_mut * n_rep),
-            LinearAlgebra.I(n_mut * n_rep) .* logσ_mut_prior[2] .^ 2
+            repeat([logσ_bc_prior[1]], n_mut * n_rep),
+            LinearAlgebra.I(n_mut * n_rep) .* logσ_bc_prior[2] .^ 2
         )
-    elseif typeof(logσ_mut_prior) <: Matrix
+    elseif typeof(logσ_bc_prior) <: Matrix
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            logσ_mut_prior[:, 1],
-            LinearAlgebra.Diagonal(logσ_mut_prior[:, 2] .^ 2)
+            logσ_bc_prior[:, 1],
+            LinearAlgebra.Diagonal(logσ_bc_prior[:, 2] .^ 2)
         )
     end # if
     ## %%%%%%%%%%%%%% Barcode frequencies %%%%%%%%%%%%%% ##

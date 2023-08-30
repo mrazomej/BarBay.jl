@@ -48,7 +48,7 @@ if `typeof(rep_col) <: Nothing` Dictionary with the following entries:
     per time point. 
     - `n_neutral::Int`: Number of neutral lineages. -
     `n_mut::Int`: Number of mutant lineages. 
-    - `mut_keys`: List of mutant names in the order used to build `R̲̲`.
+    - `bc_keys`: List of mutant names in the order used to build `R̲̲`.
 
 elseif `typeof(rep_col) <: Symbol` Dictionary with the following entries: 
     - `bc_count::Array`: `T × B × R` array with all barcodes read counts. 
@@ -56,7 +56,7 @@ elseif `typeof(rep_col) <: Symbol` Dictionary with the following entries:
         time point per repeat. 
     - `n_neutral::Int`: Number of neutral lineages. 
     - `n_mut::Int`: Number of mutant lineages. 
-    - `mut_keys`: List of mutant
+    - `bc_keys`: List of mutant
         names in the order used to build `R̲̲`.
 """
 function data_to_arrays(
@@ -114,7 +114,7 @@ function data_to_arrays(
         data_group = DF.groupby(data[.!data[:, neutral_col], :], id_col)
 
         # Extract group keys
-        mut_ids = first.(values.(keys(data_group)))
+        bc_ids = first.(values.(keys(data_group)))
 
         # Check that all barcodes were measured at all points
         if any([size(d, 1) for d in data_group] .!= length(timepoints))
@@ -191,17 +191,17 @@ function data_to_arrays(
             # Extract unique time points
             timepoints = sort(unique(data_mut[:, time_col]))
             # Extract unique IDs
-            mut_ids = sort(unique(data_mut[:, id_col]))
+            bc_ids = sort(unique(data_mut[:, id_col]))
             # Extract unique reps
             reps = sort(unique(data_mut[:, rep_col]))
 
             # Initialize array to save counts for each mutant at time t
             R̲̲⁽ᵐ⁾ = Array{Int64,3}(
-                undef, length(timepoints), length(mut_ids), length(reps)
+                undef, length(timepoints), length(bc_ids), length(reps)
             )
 
             # Loop through each unique id
-            for (j, id) in enumerate(mut_ids)
+            for (j, id) in enumerate(bc_ids)
                 # Loop through each unique rep
                 for (k, rep) in enumerate(reps)
                     # Extract data
@@ -260,7 +260,7 @@ function data_to_arrays(
                 )
 
                 # Extract group keys
-                mut_ids = first.(values.(keys(data_group)))
+                bc_ids = first.(values.(keys(data_group)))
 
                 # Check that all barcodes were measured at all points
                 if any([size(d, 1) for d in data_group] .!= n_rep_time[rep])
@@ -296,7 +296,7 @@ function data_to_arrays(
         :bc_total => n̲ₜ,
         :n_neutral => size(R̲̲⁽ⁿ⁾, 2),
         :n_mut => size(R̲̲⁽ᵐ⁾, 2),
-        :mut_ids => mut_ids
+        :bc_ids => bc_ids
     )
 end # function
 

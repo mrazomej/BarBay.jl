@@ -39,18 +39,18 @@ with different environments across growth-dilution cycles.
   population mean fitness log-error utilized in the log-likelihood function. If
   `typeof(logσ_pop_prior) <: Matrix`, there should be as many rows in the matrix
   as pairs of adjacent time points in dataset.  
-- `s_mut_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
-  corresponding parameters (Vector: `s_mut_prior[1]` = mean, `s_mut_prior[2]` =
-  standard deviation, Matrix: `s_mut_prior[:, 1]` = mean, `s_mut_prior[:, 2]` =
+- `s_bc_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `s_bc_prior[1]` = mean, `s_bc_prior[2]` =
+  standard deviation, Matrix: `s_bc_prior[:, 1]` = mean, `s_bc_prior[:, 2]` =
   standard deviation) for a Normal prior on the mutant fitness values. If
-  `typeof(s_mut_prior) <: Matrix`, there should be as many rows in the matrix as
+  `typeof(s_bc_prior) <: Matrix`, there should be as many rows in the matrix as
   mutant lineages × number of unique environments in the dataset.
-- `logσ_mut_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
-  corresponding parameters (Vector: `logσ_mut_prior[1]` = mean,
-  `logσ_mut_prior[2]` = standard deviation, Matrix: `logσ_mut_prior[:, 1]` =
-  mean, `logσ_mut_prior[:, 2]` = standard deviation) for a Normal prior on the
+- `logσ_bc_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
+  corresponding parameters (Vector: `logσ_bc_prior[1]` = mean,
+  `logσ_bc_prior[2]` = standard deviation, Matrix: `logσ_bc_prior[:, 1]` =
+  mean, `logσ_bc_prior[:, 2]` = standard deviation) for a Normal prior on the
   mutant fitness log-error utilized in the log-likelihood function. If
-  `typeof(logσ_mut_prior) <: Matrix`, there should be as many rows in the matrix
+  `typeof(logσ_bc_prior) <: Matrix`, there should be as many rows in the matrix
   as mutant lineages × number of unique environments in the dataset.
 - `logλ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
   corresponding parameters (Vector: `logλ_prior[1]` = mean, `logλ_prior[2]` =
@@ -80,8 +80,8 @@ Turing.@model function multienv_fitness_normal(
     envs::Vector{<:Any},
     s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
     logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
-    s_mut_prior::VecOrMat{Float64}=[0.0, 2.0],
-    logσ_mut_prior::VecOrMat{Float64}=[0.0, 1.0],
+    s_bc_prior::VecOrMat{Float64}=[0.0, 2.0],
+    logσ_bc_prior::VecOrMat{Float64}=[0.0, 1.0],
     logλ_prior::VecOrMat{Float64}=[3.0, 3.0]
 )
     # Check that the number of time points and environments matches
@@ -129,27 +129,27 @@ Turing.@model function multienv_fitness_normal(
     ## %%%%%%%%%%%%%% Mutant fitness  %%%%%%%%%%%%%% ##
 
     # Prior on mutant fitness π(s̲⁽ᵐ⁾)
-    if typeof(s_mut_prior) <: Vector
+    if typeof(s_bc_prior) <: Vector
         s̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([s_mut_prior[1]], n_mut * n_env),
-            LinearAlgebra.I(n_mut * n_env) .* s_mut_prior[2] .^ 2
+            repeat([s_bc_prior[1]], n_mut * n_env),
+            LinearAlgebra.I(n_mut * n_env) .* s_bc_prior[2] .^ 2
         )
-    elseif typeof(s_mut_prior) <: Matrix
+    elseif typeof(s_bc_prior) <: Matrix
         s̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            s_mut_prior[:, 1], LinearAlgebra.Diagonal(s_mut_prior[:, 2] .^ 2)
+            s_bc_prior[:, 1], LinearAlgebra.Diagonal(s_bc_prior[:, 2] .^ 2)
         )
     end # if
 
     # Prior on LogNormal error π(σ̲⁽ᵐ⁾)
-    if typeof(logσ_mut_prior) <: Vector
+    if typeof(logσ_bc_prior) <: Vector
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([logσ_mut_prior[1]], n_mut * n_env),
-            LinearAlgebra.I(n_mut * n_env) .* logσ_mut_prior[2] .^ 2
+            repeat([logσ_bc_prior[1]], n_mut * n_env),
+            LinearAlgebra.I(n_mut * n_env) .* logσ_bc_prior[2] .^ 2
         )
-    elseif typeof(logσ_mut_prior) <: Matrix
+    elseif typeof(logσ_bc_prior) <: Matrix
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            logσ_mut_prior[:, 1],
-            LinearAlgebra.Diagonal(logσ_mut_prior[:, 2] .^ 2)
+            logσ_bc_prior[:, 1],
+            LinearAlgebra.Diagonal(logσ_bc_prior[:, 2] .^ 2)
         )
     end # if
 
