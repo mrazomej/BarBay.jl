@@ -42,18 +42,21 @@ for the models in the `model` submodule.
   made.
 
 # Returns
-if `typeof(rep_col) <: Nothing` Dictionary with the following entries: -
-    `bc_count::Matrix`: `T × B` matrix with all barcodes read counts. -
-    `bc_total::Vector`: `T`-dimensional vector with the total number of reads
-    per time point. - `n_neutral::Int`: Number of neutral lineages. -
-    `n_mut::Int`: Number of mutant lineages. - `mut_keys`: List of mutant names
-    in the order used to build `R̲̲`.
+if `typeof(rep_col) <: Nothing` Dictionary with the following entries: 
+    - `bc_count::Matrix`: `T × B` matrix with all barcodes read counts. 
+    - `bc_total::Vector`: `T`-dimensional vector with the total number of reads
+    per time point. 
+    - `n_neutral::Int`: Number of neutral lineages. -
+    `n_mut::Int`: Number of mutant lineages. 
+    - `mut_keys`: List of mutant names in the order used to build `R̲̲`.
 
-elseif `typeof(rep_col) <: Symbol` Dictionary with the following entries: -
-        `bc_count::Array`: `T × B × R` array with all barcodes read counts. -
-        `bc_total::Matrix`: `T × R` matrix with the total number of reads per
-        time point per repeat. - `n_neutral::Int`: Number of neutral lineages. -
-        `n_mut::Int`: Number of mutant lineages. - `mut_keys`: List of mutant
+elseif `typeof(rep_col) <: Symbol` Dictionary with the following entries: 
+    - `bc_count::Array`: `T × B × R` array with all barcodes read counts. 
+    - `bc_total::Matrix`: `T × R` matrix with the total number of reads per
+        time point per repeat. 
+    - `n_neutral::Int`: Number of neutral lineages. 
+    - `n_mut::Int`: Number of mutant lineages. 
+    - `mut_keys`: List of mutant
         names in the order used to build `R̲̲`.
 """
 function data_to_arrays(
@@ -298,7 +301,7 @@ function data_to_arrays(
 end # function
 
 @doc raw"""
-advi_to_df(dist, vars, mut_ids; n_rep=1, envs=[1], n_samples=10_000)
+advi_to_df(dist, vars, bc_ids; n_rep=1, envs=[1], n_samples=10_000)
 
 Convert the output of automatic differentiation variational inference (ADVI) to
 a tidy dataframe.
@@ -307,7 +310,7 @@ a tidy dataframe.
 - `dist::Distributions.Sampleable`: The ADVI posterior sampleable distribution
   object.
 - `vars::Vector{<:Any}`: Vector of variable/parameter names from the ADVI run. 
-- `mut_ids::Vector{<:Any}`: Vector of mutant strain IDs.
+- `bc_ids::Vector{<:Any}`: Vector of non-neutral barcode IDs.
 
 ## Oprtional Keyword Arguments
 - `n_rep::Int=1`: Number of experimental replicates. Default is 1. 
@@ -328,17 +331,17 @@ posterior samples for each parameter. Columns include:
         - `pop_mean`: Population mean fitness value `s̲ₜ`.
         - `pop_error`: (Nuisance parameter) Log of standard deviation in the
           likelihood function for the neutral lineages.
-        - `mut_fitness`: Mutant relative fitness `s⁽ᵐ⁾`.
-        - `mut_hyperfitness`: For hierarchical models, mutant hyper parameter
+        - `bc_fitness`: Mutant relative fitness `s⁽ᵐ⁾`.
+        - `bc_hyperfitness`: For hierarchical models, mutant hyper parameter
           that connects the fitness over multiple experimental replicates
           `θ⁽ᵐ⁾`.
-        - `mut_noncenter`: (Nuisance parameter) For hierarchical models,
+        - `bc_noncenter`: (Nuisance parameter) For hierarchical models,
           non-centered samples used to connect the experimental replicates to
           the hyperparameter `θ̃⁽ᵐ⁾`.
-        - `mut_deviations`: (Nuisance parameter) For hierarchicaal models,
+        - `bc_deviations`: (Nuisance parameter) For hierarchicaal models,
           samples that define the log of the deviation from the hyper parameter
           fitness value `logτ⁽ᵐ⁾`.
-        - `mut_error`: (Nuisance parameter) Log of standard deviation in the
+        - `bc_error`: (Nuisance parameter) Log of standard deviation in the
           likelihood function for the mutant lineages.
         - `freq`: (Nuisance parameter) Log of the Poisson parameter used to
           define the frequency of each lineage.
@@ -356,14 +359,14 @@ posterior samples for each parameter. Columns include:
 function advi_to_df(
     dist::Distributions.Sampleable,
     vars::Vector{<:Any},
-    mut_ids::Vector{<:Any};
+    bc_ids::Vector{<:Any};
     n_rep::Int=1,
     envs::Vector{<:Any}=[1],
     genotypes::Vector{<:Any}=[1],
     n_samples::Int=10_000
 )
     # Check if genotypes are given that there's enough of them
-    if (length(genotypes) > 1) & (length(genotypes) ≠ length(mut_ids))
+    if (length(genotypes) > 1) & (length(genotypes) ≠ length(bc_ids))
         error("The list of genotypes given does not match the list of mutant barcodes")
     end # if
 
@@ -388,7 +391,7 @@ function advi_to_df(
     n_time = sum(occursin.(first(var_groups), string.(vars))) ÷ n_rep + 1
 
     # Define number of mutants
-    n_mut = length(mut_ids)
+    n_mut = length(bc_ids)
 
     # Define number of neutral lineages from the total count of frequency
     # variables
@@ -406,7 +409,7 @@ function advi_to_df(
     if (n_rep == 1) .& (length(var_groups) == 5)
         println("Single replicate non-hierarchical model...")
         # Define variable types
-        vtypes = ["pop_mean", "pop_error", "mut_fitness", "mut_error", "freq"]
+        vtypes = ["pop_mean", "pop_error", "bc_fitness", "bc_error", "freq"]
         # Repeat variable type var_count times and add it to dataframe
         df_par[!, :vartype] = vcat(
             [repeat([vtypes[i]], var_count[i]) for i in eachindex(var_count)]...
@@ -421,8 +424,8 @@ function advi_to_df(
         # Report that this must be a hierarchical model
         println("Single replicate genotype hierarchical model...")
         # Define variable types
-        vtypes = ["pop_mean", "pop_error", "mut_hyperfitness", "mut_noncenter",
-            "mut_deviations", "mut_error", "freq"]
+        vtypes = ["pop_mean", "pop_error", "bc_hyperfitness", "bc_noncenter",
+            "bc_deviations", "bc_error", "freq"]
 
         # Repeat variable type var_count times and add it to dataframe
         df_par[!, :vartype] = vcat(
@@ -439,8 +442,8 @@ function advi_to_df(
         # Report this must be a hierarchical model
         println("Hierarchical model on experimental replciates")
         # Define variable types
-        vtypes = ["pop_mean", "pop_error", "mut_hyperfitness", "mut_noncenter",
-            "mut_deviations", "mut_error", "freq"]
+        vtypes = ["pop_mean", "pop_error", "bc_hyperfitness", "bc_noncenter",
+            "bc_deviations", "bc_error", "freq"]
         # Repeat variable type var_count times and add it to dataframe
         df_par[!, :vartype] = vcat(
             [repeat([vtypes[i]], var_count[i]) for i in eachindex(var_count)]...
@@ -521,7 +524,7 @@ function advi_to_df(
             df_par[var_idx, :id] = repeat(
                 vcat(
                     [repeat([x], n_time)
-                     for x in [string.(neutral_ids); string.(mut_ids)]]...
+                     for x in [string.(neutral_ids); string.(bc_ids)]]...
                 ),
                 n_rep
             )
@@ -529,16 +532,20 @@ function advi_to_df(
             #    on experimental replicates
         elseif occursin("hyper", var) & (n_rep > 1)
             df_par[var_idx, :id] = vcat(
-                [repeat([x], length(unique(envs))) for x in mut_ids]...
+                [repeat([x], length(unique(envs))) for x in bc_ids]...
             )
             # 4. mutant fitness-related variables
-        elseif (occursin("mut_", var)) .& (!occursin("hyper", var))
+        elseif (occursin("bc_", var)) .& (!occursin("hyper", var))
             df_par[var_idx, :id] = repeat(
                 vcat(
-                    [repeat([x], length(unique(envs))) for x in mut_ids]...
+                    [repeat([x], length(unique(envs))) for x in bc_ids]...
                 ),
                 n_rep
             )
+            # 5. mutant hyper-fitness-related variables on genotype hierarchical
+            #    models
+        elseif occursin("hyper", var) & (n_rep == 1) & (length(genotypes) > 1)
+            df_par[var_idx, :id] = unique(genotypes)
         end # if
     end # for
 
@@ -554,7 +561,7 @@ function advi_to_df(
                 Random.rand(Distributions.Normal(x...), n_samples)
                 for x in eachrow(
                     df_par[
-                        df_par.vartype.=="mut_hyperfitness",
+                        df_par.vartype.=="bc_hyperfitness",
                         [:mean, :std]
                     ]
                 )
@@ -568,7 +575,7 @@ function advi_to_df(
                     Random.rand(Distributions.Normal(x...), n_samples)
                     for x in eachrow(
                         df_par[
-                            df_par.vartype.=="mut_deviations",
+                            df_par.vartype.=="bc_deviations",
                             [:mean, :std]
                         ]
                     )
@@ -582,7 +589,7 @@ function advi_to_df(
                 Random.rand(Distributions.Normal(x...), n_samples)
                 for x in eachrow(
                     df_par[
-                        df_par.vartype.=="mut_noncenter",
+                        df_par.vartype.=="bc_noncenter",
                         [:mean, :std]
                     ]
                 )
@@ -610,7 +617,7 @@ function advi_to_df(
         DF.insertcols!(
             df_s,
             :varname => replace.(df_par[τ_idx, :varname], "logτ" => "s"),
-            :vartype .=> "mut_fitness",
+            :vartype .=> "bc_fitness",
             :rep => df_par[τ_idx, :rep],
             :env => df_par[τ_idx, :env],
             :id => df_par[τ_idx, :id]
@@ -637,7 +644,7 @@ function advi_to_df(
                 Random.rand(Distributions.Normal(x...), n_samples)
                 for x in eachrow(
                     df_par[
-                        df_par.vartype.=="mut_hyperfitness",
+                        df_par.vartype.=="bc_hyperfitness",
                         [:mean, :std]
                     ]
                 )
@@ -651,7 +658,7 @@ function advi_to_df(
                     Random.rand(Distributions.Normal(x...), n_samples)
                     for x in eachrow(
                         df_par[
-                            df_par.vartype.=="mut_deviations",
+                            df_par.vartype.=="bc_deviations",
                             [:mean, :std]
                         ]
                     )
@@ -665,7 +672,7 @@ function advi_to_df(
                 Random.rand(Distributions.Normal(x...), n_samples)
                 for x in eachrow(
                     df_par[
-                        df_par.vartype.=="mut_noncenter",
+                        df_par.vartype.=="bc_noncenter",
                         [:mean, :std]
                     ]
                 )
@@ -693,7 +700,7 @@ function advi_to_df(
         DF.insertcols!(
             df_s,
             :varname => replace.(df_par[τ_idx, :varname], "logτ" => "s"),
-            :vartype .=> "mut_fitness",
+            :vartype .=> "bc_fitness",
             :rep => df_par[τ_idx, :rep],
             :env => df_par[τ_idx, :env],
             :id => df_par[τ_idx, :id]
