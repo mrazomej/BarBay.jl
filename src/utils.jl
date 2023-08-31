@@ -66,6 +66,7 @@ function data_to_arrays(
     count_col::Symbol=:count,
     neutral_col::Symbol=:neutral,
     rep_col::Union{Nothing,Symbol}=nothing,
+    env_col::Union{Nothing,Symbol}=nothing,
     rm_T0::Bool=false,
     verbose::Bool=true
 )
@@ -89,6 +90,9 @@ function data_to_arrays(
 
         # Group data by unique mutant barcode
         data_group = DF.groupby(data[data[:, neutral_col], :], id_col)
+
+        # Extract group keys
+        neutral_ids = first.(values.(keys(data_group)))
 
         # Check that all barcodes were measured at all points
         if any([size(d, 1) for d in data_group] .!= length(timepoints))
@@ -142,12 +146,17 @@ function data_to_arrays(
         # Compute total counts for each run
         n̲ₜ = vec(sum(R̲̲, dims=2))
 
+        # Define number of replicates
+        n_rep = 1
+
         ### --------------- When replicates are given --------------- ### 
     elseif typeof(rep_col) <: Symbol
 
         ## === Check if all replicates have the same number of time points === #
         # Group data by replicate
         data_rep_group = DF.groupby(data, rep_col)
+        # Define number of replicates
+        n_rep = length(data_rep_group)
         # Define number of time points per replicate
         n_rep_time = [length(unique(d[:, time_col])) for d in data_rep_group]
 
@@ -160,17 +169,17 @@ function data_to_arrays(
             # Extract unique time points
             timepoints = sort(unique(data_neutral[:, time_col]))
             # Extract unique IDs
-            ids = unique(data_neutral[:, id_col])
+            neutral_ids = unique(data_neutral[:, id_col])
             # Extract unique reps
             reps = unique(data_neutral[:, rep_col])
 
             # Initialize array to save counts for each mutant at time t
             R̲̲⁽ⁿ⁾ = Array{Int64,3}(
-                undef, length(timepoints), length(ids), length(reps)
+                undef, length(timepoints), length(neutral_ids), length(reps)
             )
 
             # Loop through each unique id
-            for (j, id) in enumerate(ids)
+            for (j, id) in enumerate(neutral_ids)
                 # Loop through each unique rep
                 for (k, rep) in enumerate(reps)
                     # Extract data
@@ -234,6 +243,9 @@ function data_to_arrays(
                 # Group data by unique mutant barcode
                 data_group = DF.groupby(d_rep[d_rep[:, neutral_col], :], id_col)
 
+                # Extract group keys
+                neutral_ids = first.(values.(keys(data_group)))
+
                 # Check that all barcodes were measured at all points
                 if any([size(d, 1) for d in data_group] .!= n_rep_time[rep])
                     error("Not all neutral barcodes have reported counts in all time points")
@@ -291,12 +303,43 @@ function data_to_arrays(
         end #if
     end # if
 
+    # Extract list of environments
+    if (typeof(env_col) <: Nothing)
+        # Define environments
+        envs = ["env1"]
+        # Define single environment when no information is given
+        n_env = 1
+    elseif (typeof(env_col) <: Symbol) & (n_rep == 1)
+        # collect environments for single-replicate case
+        envs = collect(sort(unique(data[:, [:time, :env]]), :time)[:, :env])
+        # Define number of environments
+        n_env = length(unique(envs))
+    elseif (typeof(env_col) <: Symbol) & (n_rep > 1)
+        # Group data by replicate
+        data_rep = DF.groupby(data, rep_col)
+        # collect environments for multi-replicate with different number of time
+        # points
+        envs = [
+            collect(sort(unique(d[:, [:time, :env]]), :time)[:, :env])
+            for d in data_rep
+        ]
+        # Define number of environments
+        n_env = length(unique(reduce(vcat, envs)))
+        # Check if all replicates have same environments
+        if length(unique(envs)) == 1
+            envs = unique(envs)
+        end # if
+    end # if
+
     return Dict(
         :bc_count => R̲̲,
         :bc_total => n̲ₜ,
         :n_neutral => size(R̲̲⁽ⁿ⁾, 2),
         :n_mut => size(R̲̲⁽ᵐ⁾, 2),
-        :bc_ids => bc_ids
+        :bc_ids => bc_ids,
+        :neutral_ids => neutral_ids,
+        :envs => envs,
+        :n_env => n_env
     )
 end # function
 
