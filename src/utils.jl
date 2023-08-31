@@ -301,23 +301,30 @@ function data_to_arrays(
 end # function
 
 @doc raw"""
-advi_to_df(dist, vars, bc_ids; n_rep=1, envs=[1], n_samples=10_000)
+advi_to_df(data::DataFrames.AbstractDataFrame, dist::Distribution.Sampleable,
+           vars::Vector{<:Any}; kwargs)
 
 Convert the output of automatic differentiation variational inference (ADVI) to
 a tidy dataframe.
 
 # Arguments
+- `data::DataFrames.AbstractDataFrame`: Tidy dataframe used to perform the ADVI
+  inference. See `BayesFitness.vi` module for the dataframe requirements.
 - `dist::Distributions.Sampleable`: The ADVI posterior sampleable distribution
   object.
 - `vars::Vector{<:Any}`: Vector of variable/parameter names from the ADVI run. 
-- `bc_ids::Vector{<:Any}`: Vector of non-neutral barcode IDs.
 
-## Oprtional Keyword Arguments
-- `n_rep::Int=1`: Number of experimental replicates. Default is 1. 
-- `envs::Vector{<:Any}=[1]`: Vector of environment ids for each timepoint.
-  Default is a single environment [1].
-- `genotypes::Vector{<:Any}=[1]`: Vector of genotype IDs for each mutant. This
-  is used for hierarchical models on genotypes. Default is a single genotype.
+## Optional Keyword Arguments
+- `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
+    identifier. The column may contain any type of entry.
+- `time_col::Symbol=:time`: Name of the column in `data` defining the time point
+  at which measurements were done. The column may contain any type of entry as
+  long as `sort` will resulted in time-ordered names.
+- `count_col::Symbol=:count`: Name of the column in `data` containing the raw
+  barcode count. The column must contain entries of type `Int64`.
+- `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
+  the barcode belongs to a neutral lineage or not. The column must contain
+  entries of type `Bool`.
 - `n_samples::Int=10_000`: Number of posterior samples to draw used for
   hierarchical models. Default is 10,000.
 
@@ -328,13 +335,13 @@ posterior samples for each parameter. Columns include:
       variables.
     - `varname`: parameter name from the ADVI posterior distribution.
     - `vartype`: Description of the type of parameter. The types are:
-        - `pop_mean`: Population mean fitness value `s̲ₜ`.
+        - `pop_mean_fitness`: Population mean fitness value `s̲ₜ`.
         - `pop_error`: (Nuisance parameter) Log of standard deviation in the
           likelihood function for the neutral lineages.
         - `bc_fitness`: Mutant relative fitness `s⁽ᵐ⁾`.
         - `bc_hyperfitness`: For hierarchical models, mutant hyper parameter
-          that connects the fitness over multiple experimental replicates
-          `θ⁽ᵐ⁾`.
+          that connects the fitness over multiple experimental replicates or
+          multiple genotypes `θ⁽ᵐ⁾`.
         - `bc_noncenter`: (Nuisance parameter) For hierarchical models,
           non-centered samples used to connect the experimental replicates to
           the hyperparameter `θ̃⁽ᵐ⁾`.
@@ -357,18 +364,88 @@ posterior samples for each parameter. Columns include:
 - Useful for post-processing ADVI results for further analysis and plotting.
 """
 function advi_to_df(
+    data::DF.AbstractDataFrame,
     dist::Distributions.Sampleable,
-    vars::Vector{<:Any},
-    bc_ids::Vector{<:Any};
-    n_rep::Int=1,
-    envs::Vector{<:Any}=[1],
-    genotypes::Vector{<:Any}=[1],
+    vars::Vector{<:Any};
+    id_col::Symbol=:barcode,
+    time_col::Symbol=:time,
+    count_col::Symbol=:count,
+    neutral_col::Symbol=:neutral,
+    rep_col::Union{Nothing,Symbol}=nothing,
+    env_col::Union{Nothing,Symbol}=nothing,
+    genotype_col::Union{Nothing,Symbol}=nothing,
+    rm_T0::Bool=false,
     n_samples::Int=10_000
 )
-    # Check if genotypes are given that there's enough of them
-    if (length(genotypes) > 1) & (length(genotypes) ≠ length(bc_ids))
-        error("The list of genotypes given does not match the list of mutant barcodes")
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+    # Extract information from data
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+    # Convert data to arrays to obtain information
+    data_arrays = data_to_arrays(
+        data;
+        id_col=id_col,
+        time_col=time_col,
+        count_col=count_col,
+        neutral_col=neutral_col,
+        rep_col=rep_col
+    )
+
+    # Extract number of neutral and mutant lineages
+    n_neutral = data_arrays[:n_neutral]
+    n_mut = data_arrays[:n_mut]
+
+    # Group data by unique neutral barcode
+    data_group = DF.groupby(data[data[:, neutral_col], :], id_col)
+    # Extract neutral lineages IDs
+    neutral_ids = first.(values.(keys(data_group)))
+
+    # Extract bc lineages IDs
+    bc_ids = data_arrays[:bc_ids]
+
+    # Extract number of replicates
+    if typeof(rep_col) <: Nothing
+        n_rep = 1
+    else
+        n_rep = length(unique(data[:, rep_col]))
     end # if
+
+    # Extract number of time points per replicate
+    if n_rep == 1
+        # Extract number of time points
+        n_time = length(unique(data[:, time_col]))
+    elseif n_rep > 1
+        # Group data by replicate
+        data_rep = DF.groupby(data, rep_col)
+        # Extract names of replicates
+        reps = collect(first.(values.(keys(data_rep))))
+        # Extract number of time points per replicate
+        n_time = [length(unique(d[:, time_col])) for d in data_rep]
+    end #if
+
+    # Extract list of environments
+    if (typeof(env_col) <: Nothing)
+        # Define single environment when no information is given
+        n_env = 1
+    elseif (typeof(env_col) <: Symbol) & (n_rep == 1)
+        # collect environments for single-replicate case
+        envs = collect(sort(unique(data[:, [:time, :env]]), :time)[:, :env])
+        # Define number of environments
+        n_env = length(unique(envs))
+    elseif (typeof(env_col) <: Symbol) & (n_rep > 1)
+        # collect environments for multi-replicate with different number of time
+        # points
+        envs = [
+            collect(sort(unique(d[:, [:time, :env]]), :time)[:, :env])
+            for d in data_rep
+        ]
+        # Define number of environments
+        n_env = length(unique(reduce(vcat, envs)))
+    end # if
+
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+    # Convert distribution parameters into tidy dataframe
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
     # Extract parameters and convert to dataframe
     df_par = DF.DataFrame(hcat(dist.dist.m, dist.dist.σ), ["mean", "std"])
@@ -386,120 +463,148 @@ function advi_to_df(
     # Count how many variables exist per group
     var_count = length.(var_range)
 
-    # Define number of time points based on number of population mean fitness
-    # variables and the number of repeats
-    n_time = sum(occursin.(first(var_groups), string.(vars))) ÷ n_rep + 1
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+    # Add vartype information
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
-    # Define number of mutants
-    n_mut = length(bc_ids)
+    # Define dictionary from varname to vartype
+    varname_to_vartype = Dict(
+        "s̲ₜ" => "pop_mean_fitness",
+        "logσ̲ₜ" => "pop_std",
+        "s̲⁽ᵐ⁾" => "bc_fitness",
+        "logσ̲⁽ᵐ⁾" => "bc_std",
+        "θ̲⁽ᵐ⁾" => "bc_hyperfitness",
+        "θ̲̃⁽ᵐ⁾" => "bc_noncenter",
+        "logτ̲⁽ᵐ⁾" => "bc_deviations",
+        "logΛ̲̲" => "log_poisson",
+    )
 
-    # Define number of neutral lineages from the total count of frequency
-    # variables
-    n_neutral = (first(var_count[occursin.("Λ", var_groups)]) -
-                 (n_mut * n_time * n_rep)) ÷ (n_time * n_rep)
-
-    # Assign neutral IDs. This will be used for the ID of frequency variables
-    neutral_ids = ["neutral$(lpad(x, 3, "0"))" for x = 1:n_neutral]
+    # Add column to be modified with vartype
+    df_par[!, :vartype] .= "tmp"
+    # Loop through variables
+    for (i, var) in enumerate(var_groups)
+        df_par[var_range[i], :vartype] .= varname_to_vartype[var]
+    end # for
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
     # Add replicate number information
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
-    # 1. One repeat and 5 var_groups: Standard single-dataset model
-    if (n_rep == 1) .& (length(var_groups) == 5)
-        println("Single replicate non-hierarchical model...")
-        # Define variable types
-        vtypes = ["pop_mean", "pop_error", "bc_fitness", "bc_error", "freq"]
-        # Repeat variable type var_count times and add it to dataframe
-        df_par[!, :vartype] = vcat(
-            [repeat([vtypes[i]], var_count[i]) for i in eachindex(var_count)]...
-        )
-
-        # Add repeat information. NOTE: This is to have a consistent dataframe
-        # for all possible models
+    if (n_rep == 1) & (n_env == 1) & (length(var_groups) > 5)
+        # Report error if no env or rep info is given when needed
+        error("The distribution seems to match a hierarchical model but no environment or replicate information was provided")
+    elseif (n_rep == 1) & (length(var_groups) == 5) & (n_env == 1)
+        prontln("Single replicate non-hierarchical model")
+        # Add replicate for single-replicate model for consistency
         df_par[!, :rep] .= "R1"
-
-        # 2. One repeat should have 5 var_groups. If larger, it is an error
-    elseif (n_rep == 1) .& (length(var_groups) == 7)
-        # Report that this must be a hierarchical model
-        println("Single replicate genotype hierarchical model...")
-        # Define variable types
-        vtypes = ["pop_mean", "pop_error", "bc_hyperfitness", "bc_noncenter",
-            "bc_deviations", "bc_error", "freq"]
-
-        # Repeat variable type var_count times and add it to dataframe
-        df_par[!, :vartype] = vcat(
-            [repeat([vtypes[i]], var_count[i]) for i in eachindex(var_count)]...
-        )
-
-        # Add repeat information. NOTE: This is to have a consistent dataframe
-        # for all possible models
-        df_par[!, :rep] .= "R1"
-
-        # 3. More than one repeat and 7 var_groups: Hierarchical model for
-        #    experimental replicates
-    elseif (n_rep > 1) .& (length(var_groups) == 7)
-        # Report this must be a hierarchical model
-        println("Hierarchical model on experimental replicates")
-        # Define variable types
-        vtypes = ["pop_mean", "pop_error", "bc_hyperfitness", "bc_noncenter",
-            "bc_deviations", "bc_error", "freq"]
-        # Repeat variable type var_count times and add it to dataframe
-        df_par[!, :vartype] = vcat(
-            [repeat([vtypes[i]], var_count[i]) for i in eachindex(var_count)]...
-        )
-        # Initialize array to define replicate information
-        rep = Vector{String}(undef, length(vars))
-        # Initialize array to define time information
-        time = Vector{Int64}(undef, length(vars))
-        # Loop through variables
-        for (i, vt) in enumerate(vtypes)
-            # Locate variables
-            var_idx = df_par.vartype .== vt
-            # Check if there's no hyper parameter and no freq
-            if !occursin("hyper", vt)
-                # Add corresponding replicate information
-                rep[var_idx] = vcat(
-                    [repeat(["R$j"], var_count[i] ÷ n_rep) for j = 1:n_rep]...
+    elseif (n_rep > 1)
+        # Add replicate column to be modified
+        df_par[!, rep_col] = Vector{Any}(undef, size(df_par, 1))
+        # Loop through var groups
+        for (i, var) in enumerate(var_groups)
+            if occursin("̲ₜ", var)
+                # Add replicate for population mean fitness variables
+                df_par[var_range[i], rep_col] = reduce(
+                    vcat,
+                    [
+                        repeat([reps[j]], n_time[j] - 1) for j = 1:n_rep
+                    ]
+                )
+            elseif var == "θ̲⁽ᵐ⁾"
+                # Add information for hyperparameter that does not have
+                # replicate information
+                df_par[var_range[i], rep_col] .= "N/A"
+            elseif var == "logΛ̲̲"
+                df_par[var_range[i], rep_col] = reduce(
+                    vcat,
+                    [
+                        repeat(
+                            [reps[j]],
+                            (n_mut + n_neutral) * (n_time[j])
+                        ) for j = 1:n_rep
+                    ]
                 )
             else
-                rep[var_idx] .= "N/A"
+                # Information on the other variables depends on environments
+                if n_env == 1
+                    # Add information for bc-related parameters when no
+                    # environment information is provided
+                    df_par[var_range[i], rep_col] = reduce(
+                        vcat,
+                        [
+                            repeat([reps[j]], n_mut) for j = 1:n_rep
+                        ]
+                    )
+                else
+                    df_par[var_range[i], rep_col] = reduce(
+                        vcat,
+                        [
+                            repeat([reps[j]], n_mut * n_env) for j = 1:n_rep
+                        ]
+                    )
+                end # if
             end # if
         end # for
-        # Add repeat information to dataframe
-        df_par[!, :rep] = rep
     end # if
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
     # Add environment information
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
-    # 1. Single environment case
-    if length(envs) == 1
-        # Add environment information. NOTE: This is to have a consistent
-        # dataframe structure
-        df_par[!, :env] .= first(envs)
-    elseif length(envs) > 1
-        # Add environment variable (to be modofied later)
-        df_par[!, :env] .= first(envs)
-        # Loop through variables
-        for (i, var) in enumerate(unique(df_par.vartype))
-            # Locate variables
-            var_idx = df_par.vartype .== var
-            # Check cases
-            # 1. population mean fitness-related variables
-            if occursin("pop", var)
-                df_par[var_idx, :env] = repeat(envs[2:end], n_rep)
-                # 2. frequency-related variables
-            elseif occursin("freq", var)
-                df_par[var_idx, :env] = repeat(
-                    envs, (n_mut + n_neutral) * n_rep
+    if (n_env == 1)
+        # Add environment information for consistency
+        df_par[!, :env] = "env1"
+    elseif (n_env > 1)
+        # Add replicate column to be modified
+        df_par[!, env_col] = Vector{Any}(undef, size(df_par, 1))
+        # Loop through var groups
+        for (i, var) in enumerate(var_groups)
+            if occursin("̲ₜ", var)
+                if n_rep == 1
+                    # Add environment information for single replicate
+                    df_par[var_range[i], env_col] = envs[2:end]
+                elseif n_rep > 1
+                    # Add environment information for multiple replicates
+                    df_par[var_range[i], env_col] = reduce(
+                        vcat, [env[2:end] for env in envs]
+                    )
+                end # if
+            elseif var == "θ̲⁽ᵐ⁾"
+                # Add environment information for hyperparameter
+                df_par[var_range[i], env_col] = reduce(
+                    vcat, repeat([unique(reduce(vcat, envs))], n_mut)
                 )
-                # 3. mutant fitness-related variables
+            elseif var == "logΛ̲̲"
+                if n_rep == 1
+                    # Add environment informatin for each Poisson parameter for
+                    # single replicate
+                    df_par[var_range[i], env_col] = reduce(
+                        vcat, repeat([envs], (n_mut + n_neutral))
+                    )
+                elseif n_rep > 1
+                    # Add environment information for each Poisson parameter for
+                    # multiple replicates
+                    df_par[var_range[i], env_col] = reduce(
+                        vcat,
+                        [repeat(env, (n_mut + n_neutral)) for env in envs]
+                    )
+                end # if
             else
-                df_par[var_idx, :env] = repeat(
-                    unique(envs), sum(var_idx) ÷ length(unique(envs))
-                )
+                if n_rep == 1
+                    # Add environment information for each bc-related
+                    # variable for single replicate
+                    df_par[var_range[i], env_col] = reduce(
+                        vcat,
+                        repeat(envs[2:end], n_mut)
+                    )
+                elseif n_rep > 1
+                    # Add environment information for each bc-related
+                    # variable for multiple replicates
+                    df_par[var_range[i], env_col] = reduce(
+                        vcat,
+                        repeat(unique(reduce(vcat, envs)), n_mut * n_rep)
+                    )
+                end #if
             end # if
         end # for
     end # if
@@ -511,41 +616,64 @@ function advi_to_df(
     # Add mutant id column. To be modified
     df_par[:, :id] .= "N/A"
 
-    # Loop through variables
-    for (i, var) in enumerate(unique(df_par.vartype))
-        # Locate variables
-        var_idx = df_par.vartype .== var
-        # Check cases
-        # 1. population mean fitness-related variables
-        if occursin("pop", var)
+    # Loop through var groups
+    for (i, var) in enumerate(var_groups)
+        if occursin("̲ₜ", var)
+            # Population mean fitness variables are not associated with any
+            # particular barcode.
             continue
-            # 2. frequency-related variables
-        elseif occursin("freq", var)
-            df_par[var_idx, :id] = repeat(
-                vcat(
-                    [repeat([x], n_time)
-                     for x in [string.(neutral_ids); string.(bc_ids)]]...
-                ),
-                n_rep
-            )
-            # 3. mutant hyperfitness-related variables for hierarchical models
-            #    on experimental replicates
-        elseif occursin("hyper", var) & (n_rep > 1)
-            df_par[var_idx, :id] = vcat(
-                [repeat([x], length(unique(envs))) for x in bc_ids]...
-            )
-            # 4. mutant fitness-related variables
-        elseif (occursin("bc_", var)) .& (!occursin("hyper", var))
-            df_par[var_idx, :id] = repeat(
-                vcat(
-                    [repeat([x], length(unique(envs))) for x in bc_ids]...
-                ),
-                n_rep
-            )
-            # 5. mutant hyper-fitness-related variables on genotype hierarchical
-            #    models
-        elseif occursin("hyper", var) & (n_rep == 1) & (length(genotypes) > 1)
-            df_par[var_idx, :id] = unique(genotypes)
+        elseif var == "θ̲⁽ᵐ⁾"
+            if (n_env == 1)
+                # Add ID information to hyperparameter for single environment
+                df_par[var_range[i], :id] = bc_ids
+            elseif n_env > 1
+                # Add ID information to hyperparameter for multiple environments
+                df_par[var_range[i], :id] = reduce(
+                    vcat,
+                    [repeat([bc], n_env) for bc in bc_ids]
+                )
+            end # if
+        elseif var == "logΛ̲̲"
+            if n_rep == 1
+                # Add ID information to Poisson parameter for single replicate
+                df_par[var_range[i], :id] = reduce(
+                    vcat,
+                    [repeat([bc], n_time) for bc in bc_ids]
+                )
+            elseif n_rep > 1
+                df_par[var_range[i], :id] = reduce(
+                    vcat,
+                    [
+                        repeat([bc], n_time[rep])
+                        for rep = 1:n_rep
+                        for bc in [neutral_ids; bc_ids]
+                    ]
+                )
+            end # if
+        else
+            if (n_rep == 1) & (n_env == 1)
+                df_par[var_range[i], :id] = bc_ids
+            elseif (n_rep == 1) & (n_env > 1)
+                df_par[var_range[i], :id] = reduce(
+                    vcat,
+                    [repeat([bc], n_env) for bc in bc_ids]
+                )
+            elseif (n_rep > 1) & (n_env == 1)
+                df_par[var_range[i], :id] = reduce(
+                    vcat,
+                    repeat(bc_ids, n_rep)
+                )
+            elseif (n_rep > 1) & (n_env > 1)
+                df_par[var_range[i], :id] = reduce(
+                    vcat,
+                    [
+                        repeat([bc], n_env)
+                        for rep = 1:n_rep
+                        for bc in bc_ids
+                    ]
+                )
+
+            end # if
         end # if
     end # for
 
@@ -554,7 +682,7 @@ function advi_to_df(
     # (for hierarchical models on experimental replicates)
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
-    if (n_rep > 1) .& (length(var_groups) == 7)
+    if (n_rep > 1) & (length(var_groups) == 7)
         # Sample θ̲ variables
         θ_mat = hcat(
             [
@@ -632,7 +760,7 @@ function advi_to_df(
     # (for hierarchical models on genotypes)
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
-    if (n_rep == 1) .& (length(var_groups) == 7)
+    if (n_rep == 1) & (length(var_groups) == 7)
         # Find unique genotypes
         geno_unique = unique(genotypes)
         # Define genotype indexes
