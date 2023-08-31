@@ -331,6 +331,19 @@ function data_to_arrays(
         end # if
     end # if
 
+    # Extract number of time points per replicate
+    if n_rep == 1
+        # Extract number of time points
+        n_time = length(unique(data[:, time_col]))
+    elseif n_rep > 1
+        # Group data by replicate
+        data_rep = DF.groupby(data, rep_col)
+        # Extract names of replicates
+        reps = collect(first.(values.(keys(data_rep))))
+        # Extract number of time points per replicate
+        n_time = [length(unique(d[:, time_col])) for d in data_rep]
+    end #if
+
     return Dict(
         :bc_count => R̲̲,
         :bc_total => n̲ₜ,
@@ -339,7 +352,9 @@ function data_to_arrays(
         :bc_ids => bc_ids,
         :neutral_ids => neutral_ids,
         :envs => envs,
-        :n_env => n_env
+        :n_env => n_env,
+        :n_rep => n_rep,
+        :n_time => n_time
     )
 end # function
 
@@ -431,61 +446,32 @@ function advi_to_df(
         time_col=time_col,
         count_col=count_col,
         neutral_col=neutral_col,
-        rep_col=rep_col
+        rep_col=rep_col,
+        env_col=env_col
     )
 
     # Extract number of neutral and mutant lineages
     n_neutral = data_arrays[:n_neutral]
     n_mut = data_arrays[:n_mut]
 
-    # Group data by unique neutral barcode
-    data_group = DF.groupby(data[data[:, neutral_col], :], id_col)
-    # Extract neutral lineages IDs
-    neutral_ids = first.(values.(keys(data_group)))
-
     # Extract bc lineages IDs
     bc_ids = data_arrays[:bc_ids]
+    # Extract neutral lineages IDs
+    neutral_ids = data_arrays[:neutral_ids]
 
     # Extract number of replicates
-    if typeof(rep_col) <: Nothing
-        n_rep = 1
-    else
-        n_rep = length(unique(data[:, rep_col]))
-    end # if
-
-    # Extract number of time points per replicate
-    if n_rep == 1
-        # Extract number of time points
-        n_time = length(unique(data[:, time_col]))
-    elseif n_rep > 1
-        # Group data by replicate
-        data_rep = DF.groupby(data, rep_col)
-        # Extract names of replicates
-        reps = collect(first.(values.(keys(data_rep))))
-        # Extract number of time points per replicate
-        n_time = [length(unique(d[:, time_col])) for d in data_rep]
-    end #if
-
+    n_rep = data_arrays[:n_rep]
     # Extract list of environments
-    if (typeof(env_col) <: Nothing)
-        # Define single environment when no information is given
-        n_env = 1
-    elseif (typeof(env_col) <: Symbol) & (n_rep == 1)
-        # collect environments for single-replicate case
-        envs = collect(sort(unique(data[:, [:time, :env]]), :time)[:, :env])
-        # Define number of environments
-        n_env = length(unique(envs))
-    elseif (typeof(env_col) <: Symbol) & (n_rep > 1)
-        # collect environments for multi-replicate with different number of time
-        # points
-        envs = [
-            collect(sort(unique(d[:, [:time, :env]]), :time)[:, :env])
-            for d in data_rep
-        ]
-        # Define number of environments
-        n_env = length(unique(reduce(vcat, envs)))
-    end # if
+    envs = data_arrays[:envs]
+    # Extract number of environments
+    n_env = data_arrays[:n_env]
+    # Extract number of time points per replicate
+    n_time = data_arrays[:n_time]
 
+    # Extract unique replicates
+    if typeof(rep_col) <: Symbol
+        reps = unique(data[:, rep_col])
+    end # if
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
     # Convert distribution parameters into tidy dataframe
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
