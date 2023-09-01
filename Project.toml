@@ -1,6 +1,6 @@
 name = "BayesFitness"
 uuid = "62fbbd4b-f5cc-4f91-bc02-e40b84581c65"
-authors = ["Manuel Razo-Mejia, Shaili Mathur, Dmitri Petrov"]
+authors = ["Manuel Razo-Mejia"]
 version = "1.0.0-DEV"
 
 [deps]
