@@ -553,7 +553,7 @@ Turing.@model function replicate_fitness_normal(
                     reduce(
                         vcat,
                         [
-                            repeat([σ^2], sum(n_time .- 1))
+                            repeat([σ^2], n_time[rep] - 1)
                             for σ in exp.(logσ̲⁽ᵐ⁾[:, rep])
                         ]
                     )
