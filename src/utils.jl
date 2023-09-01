@@ -394,7 +394,7 @@ function data_to_arrays(
         :bc_count => R̲̲,
         :bc_total => n̲ₜ,
         :n_neutral => size(R̲̲⁽ⁿ⁾, 2),
-        :n_mut => size(R̲̲⁽ᵐ⁾, 2),
+        :n_bc => size(R̲̲⁽ᵐ⁾, 2),
         :bc_ids => bc_ids,
         :neutral_ids => neutral_ids,
         :envs => envs,
@@ -500,7 +500,7 @@ function advi_to_df(
 
     # Extract number of neutral and mutant lineages
     n_neutral = data_arrays[:n_neutral]
-    n_mut = data_arrays[:n_mut]
+    n_bc = data_arrays[:n_bc]
 
     # Extract bc lineages IDs
     bc_ids = data_arrays[:bc_ids]
@@ -613,7 +613,7 @@ function advi_to_df(
                     [
                         repeat(
                             [reps[j]],
-                            (n_mut + n_neutral) * (n_time[j])
+                            (n_bc + n_neutral) * (n_time[j])
                         ) for j = 1:n_rep
                     ]
                 )
@@ -625,14 +625,14 @@ function advi_to_df(
                     df_par[var_range[i], rep_col] = reduce(
                         vcat,
                         [
-                            repeat([reps[j]], n_mut) for j = 1:n_rep
+                            repeat([reps[j]], n_bc) for j = 1:n_rep
                         ]
                     )
                 else
                     df_par[var_range[i], rep_col] = reduce(
                         vcat,
                         [
-                            repeat([reps[j]], n_mut * n_env) for j = 1:n_rep
+                            repeat([reps[j]], n_bc * n_env) for j = 1:n_rep
                         ]
                     )
                 end # if
@@ -665,21 +665,21 @@ function advi_to_df(
             elseif var == "θ̲⁽ᵐ⁾"
                 # Add environment information for hyperparameter
                 df_par[var_range[i], env_col] = reduce(
-                    vcat, repeat([unique(reduce(vcat, envs))], n_mut)
+                    vcat, repeat([unique(reduce(vcat, envs))], n_bc)
                 )
             elseif var == "logΛ̲̲"
                 if n_rep == 1
                     # Add environment informatin for each Poisson parameter for
                     # single replicate
                     df_par[var_range[i], env_col] = repeat(
-                        envs, (n_mut + n_neutral)
+                        envs, (n_bc + n_neutral)
                     )
                 elseif n_rep > 1
                     # Add environment information for each Poisson parameter for
                     # multiple replicates
                     df_par[var_range[i], env_col] = reduce(
                         vcat,
-                        [repeat(env, (n_mut + n_neutral)) for env in envs]
+                        [repeat(env, (n_bc + n_neutral)) for env in envs]
                     )
                 end # if
             else
@@ -688,14 +688,14 @@ function advi_to_df(
                     # variable for single replicate
                     df_par[var_range[i], env_col] = reduce(
                         vcat,
-                        repeat(unique(envs), n_mut)
+                        repeat(unique(envs), n_bc)
                     )
                 elseif n_rep > 1
                     # Add environment information for each bc-related
                     # variable for multiple replicates
                     df_par[var_range[i], env_col] = reduce(
                         vcat,
-                        repeat(unique(reduce(vcat, envs)), n_mut * n_rep)
+                        repeat(unique(reduce(vcat, envs)), n_bc * n_rep)
                     )
                 end #if
             end # if

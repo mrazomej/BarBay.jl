@@ -4,7 +4,7 @@
 
 @doc raw"""
 genotype_fitness_normal(R̲̲::Vector{Matrix{Int64}}, n̲ₜ::Vector{Vector{Int64}},
-                        n_neutral::Int, n_mut::Int; kwargs...)
+                        n_neutral::Int, n_bc::Int; kwargs...)
 
 Defines a hierarchical model to estimate fitness effects in a competitive
 fitness experiment where multiple barcodes belong to a specific "genotype." This
@@ -22,7 +22,7 @@ hyperparameter.
   barcode counts for each time point on each replicate. **NOTE**: This vector
   **must** be equivalent to computing `vec.(sum.(R̲̲, dims=2))`.
 - `n_neutral::Int`: Number of neutral lineages in dataset.  
-- `n_mut::Int`: Number of mutant lineages in dataset.
+- `n_bc::Int`: Number of mutant lineages in dataset.
 
 ## Keyword Arguments
 - `genotypes::Vector{Vector{<:Any}}`: Vector with the list of genotypes for each
@@ -82,7 +82,7 @@ Turing.@model function genotype_fitness_normal(
     R̲̲::Matrix{Int64},
     n̲ₜ::Vector{Int64},
     n_neutral::Int,
-    n_mut::Int;
+    n_bc::Int;
     genotypes::Vector{<:Any},
     s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
     logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
@@ -92,7 +92,7 @@ Turing.@model function genotype_fitness_normal(
     logτ_prior::Vector{Float64}=[-2.0, 1.0]
 )
     # Check that the number of assigned genotypes matches number of barcodes
-    if n_mut != length(genotypes)
+    if n_bc != length(genotypes)
         error("List of genotypes must match number of barcodes")
     end # if
 
@@ -148,12 +148,12 @@ Turing.@model function genotype_fitness_normal(
     end # if
 
     # Non-centered samples
-    θ̲̃⁽ᵐ⁾ ~ Turing.MvNormal(zeros(n_mut), LinearAlgebra.I(n_mut))
+    θ̲̃⁽ᵐ⁾ ~ Turing.MvNormal(zeros(n_bc), LinearAlgebra.I(n_bc))
 
     # Hyper prior on mutant deviations from hyper-fitness
     logτ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-        repeat([logτ_prior[1]], n_mut),
-        LinearAlgebra.I(n_mut) .* logτ_prior[2] .^ 2
+        repeat([logτ_prior[1]], n_bc),
+        LinearAlgebra.I(n_bc) .* logτ_prior[2] .^ 2
     )
 
     # mutant fitness = hyperparameter + deviation
@@ -162,8 +162,8 @@ Turing.@model function genotype_fitness_normal(
     # Prior on LogNormal error π(logσ̲⁽ᵐ⁾)
     if typeof(logσ_bc_prior) <: Vector
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([logσ_bc_prior[1]], n_mut),
-            LinearAlgebra.I(n_mut) .* logσ_bc_prior[2] .^ 2
+            repeat([logσ_bc_prior[1]], n_bc),
+            LinearAlgebra.I(n_bc) .* logσ_bc_prior[2] .^ 2
         )
     elseif typeof(logσ_bc_prior) <: Matrix
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
@@ -201,7 +201,7 @@ Turing.@model function genotype_fitness_normal(
 
     # Split neutral and mutant frequency ratios. 
     logΓ̲̲⁽ⁿ⁾ = vec(logΓ̲̲[:, 1:n_neutral])
-    logΓ̲̲⁽ᵐ⁾ = vec(logΓ̲̲[:, n_neutral+1:n_neutral+n_mut])
+    logΓ̲̲⁽ᵐ⁾ = vec(logΓ̲̲[:, n_neutral+1:n_neutral+n_bc])
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)

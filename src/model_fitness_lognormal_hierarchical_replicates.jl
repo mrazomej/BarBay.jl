@@ -4,7 +4,7 @@
 
 @doc raw"""
 replicate_fitness_lognormal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64},  
-                         n_neutral::Int, n_mut::Int; kwargs...)
+                         n_neutral::Int, n_bc::Int; kwargs...)
 
 Defines a hierarchical model to estimate fitness effects in a competitive
 fitness experiment across growth-dilution cycles over multiple experimental
@@ -19,7 +19,7 @@ replicates.
   time point on each replicate. **NOTE**: This matrix **must** be equivalent to
   computing `vec(sum(R̲̲, dims=2))`.
 - `n_neutral::Int`: Number of neutral lineages in dataset.  
-- `n_mut::Int`: Number of mutant lineages in dataset.
+- `n_bc::Int`: Number of mutant lineages in dataset.
 
 ## Optional Keyword Arguments
 - `s_pop_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
@@ -76,7 +76,7 @@ Turing.@model function replicate_fitness_lognormal(
     R̲̲::Array{Int64,3},
     n̲ₜ::Matrix{Int64},
     n_neutral::Int,
-    n_mut::Int;
+    n_bc::Int;
     s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
     σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
     s_bc_prior::VecOrMat{Float64}=[0.0, 2.0],
@@ -120,8 +120,8 @@ Turing.@model function replicate_fitness_lognormal(
     # Hyper prior on mutant fitness π(θ̲⁽ᵐ⁾) 
     if typeof(s_bc_prior) <: Vector
         θ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([s_bc_prior[1]], n_mut),
-            LinearAlgebra.I(n_mut) .* s_bc_prior[2] .^ 2
+            repeat([s_bc_prior[1]], n_bc),
+            LinearAlgebra.I(n_bc) .* s_bc_prior[2] .^ 2
         )
     elseif typeof(s_bc_prior) <: Matrix
         θ̲⁽ᵐ⁾ ~ Turing.MvNormal(
@@ -132,17 +132,17 @@ Turing.@model function replicate_fitness_lognormal(
 
     # Non-centered samples
     θ̲̃⁽ᵐ⁾ ~ Turing.MvNormal(
-        repeat([0], n_mut * n_rep), LinearAlgebra.I(n_mut * n_rep)
+        repeat([0], n_bc * n_rep), LinearAlgebra.I(n_bc * n_rep)
     )
 
     # Hyper prior on mutant deviations from hyper prior
     # τ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
-    #     repeat([τ_prior[1]], n_mut * n_rep),
-    #     LinearAlgebra.I(n_mut * n_rep) .* τ_prior[2] .^ 2
+    #     repeat([τ_prior[1]], n_bc * n_rep),
+    #     LinearAlgebra.I(n_bc * n_rep) .* τ_prior[2] .^ 2
     # )
     τ̲⁽ᵐ⁾ ~ Turing.filldist(
         Turing.truncated(Turing.Normal(τ_prior...), lower=0),
-        n_mut * n_rep
+        n_bc * n_rep
     )
 
     # mutant fitness = hyperparameter + deviation
@@ -151,8 +151,8 @@ Turing.@model function replicate_fitness_lognormal(
     # Prior on LogNormal error π(σ̲⁽ᵐ⁾)
     if typeof(σ_bc_prior) <: Vector
         σ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
-            repeat([σ_bc_prior[1]], n_mut * n_rep),
-            LinearAlgebra.I(n_mut * n_rep) .* σ_bc_prior[2] .^ 2
+            repeat([σ_bc_prior[1]], n_bc * n_rep),
+            LinearAlgebra.I(n_bc * n_rep) .* σ_bc_prior[2] .^ 2
         )
     elseif typeof(σ_bc_prior) <: Matrix
         σ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
@@ -190,7 +190,7 @@ Turing.@model function replicate_fitness_lognormal(
     # Split neutral and mutant frequency ratios. Note: the @view macro means
     # that there is not allocation to memory on this step.
     Γ̲̲⁽ⁿ⁾ = vec(Γ̲̲[:, 1:n_neutral, :])
-    Γ̲̲⁽ᵐ⁾ = vec(Γ̲̲[:, n_neutral+1:n_neutral+n_mut, :])
+    Γ̲̲⁽ᵐ⁾ = vec(Γ̲̲[:, n_neutral+1:n_neutral+n_bc, :])
 
     # Loop through replicates
     for r = 1:n_rep
@@ -226,8 +226,8 @@ Turing.@model function replicate_fitness_lognormal(
     # Reshape to have a matrix with columns for each replicate
     s̲ₜ = reshape(s̲ₜ, :, n_rep)          # n_time × n_rep
     σ̲ₜ = reshape(σ̲ₜ, :, n_rep)          # n_time × n_rep
-    s̲⁽ᵐ⁾ = reshape(s̲⁽ᵐ⁾, :, n_rep)     # n_mut × n_rep
-    σ̲⁽ᵐ⁾ = reshape(σ̲⁽ᵐ⁾, :, n_rep)     # n_mut × n_rep
+    s̲⁽ᵐ⁾ = reshape(s̲⁽ᵐ⁾, :, n_rep)     # n_bc × n_rep
+    σ̲⁽ᵐ⁾ = reshape(σ̲⁽ᵐ⁾, :, n_rep)     # n_bc × n_rep
 
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
@@ -255,7 +255,7 @@ Turing.@model function replicate_fitness_lognormal(
             permutedims(
                 cat(repeat([s̲⁽ᵐ⁾], (n_time - 1))..., dims=3), [3, 1, 2]
             )[:] .-
-            vcat(repeat.(eachcol(s̲ₜ), n_mut)...),
+            vcat(repeat.(eachcol(s̲ₜ), n_bc)...),
             # Build vector for variances
             LinearAlgebra.Diagonal(
                 permutedims(

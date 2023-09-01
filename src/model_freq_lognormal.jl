@@ -29,7 +29,7 @@ values on a fitness experiment.
 - `n_neutral::Int`: Number of neutral lineages in dataset. **NOTE** This
   argument is irrelevant for this function. It is only included to have
   consistent inputs across models.
-- `n_mut::Int`: Number of mutant lineages in datset. **NOTE** This argument is
+- `n_bc::Int`: Number of mutant lineages in datset. **NOTE** This argument is
   irrelevant for this function. It is only included to have consistent inputs
   across models.
 
@@ -45,7 +45,7 @@ Turing.@model function freq_lognormal(
     R̲̲::Matrix{Int64},
     n̲ₜ::Vector{Int64},
     n_neutral::Int,
-    n_mut::Int;
+    n_bc::Int;
     λ_prior::VecOrMat{Float64}=[3.0, 3.0]
 )
     ## %%%%%%%%%%%%%% Barcode frequencies %%%%%%%%%%%%%% ##

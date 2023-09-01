@@ -5,7 +5,7 @@
 
 @doc raw"""
 multienv_replicate_fitness_normal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64},
-                               n_neutral::Int, n_mut::Int; kwargs...)
+                               n_neutral::Int, n_bc::Int; kwargs...)
 
 Defines a hierarchical model to estimate fitness effects in a competitive
 fitness experiment with different environments across growth-dilution cycles
@@ -20,7 +20,7 @@ over multiple experimental replicates.
   time point on each replicate. **NOTE**: This matrix **must** be equivalent to
   computing `vec(sum(R̲̲, dims=2))`.
 - `n_neutral::Int`: Number of neutral lineages in dataset.  
-- `n_mut::Int`: Number of mutant lineages in dataset.
+- `n_bc::Int`: Number of mutant lineages in dataset.
 
 ## Keyword Arguments
 - `envs::Vector{<:Any}`: List of environments for each time point in dataset.
@@ -83,7 +83,7 @@ Turing.@model function multienv_replicate_fitness_normal(
     R̲̲::Array{Int64,3},
     n̲ₜ::Matrix{Int64},
     n_neutral::Int,
-    n_mut::Int;
+    n_bc::Int;
     envs::Vector{<:Any},
     s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
     logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
@@ -142,8 +142,8 @@ Turing.@model function multienv_replicate_fitness_normal(
     # Prior on mutant fitness π(s̲⁽ᵐ⁾)
     if typeof(s_bc_prior) <: Vector
         θ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([s_bc_prior[1]], n_env * n_mut),
-            LinearAlgebra.I(n_env * n_mut) .* s_bc_prior[2] .^ 2
+            repeat([s_bc_prior[1]], n_env * n_bc),
+            LinearAlgebra.I(n_env * n_bc) .* s_bc_prior[2] .^ 2
         )
     elseif typeof(s_bc_prior) <: Matrix
         θ̲⁽ᵐ⁾ ~ Turing.MvNormal(
@@ -153,13 +153,13 @@ Turing.@model function multienv_replicate_fitness_normal(
 
     # Non-centered samples
     θ̲̃⁽ᵐ⁾ ~ Turing.MvNormal(
-        zeros(n_env * n_mut * n_rep), LinearAlgebra.I(n_env * n_mut * n_rep)
+        zeros(n_env * n_bc * n_rep), LinearAlgebra.I(n_env * n_bc * n_rep)
     )
 
     # Hyper prior on mutant deviations from hyper prior
     logτ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-        repeat([logτ_prior[1]], n_env * n_mut * n_rep),
-        LinearAlgebra.I(n_env * n_mut * n_rep) .* logτ_prior[2] .^ 2
+        repeat([logτ_prior[1]], n_env * n_bc * n_rep),
+        LinearAlgebra.I(n_env * n_bc * n_rep) .* logτ_prior[2] .^ 2
     )
 
     # mutant fitness = hyperparameter + deviation
@@ -168,8 +168,8 @@ Turing.@model function multienv_replicate_fitness_normal(
     # Prior on LogNormal error π(logσ̲⁽ᵐ⁾)
     if typeof(logσ_bc_prior) <: Vector
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([logσ_bc_prior[1]], n_env * n_mut * n_rep),
-            LinearAlgebra.I(n_env * n_mut * n_rep) .* logσ_bc_prior[2] .^ 2
+            repeat([logσ_bc_prior[1]], n_env * n_bc * n_rep),
+            LinearAlgebra.I(n_env * n_bc * n_rep) .* logσ_bc_prior[2] .^ 2
         )
     elseif typeof(logσ_bc_prior) <: Matrix
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
@@ -209,7 +209,7 @@ Turing.@model function multienv_replicate_fitness_normal(
     # Split neutral and mutant frequency ratios. Note: the @view macro means
     # that there is not allocation to memory on this step.
     logΓ̲̲⁽ⁿ⁾ = vec(logΓ̲̲[:, 1:n_neutral, :])
-    logΓ̲̲⁽ᵐ⁾ = vec(logΓ̲̲[:, n_neutral+1:n_neutral+n_mut, :])
+    logΓ̲̲⁽ᵐ⁾ = vec(logΓ̲̲[:, n_neutral+1:n_neutral+n_bc, :])
 
     # Loop through replicates
     for r = 1:n_rep
@@ -246,8 +246,8 @@ Turing.@model function multienv_replicate_fitness_normal(
     s̲ₜ = reshape(s̲ₜ, :, n_rep)          # (n_time-1) × n_rep
     logσ̲ₜ = reshape(logσ̲ₜ, :, n_rep)          # (n_time-1) × n_rep
 
-    s̲⁽ᵐ⁾ = reshape(s̲⁽ᵐ⁾, n_env, n_mut, n_rep)     # n_env × n_mut × n_rep
-    logσ̲⁽ᵐ⁾ = reshape(logσ̲⁽ᵐ⁾, n_env, n_mut, n_rep)     # n_env × n_mut × n_rep
+    s̲⁽ᵐ⁾ = reshape(s̲⁽ᵐ⁾, n_env, n_bc, n_rep)     # n_env × n_bc × n_rep
+    logσ̲⁽ᵐ⁾ = reshape(logσ̲⁽ᵐ⁾, n_env, n_bc, n_rep)     # n_env × n_bc × n_rep
 
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 
@@ -274,7 +274,7 @@ Turing.@model function multienv_replicate_fitness_normal(
         Turing.MvNormal(
             # Build vector for fitness differences
             s̲⁽ᵐ⁾[env_idx[2:end], :, :][:] .-
-            reduce(vcat, repeat.(eachcol(s̲ₜ), n_mut)),
+            reduce(vcat, repeat.(eachcol(s̲ₜ), n_bc)),
             # Build vector for variances
             LinearAlgebra.Diagonal(
                 exp.(logσ̲⁽ᵐ⁾[env_idx[2:end], :, :])[:] .^ 2
@@ -294,7 +294,7 @@ end # @model function
 @doc raw"""
 multienv_replicate_fitness_normal(R̲̲::Vector{Matrix{Int64}},
                                n̲ₜ::Vector{Vector{Int64}}, n_neutral::Int,
-                               n_mut::Int; kwargs...)
+                               n_bc::Int; kwargs...)
 
 Defines a hierarchical model to estimate fitness effects in a competitive
 fitness experiment with different environments across growth-dilution cycles
@@ -310,7 +310,7 @@ over multiple experimental replicates.
   barcode counts for each time point on each replicate. **NOTE**: This vector
   **must** be equivalent to computing `vec.(sum.(R̲̲, dims=2))`.
 - `n_neutral::Int`: Number of neutral lineages in dataset.  
-- `n_mut::Int`: Number of mutant lineages in dataset.
+- `n_bc::Int`: Number of mutant lineages in dataset.
 
 ## Keyword Arguments
 - `envs::Vector{Vector{<:Any}}`: Length `R` vector with the list of environments
@@ -374,7 +374,7 @@ Turing.@model function multienv_replicate_fitness_normal(
     R̲̲::Vector{Matrix{Int64}},
     n̲ₜ::Vector{Vector{Int64}},
     n_neutral::Int,
-    n_mut::Int;
+    n_bc::Int;
     envs::Vector{<:Vector{<:Any}},
     s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
     logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
@@ -457,8 +457,8 @@ Turing.@model function multienv_replicate_fitness_normal(
     # Prior on mutant fitness π(s̲⁽ᵐ⁾)
     if typeof(s_bc_prior) <: Vector
         θ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([s_bc_prior[1]], n_env * n_mut),
-            LinearAlgebra.I(n_env * n_mut) .* s_bc_prior[2] .^ 2
+            repeat([s_bc_prior[1]], n_env * n_bc),
+            LinearAlgebra.I(n_env * n_bc) .* s_bc_prior[2] .^ 2
         )
     elseif typeof(s_bc_prior) <: Matrix
         θ̲⁽ᵐ⁾ ~ Turing.MvNormal(
@@ -468,13 +468,13 @@ Turing.@model function multienv_replicate_fitness_normal(
 
     # Non-centered samples
     θ̲̃⁽ᵐ⁾ ~ Turing.MvNormal(
-        zeros(n_env * n_mut * n_rep), LinearAlgebra.I(n_env * n_mut * n_rep)
+        zeros(n_env * n_bc * n_rep), LinearAlgebra.I(n_env * n_bc * n_rep)
     )
 
     # Hyper prior on mutant deviations from hyper prior
     logτ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-        repeat([logτ_prior[1]], n_env * n_mut * n_rep),
-        LinearAlgebra.I(n_env * n_mut * n_rep) .* logτ_prior[2] .^ 2
+        repeat([logτ_prior[1]], n_env * n_bc * n_rep),
+        LinearAlgebra.I(n_env * n_bc * n_rep) .* logτ_prior[2] .^ 2
     )
 
     # mutant fitness = hyperparameter + deviation
@@ -483,8 +483,8 @@ Turing.@model function multienv_replicate_fitness_normal(
     # Prior on LogNormal error π(logσ̲⁽ᵐ⁾)
     if typeof(logσ_bc_prior) <: Vector
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([logσ_bc_prior[1]], n_env * n_mut * n_rep),
-            LinearAlgebra.I(n_env * n_mut * n_rep) .* logσ_bc_prior[2] .^ 2
+            repeat([logσ_bc_prior[1]], n_env * n_bc * n_rep),
+            LinearAlgebra.I(n_env * n_bc * n_rep) .* logσ_bc_prior[2] .^ 2
         )
     elseif typeof(logσ_bc_prior) <: Matrix
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
@@ -527,11 +527,11 @@ Turing.@model function multienv_replicate_fitness_normal(
     # Split neutral and mutant frequency ratios. Note: the @view macro means
     # that there is not allocation to memory on this step.
     logΓ̲̲⁽ⁿ⁾ = [vec(logΓ̲̲[rep][:, 1:n_neutral]) for rep = 1:n_rep]
-    logΓ̲̲⁽ᵐ⁾ = [vec(logΓ̲̲[rep][:, n_neutral+1:n_neutral+n_mut]) for rep = 1:n_rep]
+    logΓ̲̲⁽ᵐ⁾ = [vec(logΓ̲̲[rep][:, n_neutral+1:n_neutral+n_bc]) for rep = 1:n_rep]
 
     ## %%%%%%%%%%%% Reshape arrays to split replicate variables %%%%%%%%%%%% ##
-    s̲⁽ᵐ⁾ = reshape(s̲⁽ᵐ⁾, n_env, n_mut, n_rep)     # n_env × n_mut × n_rep
-    logσ̲⁽ᵐ⁾ = reshape(logσ̲⁽ᵐ⁾, n_env, n_mut, n_rep)     # n_env × n_mut × n_rep
+    s̲⁽ᵐ⁾ = reshape(s̲⁽ᵐ⁾, n_env, n_bc, n_rep)     # n_env × n_bc × n_rep
+    logσ̲⁽ᵐ⁾ = reshape(logσ̲⁽ᵐ⁾, n_env, n_bc, n_rep)     # n_env × n_bc × n_rep
 
     ## %%%%%%%%%%%%% Log-Likelihood functions for observations %%%%%%%%%%%%%% ##
 
@@ -597,7 +597,7 @@ Turing.@model function multienv_replicate_fitness_normal(
             Turing.MvNormal(
                 # Build vector for fitness differences
                 s̲⁽ᵐ⁾[env_idx[rep][2:end], :, rep][:] .-
-                reduce(vcat, repeat(s̲ₜ[time_ranges[rep]], n_mut)),
+                reduce(vcat, repeat(s̲ₜ[time_ranges[rep]], n_bc)),
                 # Build vector for variances
                 LinearAlgebra.Diagonal(
                     exp.(logσ̲⁽ᵐ⁾[env_idx[rep][2:end], :, rep])[:] .^ 2

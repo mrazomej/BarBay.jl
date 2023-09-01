@@ -4,7 +4,7 @@
 
 @doc raw"""
 multienv_fitness_normal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64},  
-                        n_neutral::Int, n_mut::Int; kwargs...)
+                        n_neutral::Int, n_bc::Int; kwargs...)
 
 Defines a model to estimate fitness effects in a competitive fitness experiment
 with different environments across growth-dilution cycles.
@@ -18,7 +18,7 @@ with different environments across growth-dilution cycles.
   time point. **NOTE**: This vector **must** be equivalent to computing
   `vec(sum(R̲̲, dims=2))`.
 - `n_neutral::Int`: Number of neutral lineages in dataset. 
-- `n_mut::Int`: Number of mutant lineages in dataset.
+- `n_bc::Int`: Number of mutant lineages in dataset.
 
 ## Keyword Arguments
 - `envs::Vector{<:Any}`: List of environments for each time point in dataset.
@@ -76,7 +76,7 @@ Turing.@model function multienv_fitness_normal(
     R̲̲::Matrix{Int64},
     n̲ₜ::Vector{Int64},
     n_neutral::Int,
-    n_mut::Int;
+    n_bc::Int;
     envs::Vector{<:Any},
     s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
     logσ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
@@ -131,8 +131,8 @@ Turing.@model function multienv_fitness_normal(
     # Prior on mutant fitness π(s̲⁽ᵐ⁾)
     if typeof(s_bc_prior) <: Vector
         s̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([s_bc_prior[1]], n_mut * n_env),
-            LinearAlgebra.I(n_mut * n_env) .* s_bc_prior[2] .^ 2
+            repeat([s_bc_prior[1]], n_bc * n_env),
+            LinearAlgebra.I(n_bc * n_env) .* s_bc_prior[2] .^ 2
         )
     elseif typeof(s_bc_prior) <: Matrix
         s̲⁽ᵐ⁾ ~ Turing.MvNormal(
@@ -143,8 +143,8 @@ Turing.@model function multienv_fitness_normal(
     # Prior on LogNormal error π(σ̲⁽ᵐ⁾)
     if typeof(logσ_bc_prior) <: Vector
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([logσ_bc_prior[1]], n_mut * n_env),
-            LinearAlgebra.I(n_mut * n_env) .* logσ_bc_prior[2] .^ 2
+            repeat([logσ_bc_prior[1]], n_bc * n_env),
+            LinearAlgebra.I(n_bc * n_env) .* logσ_bc_prior[2] .^ 2
         )
     elseif typeof(logσ_bc_prior) <: Matrix
         logσ̲⁽ᵐ⁾ ~ Turing.MvNormal(
@@ -183,7 +183,7 @@ Turing.@model function multienv_fitness_normal(
 
     # Split neutral and mutant frequency ratios. 
     logΓ̲̲⁽ⁿ⁾ = vec(logΓ̲̲[:, 1:n_neutral])
-    logΓ̲̲⁽ᵐ⁾ = vec(logΓ̲̲[:, n_neutral+1:n_neutral+n_mut])
+    logΓ̲̲⁽ᵐ⁾ = vec(logΓ̲̲[:, n_neutral+1:n_neutral+n_bc])
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)
@@ -210,8 +210,8 @@ Turing.@model function multienv_fitness_normal(
     )
 
     ## %%%%%%%%%%%% Reshape arrays to split replicate variables %%%%%%%%%%%% ##
-    s̲⁽ᵐ⁾ = reshape(s̲⁽ᵐ⁾, n_env, :)  # n_env × n_mut
-    logσ̲⁽ᵐ⁾ = reshape(logσ̲⁽ᵐ⁾, n_env, :)  # n_env × n_mut
+    s̲⁽ᵐ⁾ = reshape(s̲⁽ᵐ⁾, n_env, :)  # n_env × n_bc
+    logσ̲⁽ᵐ⁾ = reshape(logσ̲⁽ᵐ⁾, n_env, :)  # n_env × n_bc
 
     ## %%%%%%%%%%%%%% Log-Likelihood functions %%%%%%%%%%%%%% ##
 

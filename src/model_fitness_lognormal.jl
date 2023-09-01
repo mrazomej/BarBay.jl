@@ -4,7 +4,7 @@
 
 @doc raw"""
 fitness_lognormal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64}, n_neutral::Int,
-                  n_mut::Int; kwargs...)
+                  n_bc::Int; kwargs...)
 
 Defines a model to estimate fitness effects in a competitive fitness experiment
 across growth-dilution cycles.
@@ -18,7 +18,7 @@ across growth-dilution cycles.
   time point. **NOTE**: This vector **must** be equivalent to computing
   `vec(sum(R̲̲, dims=2))`.
 - `n_neutral::Int`: Number of neutral lineages in dataset. 
-- `n_mut::Int`: Number of mutant lineages in dataset.
+- `n_bc::Int`: Number of mutant lineages in dataset.
 
 ## Optional Keyword Arguments
 - `s_pop_prior::VecOrMat{Float64}=[0.0, 2.0]`: Vector or Matrix with the
@@ -71,7 +71,7 @@ Turing.@model function fitness_lognormal(
     R̲̲::Matrix{Int64},
     n̲ₜ::Vector{Int64},
     n_neutral::Int,
-    n_mut::Int;
+    n_bc::Int;
     s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
     σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
     s_bc_prior::VecOrMat{Float64}=[0.0, 2.0],
@@ -113,8 +113,8 @@ Turing.@model function fitness_lognormal(
     # Prior on mutant fitness π(s̲⁽ᵐ⁾)
     if typeof(s_bc_prior) <: Vector
         s̲⁽ᵐ⁾ ~ Turing.MvNormal(
-            repeat([s_bc_prior[1]], n_mut),
-            LinearAlgebra.I(n_mut) .* s_bc_prior[2] .^ 2
+            repeat([s_bc_prior[1]], n_bc),
+            LinearAlgebra.I(n_bc) .* s_bc_prior[2] .^ 2
         )
     elseif typeof(s_bc_prior) <: Matrix
         s̲⁽ᵐ⁾ ~ Turing.MvNormal(
@@ -126,8 +126,8 @@ Turing.@model function fitness_lognormal(
     # Prior on LogNormal error π(σ̲⁽ᵐ⁾)
     if typeof(σ_bc_prior) <: Vector
         σ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
-            repeat([σ_bc_prior[1]], n_mut),
-            LinearAlgebra.I(n_mut) .* σ_bc_prior[2] .^ 2
+            repeat([σ_bc_prior[1]], n_bc),
+            LinearAlgebra.I(n_bc) .* σ_bc_prior[2] .^ 2
         )
     elseif typeof(σ_bc_prior) <: Matrix
         σ̲⁽ᵐ⁾ ~ Turing.MvLogNormal(
@@ -166,7 +166,7 @@ Turing.@model function fitness_lognormal(
     # Split neutral and mutant frequency ratios. Note: the @view macro means
     # that there is not allocation to memory on this step.
     Γ̲̲⁽ⁿ⁾ = vec(Γ̲̲[:, 1:n_neutral])
-    Γ̲̲⁽ᵐ⁾ = vec(Γ̲̲[:, n_neutral+1:n_neutral+n_mut])
+    Γ̲̲⁽ᵐ⁾ = vec(Γ̲̲[:, n_neutral+1:n_neutral+n_bc])
 
     # Prob of total number of barcodes read given the Poisosn distribution
     # parameters π(nₜ | λ̲ₜ)

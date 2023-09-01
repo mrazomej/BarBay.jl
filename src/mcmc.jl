@@ -58,7 +58,7 @@ used to sample from the population mean fitness posterior distribution.
     - `n̲ₜ::VecOrMat{Int64}`: Array with the total number of barcode counts for
         each time point (on each experimental repeat, if necessary).
     - `n_neutral::Int`: Number of neutral lineages.
-    - `n_mut::Int`: Number of neutral lineages.
+    - `n_bc::Int`: Number of neutral lineages.
 
 ## Optional Keyword Arguments
 - `model_kwargs::Dict=Dict()`: Extra keyword arguments to be passed to the
@@ -149,7 +149,7 @@ function mcmc_sample(;
         data_dict[:bc_count],
         data_dict[:bc_total],
         data_dict[:n_neutral],
-        data_dict[:n_mut];
+        data_dict[:n_bc];
         model_kwargs...
     )
 

@@ -24,7 +24,7 @@ lineages.
   `vec(sum(R̲̲, dims=2))`. The reason it is an independent input parameter is to
   avoid the `sum` computation within the `Turing` model.
 - `n_neutral::Int`: Number of neutral lineages in dataset.
-- `n_mut::Int`: Number of mutant lineages in datset. **NOTE** This argument is
+- `n_bc::Int`: Number of mutant lineages in datset. **NOTE** This argument is
   irrelevant for this function. It is only included to have consistent inputs
   across models.
 
@@ -55,7 +55,7 @@ Turing.@model function neutrals_lognormal(
     R̲̲::Matrix{Int64},
     n̲ₜ::Vector{Int64},
     n_neutral::Int,
-    n_mut::Int=1;
+    n_bc::Int=1;
     s_pop_prior::VecOrMat{Float64}=[0.0, 2.0],
     σ_pop_prior::VecOrMat{Float64}=[0.0, 1.0],
     λ_prior::VecOrMat{Float64}=[3.0, 3.0]
