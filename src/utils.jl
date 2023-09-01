@@ -441,7 +441,7 @@ posterior samples for each parameter. Columns include:
     - `varname`: parameter name from the ADVI posterior distribution.
     - `vartype`: Description of the type of parameter. The types are:
         - `pop_mean_fitness`: Population mean fitness value `s̲ₜ`.
-        - `pop_error`: (Nuisance parameter) Log of standard deviation in the
+        - `pop_std`: (Nuisance parameter) Log of standard deviation in the
           likelihood function for the neutral lineages.
         - `bc_fitness`: Mutant relative fitness `s⁽ᵐ⁾`.
         - `bc_hyperfitness`: For hierarchical models, mutant hyperparameter
@@ -453,7 +453,7 @@ posterior samples for each parameter. Columns include:
         - `bc_deviations`: (Nuisance parameter) For hierarchical models,
           samples that define the log of the deviation from the hyperparameter
           fitness value `logτ⁽ᵐ⁾`.
-        - `bc_error`: (Nuisance parameter) Log of standard deviation in the
+        - `bc_std`: (Nuisance parameter) Log of standard deviation in the
           likelihood function for the mutant lineages.
         - `freq`: (Nuisance parameter) Log of the Poisson parameter used to
           define the frequency of each lineage.
