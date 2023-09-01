@@ -34,7 +34,7 @@ mutant and neutral lineages given a time-series barcode count.
 This function expects the data in a **tidy** format. This means that every row
 represents **a single observation**. For example, if we measure barcode `i` in 4
 different time points, each of these four measurements gets an individual row.
-Furthermore, measurements of barcode `j` over time also get their own individual
+Furthermore, barcode `j` measurements over time also get their own individual
 rows. 
         
 The `DataFrame` must contain at least the following columns:
@@ -43,14 +43,14 @@ The `DataFrame` must contain at least the following columns:
 - `time_col`: Column defining the measurement time point.  
 - `count_col`: Column with the raw barcode count.
 - `neutral_col`: Column indicating whether the barcode is from a neutral lineage
-or not.
+.
 
 # Keyword Arguments
 - `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
 used to sample from the population mean fitness posterior distribution.
 - `n_walkers::Int`: Number of walkers (chains) for the MCMC sample.
 - `n_steps::Int`: Number of steps to take.
-- `outputname::String`: String to be used to name the `.jld2` output file.
+- `outputname::String`: String to name the `.jld2` output file.
 - `model::Function`: `Turing.jl` model defining the posterior distribution from
     which to sample (see `BayesFitness.model` module). This function must take
     as the first four inputs the following:
@@ -59,7 +59,7 @@ used to sample from the population mean fitness posterior distribution.
         - dim=1: time.
         - dim=2: genotype.
         - dim=3 (optional): experimental repeats
-    - `n̲t::VecOrMat{Int64}`: Array with the total number of barcode counts for
+    - `n̲t::VecOrMat{Int64}`: Array with the total barcode counts for
         each time point (on each experimental repeat, if necessary).
     - `n_neutral::Int`: Number of neutral lineages.
     - `n_mut::Int`: Number of neutral lineages.
@@ -67,30 +67,32 @@ used to sample from the population mean fitness posterior distribution.
 ## Optional Keyword Arguments
 - `model_kwargs::Dict=Dict()`: Extra keyword arguments to be passed to the
   `model` function.
-- `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
-    identifier. The column may contain any type of entry.
+    - `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
+    identifier. The column may include any type of entry.
 - `time_col::Symbol=:time`: Name of the column in `data` defining the time point
   at which measurements were done. The column may contain any type of entry as
   long as `sort` will result in time-ordered names.
 - `count_col::Symbol=:count`: Name of the column in `data` containing the raw
   barcode count. The column must contain entries of type `Int64`.
 - `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
-  the barcode belongs to a neutral lineage or not. The column must contain
-  entries of type `Bool`.  
-- `rep_col::Union{Nothing,Symbol}=nothing`: Optional column in tidy dataframe to
-  specify the experimental repeat for each observation.
+  the barcode belongs to a neutral lineage. The column must contain entries of
+  type `Bool`.
+- `rep_col::Union{Nothing,Symbol}=nothing`: Column indicating the experimental
+  replicate each measurement belongs to. Default is `nothing`.
+- `env_col::Union{Nothing,Symbol}=nothing`: Column indicating the environment in
+  which each measurement was performed. Default is `nothing`.
 - `rm_T0::Bool=false`: Optional argument to remove the first time point from the
-  inference. Commonly, the data from this first time point is of much lower
+  inference. The data from this first time point is commonly of much lower
   quality. Therefore, removing this first time point might result in a better
   inference.
 - `advi::Turing.AdvancedVI.VariationalInference=Tuing.ADVI(1, 10_000)`:
   Variational inference algorithm to infer. Currently, `Turing.jl` only supports
   `ADVI`, where the first input is the number of samples to take (empirically
-  one sample works) and the second input is the number of update steps to take.
+  one sample works), and the second is the number of update steps to take.
 - `opt::Union{Turing.AdvancedVI.DecayedADAGrad,Flux.Optimise.AbstractOptimiser}
   = Turing.Variational.DecayedADAGrad(1e-2, 1.1, 0.9)`: Algorithm used to
   compute the model gradient and update the parameters. `Turing.ADVI` can take
-  `Flux.jl` optimizers. But the recommended algorithm used in `Stan` is the
+  `Flux.jl` optimizers. But the recommended algorithm in `Stan` is the
   default `DecayedADAGrad`.  
 - `verbose::Bool=true`: Boolean indicating if the function should print partial
   progress to the screen or not.
@@ -98,7 +100,7 @@ used to sample from the population mean fitness posterior distribution.
 # Output
 The output of this function is saved as a `jld2` file with three entries: 
     - `ids`: The list of the mutant ids in the order used for the inference. 
-    - `var`: List of variables in the variational multi-variate distribution. 
+    - `var`: List of variables in the variational multivariate distribution. 
     - `dist`: Multivariate Normal variational distribution.
 """
 function advi(;
@@ -111,6 +113,7 @@ function advi(;
     count_col::Symbol=:count,
     neutral_col::Symbol=:neutral,
     rep_col::Union{Nothing,Symbol}=nothing,
+    env_col::Union{Nothing,Symbol}=nothing,
     rm_T0::Bool=false,
     advi::Turing.AdvancedVI.VariationalInference=Tuing.ADVI(1, 10_000),
     opt::Union{Turing.AdvancedVI.TruncatedADAGrad,Turing.AdvancedVI.DecayedADAGrad}=Turing.Variational.TruncatedADAGrad(),
@@ -141,6 +144,7 @@ function advi(;
         count_col=count_col,
         neutral_col=neutral_col,
         rep_col=rep_col,
+        env_col=env_col,
         rm_T0=rm_T0,
         verbose=verbose
     )
