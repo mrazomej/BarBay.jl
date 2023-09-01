@@ -382,8 +382,8 @@ Turing.@model function replicate_fitness_normal(
     # Prior on population mean fitness π(s̲ₜ) 
     if typeof(s_pop_prior) <: Vector
         s̲ₜ ~ Turing.MvNormal(
-            repeat([s_pop_prior[1]], (n_time - 1) * n_rep),
-            LinearAlgebra.I((n_time - 1) * n_rep) .* s_pop_prior[2] .^ 2
+            repeat([s_pop_prior[1]], sum(n_time .- 1)),
+            LinearAlgebra.I(sum(n_time .- 1)) .* s_pop_prior[2] .^ 2
         )
     elseif typeof(s_pop_prior) <: Matrix
         s̲ₜ ~ Turing.MvNormal(
@@ -394,8 +394,8 @@ Turing.@model function replicate_fitness_normal(
     # Prior on LogNormal error π(logσ̲ₜ )
     if typeof(logσ_pop_prior) <: Vector
         logσ̲ₜ ~ Turing.MvNormal(
-            repeat([logσ_pop_prior[1]], (n_time - 1) * n_rep),
-            LinearAlgebra.I((n_time - 1) * n_rep) .* logσ_pop_prior[2] .^ 2
+            repeat([logσ_pop_prior[1]], sum(n_time .- 1)),
+            LinearAlgebra.I(sum(n_time .- 1)) .* logσ_pop_prior[2] .^ 2
         )
     elseif typeof(logσ_pop_prior) <: Matrix
         logσ̲ₜ ~ Turing.MvNormal(
@@ -553,7 +553,7 @@ Turing.@model function replicate_fitness_normal(
                     reduce(
                         vcat,
                         [
-                            repeat([σ^2], n_time - 1)
+                            repeat([σ^2], sum(n_time .- 1))
                             for σ in exp.(logσ̲⁽ᵐ⁾[:, rep])
                         ]
                     )
