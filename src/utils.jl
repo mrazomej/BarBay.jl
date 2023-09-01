@@ -32,8 +32,12 @@ for the models in the `model` submodule.
 - `count_col::Symbol=:count`: Name of the column in `data` containing the raw
   barcode count. The column must contain entries of type `Int64`.
 - `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
-  the barcode belongs to a neutral lineage. The column must contain
-  entries of type `Bool`.
+  the barcode belongs to a neutral lineage. The column must contain entries of
+  type `Bool`.
+- `rep_col::Union{Nothing,Symbol}=nothing`: Column indicating the experimental
+  replicate each measurement belongs to. Default is `nothing`.
+- `env_col::Union{Nothing,Symbol}=nothing`: Column indicating the environment in
+  which each measurement was performed. Default is `nothing`.
 - `rm_T0::Bool=false`: Optional argument to remove the first time point from the
   inference. The data from this first time point is commonly of much lower
   quality. Therefore, removing this first time point might result in a better
