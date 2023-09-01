@@ -38,6 +38,9 @@ for the models in the `model` submodule.
   replicate each measurement belongs to. Default is `nothing`.
 - `env_col::Union{Nothing,Symbol}=nothing`: Column indicating the environment in
   which each measurement was performed. Default is `nothing`.
+- `genotype_col::Union{Nothing,Symbol}=nothing`: Column indicating the genotype
+  each barcode belongs to when fitting a hierarchical model on genotypes.
+  Default is `nothing`.
 - `rm_T0::Bool=false`: Optional argument to remove the first time point from the
   inference. The data from this first time point is commonly of much lower
   quality. Therefore, removing this first time point might result in a better
@@ -65,7 +68,6 @@ for the models in the `model` submodule.
           tensor.
         - `Vector{Vector{Int64}}`: Equivalent to summing each matrix row.
     - `n_rep`: Number of experimental replicates.
-    - `n_env`: Number of environmental conditions.
     - `n_time`: Number of time points. The options can be:
         - `Int64`: Number of time points on a single replicate or multiple
           replicates.
@@ -76,6 +78,14 @@ for the models in the `model` submodule.
         - `Vector{<:Any}`: Environments in the order they were measured.
         - `vector{Vector{<:Any}}`: Environments per replicate when replicates
           have a different number of time points.
+    - `n_env`: Number of environmental conditions.
+    - `genotypes`: List of genotypes for each of the non-neutral barcodes. The
+      options can be:
+        - `N/A`: String when no genotype information is given.
+        - `Vector{<:Any}`: Vector of the corresponding genotype for each of the
+          non-neutral barcodes in the order they are used for the inference.
+    - `n_geno`: Number of genotypes. When no genotype information is provided,
+      this defaults to zero.
 """
 function data_to_arrays(
     data::DF.AbstractDataFrame;
@@ -85,6 +95,7 @@ function data_to_arrays(
     neutral_col::Symbol=:neutral,
     rep_col::Union{Nothing,Symbol}=nothing,
     env_col::Union{Nothing,Symbol}=nothing,
+    genotype_col::Union{Nothing,Symbol}=nothing,
     rm_T0::Bool=false,
     verbose::Bool=true
 )
@@ -329,7 +340,7 @@ function data_to_arrays(
         n_env = 1
     elseif (typeof(env_col) <: Symbol) & (n_rep == 1)
         # collect environments for single-replicate case
-        envs = collect(sort(unique(data[:, [:time, :env]]), :time)[:, :env])
+        envs = collect(sort(unique(data[:, [time_col, env_col]]), time_col)[:, env_col])
         # Define number of environments
         n_env = length(unique(envs))
     elseif (typeof(env_col) <: Symbol) & (n_rep > 1)
@@ -338,14 +349,14 @@ function data_to_arrays(
         # collect environments for multi-replicate with different number of time
         # points
         envs = [
-            collect(sort(unique(d[:, [:time, :env]]), :time)[:, :env])
+            collect(sort(unique(d[:, [time_col, env_col]]), time_col)[:, env_col])
             for d in data_rep
         ]
         # Define number of environments
         n_env = length(unique(reduce(vcat, envs)))
         # Check if all replicates have same environments
         if length(unique(envs)) == 1
-            envs = unique(envs)
+            envs = first(envs)
         end # if
     end # if
 
@@ -362,6 +373,23 @@ function data_to_arrays(
         n_time = [length(unique(d[:, time_col])) for d in data_rep]
     end #if
 
+    # Check if genotype list is given
+    if typeof(genotype_col) <: Nothing
+        # Assign N/A to genotypes
+        genotypes = "N/A"
+        # Assign 0 to genotypes
+        n_genotypes = 0
+    elseif typeof(genotype_col) <: Symbol
+        # Generate dictionary from bc to genotype
+        bc_geno_dict = Dict(
+            values.(keys(DF.groupby(data, [id_col, genotype_col])))
+        )
+        # Extract genotypes in the order they will be used in the inference
+        genotypes = [bc_geno_dict[m] for m in bc_ids]
+        # Compute number of genotypes
+        n_genotypes = length(unique(genotypes))
+    end # if
+
     return Dict(
         :bc_count => R̲̲,
         :bc_total => n̲ₜ,
@@ -372,7 +400,9 @@ function data_to_arrays(
         :envs => envs,
         :n_env => n_env,
         :n_rep => n_rep,
-        :n_time => n_time
+        :n_time => n_time,
+        :genotypes => genotypes,
+        :n_geno => n_genotypes
     )
 end # function
 
@@ -464,7 +494,8 @@ function advi_to_df(
         count_col=count_col,
         neutral_col=neutral_col,
         rep_col=rep_col,
-        env_col=env_col
+        env_col=env_col,
+        genotype_col=genotype_col
     )
 
     # Extract number of neutral and mutant lineages
@@ -478,12 +509,22 @@ function advi_to_df(
 
     # Extract number of replicates
     n_rep = data_arrays[:n_rep]
-    # Extract list of environments
-    envs = data_arrays[:envs]
-    # Extract number of environments
-    n_env = data_arrays[:n_env]
     # Extract number of time points per replicate
     n_time = data_arrays[:n_time]
+
+    # Extract number of environments
+    n_env = data_arrays[:n_env]
+    # Extract list of environments
+    envs = data_arrays[:envs]
+    # For multi-replicate inferences replicate the list of environments when
+    # necessary
+    if (n_env > 1) & (n_rep > 1) & !(typeof(envs) <: Vector{<:Vector})
+        envs = repeat([envs], n_rep)
+    end # if
+
+    # Extract genotype information
+    genotypes = data_arrays[:genotypes]
+    n_geno = data_arrays[:n_geno]
 
     # Extract unique replicates
     if typeof(rep_col) <: Symbol
@@ -536,11 +577,17 @@ function advi_to_df(
     # Add replicate number information
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
-    if (n_rep == 1) & (n_env == 1) & (length(var_groups) > 5)
+    if (n_rep == 1) & (typeof(genotype_col) <: Nothing) &
+       (length(var_groups) > 5)
         # Report error if no env or rep info is given when needed
-        error("The distribution seems to match a hierarchical model but no environment or replicate information was provided")
+        error("The distribution seems to match a hierarchical model but no genotype or replicate information was provided")
     elseif (n_rep == 1) & (length(var_groups) == 5) & (n_env == 1)
-        prontln("Single replicate non-hierarchical model")
+        println("Single replicate non-hierarchical model")
+        # Add replicate for single-replicate model for consistency
+        df_par[!, :rep] .= "R1"
+    elseif (n_rep == 1) & (length(var_groups) == 7) &
+           (typeof(genotype_col) <: Symbol)
+        println("Single replicate genotype hierarchical model")
         # Add replicate for single-replicate model for consistency
         df_par[!, :rep] .= "R1"
     elseif (n_rep > 1)
@@ -599,7 +646,7 @@ function advi_to_df(
 
     if (n_env == 1)
         # Add environment information for consistency
-        df_par[!, :env] = "env1"
+        df_par[!, :env] .= "env1"
     elseif (n_env > 1)
         # Add replicate column to be modified
         df_par[!, env_col] = Vector{Any}(undef, size(df_par, 1))
@@ -624,8 +671,8 @@ function advi_to_df(
                 if n_rep == 1
                     # Add environment informatin for each Poisson parameter for
                     # single replicate
-                    df_par[var_range[i], env_col] = reduce(
-                        vcat, repeat([envs], (n_mut + n_neutral))
+                    df_par[var_range[i], env_col] = repeat(
+                        envs, (n_mut + n_neutral)
                     )
                 elseif n_rep > 1
                     # Add environment information for each Poisson parameter for
@@ -641,7 +688,7 @@ function advi_to_df(
                     # variable for single replicate
                     df_par[var_range[i], env_col] = reduce(
                         vcat,
-                        repeat(envs[2:end], n_mut)
+                        repeat(unique(envs), n_mut)
                     )
                 elseif n_rep > 1
                     # Add environment information for each bc-related
@@ -669,9 +716,13 @@ function advi_to_df(
             # particular barcode.
             continue
         elseif var == "θ̲⁽ᵐ⁾"
-            if (n_env == 1)
+            if (n_env == 1) & (typeof(genotype_col) <: Nothing)
                 # Add ID information to hyperparameter for single environment
+                # and no genotypes
                 df_par[var_range[i], :id] = bc_ids
+            elseif (n_env == 1) & (typeof(genotype_col) <: Symbol)
+                # Add ID information to hyperparameter fitness for genotypes
+                df_par[var_range[i], :id] = unique(genotypes)
             elseif n_env > 1
                 # Add ID information to hyperparameter for multiple environments
                 df_par[var_range[i], :id] = reduce(
@@ -684,7 +735,7 @@ function advi_to_df(
                 # Add ID information to Poisson parameter for single replicate
                 df_par[var_range[i], :id] = reduce(
                     vcat,
-                    [repeat([bc], n_time) for bc in bc_ids]
+                    [repeat([bc], n_time) for bc in [neutral_ids; bc_ids]]
                 )
             elseif n_rep > 1
                 df_par[var_range[i], :id] = reduce(
@@ -792,7 +843,7 @@ function advi_to_df(
             df_s,
             :varname => replace.(df_par[τ_idx, :varname], "logτ" => "s"),
             :vartype .=> "bc_fitness",
-            :rep => df_par[τ_idx, :rep],
+            rep_col => df_par[τ_idx, rep_col],
             :env => df_par[τ_idx, :env],
             :id => df_par[τ_idx, :id]
         )

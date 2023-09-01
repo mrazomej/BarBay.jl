@@ -56,16 +56,16 @@ used to sample from the population mean fitness posterior distribution.
         - dim=1: time.
         - dim=2: genotype.
         - dim=3 (optional): experimental repeats
-    - `n̲ₜ::VecOrMat{Int64}`: Array with the total barcode counts for
-        each time point (on each experimental repeat, if necessary).
+    - `n̲ₜ::VecOrMat{Int64}`: Array with the total barcode counts for each time
+        point (on each experimental repeat, if necessary).
     - `n_neutral::Int`: Number of neutral lineages.
     - `n_mut::Int`: Number of neutral lineages.
 
 ## Optional Keyword Arguments
 - `model_kwargs::Dict=Dict()`: Extra keyword arguments to be passed to the
   `model` function.
-    - `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
-    identifier. The column may include any type of entry.
+    - `id_col::Symbol=:barcode`: Name of the column in `data` containing the
+    barcode identifier. The column may include any type of entry.
 - `time_col::Symbol=:time`: Name of the column in `data` defining the time point
   at which measurements were done. The column may contain any type of entry as
   long as `sort` will result in time-ordered names.
@@ -78,6 +78,9 @@ used to sample from the population mean fitness posterior distribution.
   replicate each measurement belongs to. Default is `nothing`.
 - `env_col::Union{Nothing,Symbol}=nothing`: Column indicating the environment in
   which each measurement was performed. Default is `nothing`.
+- `genotype_col::Union{Nothing,Symbol}=nothing`: Column indicating the genotype
+  each barcode belongs to when fitting a hierarchical model on genotypes.
+  Default is `nothing`.
 - `rm_T0::Bool=false`: Optional argument to remove the first time point from the
   inference. The data from this first time point is commonly of much lower
   quality. Therefore, removing this first time point might result in a better
@@ -89,8 +92,8 @@ used to sample from the population mean fitness posterior distribution.
 - `opt::Union{Turing.AdvancedVI.DecayedADAGrad,Flux.Optimise.AbstractOptimiser}
   = Turing.Variational.DecayedADAGrad(1e-2, 1.1, 0.9)`: Algorithm used to
   compute the model gradient and update the parameters. `Turing.ADVI` can take
-  `Flux.jl` optimizers. But the recommended algorithm in `Stan` is the
-  default `DecayedADAGrad`.  
+  `Flux.jl` optimizers. But the recommended algorithm in `Stan` is the default
+  `DecayedADAGrad`.  
 - `verbose::Bool=true`: Boolean indicating if the function should print partial
   progress to the screen or not.
   
@@ -132,6 +135,7 @@ function advi(;
     neutral_col::Symbol=:neutral,
     rep_col::Union{Nothing,Symbol}=nothing,
     env_col::Union{Nothing,Symbol}=nothing,
+    genotype_col::Union{Nothing,Symbol}=nothing,
     rm_T0::Bool=false,
     advi::Turing.AdvancedVI.VariationalInference=Tuing.ADVI(1, 10_000),
     opt::Union{Turing.AdvancedVI.TruncatedADAGrad,Turing.AdvancedVI.DecayedADAGrad}=Turing.Variational.TruncatedADAGrad(),
@@ -168,6 +172,7 @@ function advi(;
         neutral_col=neutral_col,
         rep_col=rep_col,
         env_col=env_col,
+        genotype_col=genotype_col,
         rm_T0=rm_T0,
         verbose=verbose
     )
@@ -191,6 +196,19 @@ function advi(;
         # Change mk name to model_kwargs
         model_kwargs = mk
     end
+
+    # Check if model is hierarchical on genotypes to manually add genotype list
+    if occursin("genotype", "$(model)")
+        # Initialize empty dictionary that accepts any type
+        mk = Dict{Symbol,Any}(:genotypes => data_dict[:genotypes])
+        # Loop through elements of model_kwargs
+        for (key, item) in model_kwargs
+            # Add element to flexible dictionary
+            setindex!(mk, item, key)
+        end # for
+        # Change mk name to model_kwargs
+        model_kwargs = mk
+    end # if
 
     # Define model
     bayes_model = model(
@@ -238,6 +256,7 @@ function advi(;
                 neutral_col=neutral_col,
                 rep_col=rep_col,
                 env_col=env_col,
+                genotype_col=genotype_col,
                 rm_T0=rm_T0
             )
         )
@@ -263,5 +282,4 @@ function advi(;
 
         return (q, var_names)
     end # if
-
 end # function
