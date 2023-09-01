@@ -547,7 +547,10 @@ Turing.@model function replicate_fitness_normal(
         Turing.@addlogprob! Turing.logpdf(
             Turing.MvNormal(
                 # Build vector for fitness differences
-                reduce(vcat, [s⁽ᵐ⁾ .- s̲ₜ for s⁽ᵐ⁾ in s̲⁽ᵐ⁾[:, rep]]),
+                reduce(
+                    vcat,
+                    [s⁽ᵐ⁾ .- s̲ₜ[time_ranges[rep]] for s⁽ᵐ⁾ in s̲⁽ᵐ⁾[:, rep]]
+                ),
                 # Build vector for variances
                 LinearAlgebra.Diagonal(
                     reduce(
