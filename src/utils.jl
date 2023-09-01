@@ -42,22 +42,37 @@ for the models in the `model` submodule.
   made.
 
 # Returns
-if `typeof(rep_col) <: Nothing` Dictionary with the following entries: 
-    - `bc_count::Matrix`: `T × B` matrix with all barcodes read counts. 
-    - `bc_total::Vector`: `T`-dimensional vector with the total number of reads
-    per time point. 
-    - `n_neutral::Int`: Number of neutral lineages. -
-    `n_mut::Int`: Number of mutant lineages. 
-    - `bc_keys`: List of mutant names in the order used to build `R̲̲`.
-
-elseif `typeof(rep_col) <: Symbol` Dictionary with the following entries: 
-    - `bc_count::Array`: `T × B × R` array with all barcodes read counts. 
-    - `bc_total::Matrix`: `T × R` matrix with the total number of reads per
-        time point per repeat. 
-    - `n_neutral::Int`: Number of neutral lineages. 
-    - `n_mut::Int`: Number of mutant lineages. 
-    - `bc_keys`: List of mutant
-        names in the order used to build `R̲̲`.
+- `data_arrays::Dict`: Dictionary with the following elements:
+    - `bc_ids`: List of barcode IDs in the order they are used for the
+      inference.
+    - `neutral_ids`: List of neutral barcode IDs in the order they are used for
+      the inference.
+    - `bc_count`: Count time series for each barcode. The options can be:
+        - `Matrix{Int64}`: (n_time) × (n_bc) matrix with counts. Rows are time
+          points, columns are barcodes.
+        - `Array{Int64, 3}`: The same as the matrix, except the third dimension
+          represents multiple experimental replicates.
+        - `Vector{Matrix{Int64}}`: List of matrices, one for each experimental
+          replicate. This is when replicates have different number of time
+          points.
+    - `bc_total`: Total number of barcodes per time point. The options can be:
+        - `Vector{Int64}`: Equivalent to summing each row of the matrix.
+        - `Matrix{Int64}`: Equivalent to summing each row of each slice of the
+          tensor.
+        - `Vector{Vector{Int64}}`: Equivalent to summing each row of each
+          matrix.
+    - `n_rep`: Number of experimental replicates.
+    - `n_env`: Number of environmental conditions.
+    - `n_time`: Number of time points. The options can be:
+        - `Int64`: Number of time points on a single replicate or multiple
+          replicates.
+        - `Vector{Int64}`: Number of time points per replicate when replicates
+          have different lengths.
+    - `envs`: List of environments. The options can be:
+        - `String`: Single placeholder `env1`
+        - `Vector{<:Any}`: Environments in the order they were measured.
+        - `vector{Vector{<:Any}}`: Environments per replicate when replicates
+          have different number of time points.
 """
 function data_to_arrays(
     data::DF.AbstractDataFrame;
