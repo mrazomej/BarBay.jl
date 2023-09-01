@@ -25,17 +25,17 @@ for the models in the `model` submodule.
 
 ## Optional Keyword Arguments
 - `id_col::Symbol=:barcode`: Name of the column in `data` containing the barcode
-    identifier. The column may contain any type of entry.
+    identifier. The column may include any type of entry.
 - `time_col::Symbol=:time`: Name of the column in `data` defining the time point
   at which measurements were done. The column may contain any type of entry as
-  long as `sort` will resulted in time-ordered names.
+  long as `sort` will result in time-ordered names.
 - `count_col::Symbol=:count`: Name of the column in `data` containing the raw
   barcode count. The column must contain entries of type `Int64`.
 - `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
-  the barcode belongs to a neutral lineage or not. The column must contain
+  the barcode belongs to a neutral lineage. The column must contain
   entries of type `Bool`.
 - `rm_T0::Bool=false`: Optional argument to remove the first time point from the
-  inference. Commonly, the data from this first time point is of much lower
+  inference. The data from this first time point is commonly of much lower
   quality. Therefore, removing this first time point might result in a better
   inference.
 - `verbose::Bool=true`: Boolean indicating if printing statements should be
@@ -49,18 +49,17 @@ for the models in the `model` submodule.
       the inference.
     - `bc_count`: Count time series for each barcode. The options can be:
         - `Matrix{Int64}`: (n_time) × (n_bc) matrix with counts. Rows are time
-          points, columns are barcodes.
+          points, and columns are barcodes.
         - `Array{Int64, 3}`: The same as the matrix, except the third dimension
           represents multiple experimental replicates.
         - `Vector{Matrix{Int64}}`: List of matrices, one for each experimental
-          replicate. This is when replicates have different number of time
+          replicate. This is when replicates have a different number of time
           points.
     - `bc_total`: Total number of barcodes per time point. The options can be:
-        - `Vector{Int64}`: Equivalent to summing each row of the matrix.
+        - `Vector{Int64}`: Equivalent to summing each matrix row.
         - `Matrix{Int64}`: Equivalent to summing each row of each slice of the
           tensor.
-        - `Vector{Vector{Int64}}`: Equivalent to summing each row of each
-          matrix.
+        - `Vector{Vector{Int64}}`: Equivalent to summing each matrix row.
     - `n_rep`: Number of experimental replicates.
     - `n_env`: Number of environmental conditions.
     - `n_time`: Number of time points. The options can be:
@@ -72,7 +71,7 @@ for the models in the `model` submodule.
         - `String`: Single placeholder `env1`
         - `Vector{<:Any}`: Environments in the order they were measured.
         - `vector{Vector{<:Any}}`: Environments per replicate when replicates
-          have different number of time points.
+          have a different number of time points.
 """
 function data_to_arrays(
     data::DF.AbstractDataFrame;
@@ -404,22 +403,21 @@ a tidy dataframe.
 # Returns
 - `df::DataFrames.DataFrame`: DataFrame containing summary statistics of
 posterior samples for each parameter. Columns include:
-    - `mean, std`: posterior mean and standard deviation for each of the
-      variables.
+    - `mean, std`: posterior mean and standard deviation for each variable.
     - `varname`: parameter name from the ADVI posterior distribution.
     - `vartype`: Description of the type of parameter. The types are:
         - `pop_mean_fitness`: Population mean fitness value `s̲ₜ`.
         - `pop_error`: (Nuisance parameter) Log of standard deviation in the
           likelihood function for the neutral lineages.
         - `bc_fitness`: Mutant relative fitness `s⁽ᵐ⁾`.
-        - `bc_hyperfitness`: For hierarchical models, mutant hyper parameter
+        - `bc_hyperfitness`: For hierarchical models, mutant hyperparameter
           that connects the fitness over multiple experimental replicates or
           multiple genotypes `θ⁽ᵐ⁾`.
         - `bc_noncenter`: (Nuisance parameter) For hierarchical models,
           non-centered samples used to connect the experimental replicates to
           the hyperparameter `θ̃⁽ᵐ⁾`.
-        - `bc_deviations`: (Nuisance parameter) For hierarchicaal models,
-          samples that define the log of the deviation from the hyper parameter
+        - `bc_deviations`: (Nuisance parameter) For hierarchical models,
+          samples that define the log of the deviation from the hyperparameter
           fitness value `logτ⁽ᵐ⁾`.
         - `bc_error`: (Nuisance parameter) Log of standard deviation in the
           likelihood function for the mutant lineages.
