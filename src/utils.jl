@@ -528,7 +528,7 @@ function advi_to_df(
 
     # Extract unique replicates
     if typeof(rep_col) <: Symbol
-        reps = unique(data[:, rep_col])
+        reps = sort(unique(data[:, rep_col]))
     end # if
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
     # Convert distribution parameters into tidy dataframe
