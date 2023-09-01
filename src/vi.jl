@@ -5,9 +5,6 @@ import Suppressor
 import Turing
 import DynamicPPL
 
-# Import library to store output
-import JLD2
-
 # Import library to locate files
 import Glob
 
@@ -19,7 +16,7 @@ import CSV
 using ..stats: build_getq
 
 # Import needed function from the utils module
-using ..utils: data_to_arrays
+using ..utils: data_to_arrays, advi_to_df
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 # Running MCMC for full joint fitness inference π(s̲⁽ᵐ⁾, s̲ₜ | data)
@@ -50,7 +47,7 @@ The `DataFrame` must contain at least the following columns:
 used to sample from the population mean fitness posterior distribution.
 - `n_walkers::Int`: Number of walkers (chains) for the MCMC sample.
 - `n_steps::Int`: Number of steps to take.
-- `outputname::String`: String to name the `.jld2` output file.
+- `outputname::String`: String to name the `.csv` output file.
 - `model::Function`: `Turing.jl` model defining the posterior distribution from
     which to sample (see `BayesFitness.model` module). This function must take
     as the first four inputs the following:
@@ -59,7 +56,7 @@ used to sample from the population mean fitness posterior distribution.
         - dim=1: time.
         - dim=2: genotype.
         - dim=3 (optional): experimental repeats
-    - `n̲t::VecOrMat{Int64}`: Array with the total barcode counts for
+    - `n̲ₜ::VecOrMat{Int64}`: Array with the total barcode counts for
         each time point (on each experimental repeat, if necessary).
     - `n_neutral::Int`: Number of neutral lineages.
     - `n_mut::Int`: Number of neutral lineages.
@@ -97,11 +94,32 @@ used to sample from the population mean fitness posterior distribution.
 - `verbose::Bool=true`: Boolean indicating if the function should print partial
   progress to the screen or not.
   
-# Output
-The output of this function is saved as a `jld2` file with three entries: 
-    - `ids`: The list of the mutant ids in the order used for the inference. 
-    - `var`: List of variables in the variational multivariate distribution. 
-    - `dist`: Multivariate Normal variational distribution.
+  # Returns
+  - `df::DataFrames.DataFrame`: DataFrame containing summary statistics of
+  posterior samples for each parameter. Columns include:
+      - `mean, std`: posterior mean and standard deviation for each variable.
+      - `varname`: parameter name from the ADVI posterior distribution.
+      - `vartype`: Description of the type of parameter. The types are:
+          - `pop_mean_fitness`: Population mean fitness value `s̲ₜ`.
+          - `pop_error`: (Nuisance parameter) Log of standard deviation in the
+            likelihood function for the neutral lineages.
+          - `bc_fitness`: Mutant relative fitness `s⁽ᵐ⁾`.
+          - `bc_hyperfitness`: For hierarchical models, mutant hyperparameter
+            that connects the fitness over multiple experimental replicates or
+            multiple genotypes `θ⁽ᵐ⁾`.
+          - `bc_noncenter`: (Nuisance parameter) For hierarchical models,
+            non-centered samples used to connect the experimental replicates to
+            the hyperparameter `θ̃⁽ᵐ⁾`.
+          - `bc_deviations`: (Nuisance parameter) For hierarchical models,
+            samples that define the log of the deviation from the hyperparameter
+            fitness value `logτ⁽ᵐ⁾`.
+          - `bc_error`: (Nuisance parameter) Log of standard deviation in the
+            likelihood function for the mutant lineages.
+          - `freq`: (Nuisance parameter) Log of the Poisson parameter used to
+            define the frequency of each lineage.
+      - rep: Experimental replicate number.
+      - env: Environment for each parameter.
+      - id: Mutant or neutral strain ID.
 """
 function advi(;
     data::DF.AbstractDataFrame,
@@ -121,7 +139,7 @@ function advi(;
     verbose::Bool=true
 )
     # Define output filename
-    fname = "$(outputname).jld2"
+    fname = "$(outputname).csv"
 
     # Check if file has been processed before
     if isfile(fname)
@@ -131,6 +149,11 @@ function advi(;
     # Check if model is hierarchical for experimental replicates
     if occursin("replicate", "$(model)") & (typeof(rep_col) <: Nothing)
         error("Hierarchical models for experimental replicates require argument `:rep_col`")
+    end # if
+
+    # Check if model is hierarchical for experimental replicates
+    if occursin("multienv", "$(model)") & (typeof(env_col) <: Nothing)
+        error("Models with multiple environments require argument `:env_col`")
     end # if
 
     ## %%%%%%%%%%% Preprocessing data %%%%%%%%%%% ##
@@ -153,6 +176,21 @@ function advi(;
     if verbose
         println("Initialize Variational Inference Optimization...\n")
     end # if
+
+
+    # Check if model is multi-environment to manually add the list of
+    # environments
+    if occursin("multienv", "$(model)")
+        # Initialize empty dictionary that accepts any type
+        mk = Dict{Symbol,Any}(:envs => data_dict[:envs])
+        # Loop through elements of model_kwargs
+        for (key, item) in model_kwargs
+            # Add element to flexible dictionary
+            setindex!(mk, item, key)
+        end # for
+        # Change mk name to model_kwargs
+        model_kwargs = mk
+    end
 
     # Define model
     bayes_model = model(
@@ -187,6 +225,22 @@ function advi(;
     if !fullrank
         # Optimize meanfield variational distribution
         q = Turing.vi(bayes_model, advi; optimizer=opt)
+        # Convert and save output as tidy dataframe
+        CSV.write(
+            fname,
+            advi_to_df(
+                data,
+                q,
+                var_names;
+                id_col=id_col,
+                time_col=time_col,
+                count_col=count_col,
+                neutral_col=neutral_col,
+                rep_col=rep_col,
+                env_col=env_col,
+                rm_T0=rm_T0
+            )
+        )
     else
         # Obtain number of parameters.
         n_param = sum(var_len)
@@ -206,8 +260,8 @@ function advi(;
             randn(n_param_total);
             optimizer=opt
         )
+
+        return (q, var_names)
     end # if
 
-    # Write output into memory
-    JLD2.jldsave("$(fname)", ids=data_dict[:bc_ids], var=var_names, dist=q)
 end # function
