@@ -92,7 +92,7 @@ end # function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    freq_mutant_ppc(df, n_ppc; kwargs)
+    freq_bc_ppc(df, n_ppc; kwargs)
 
 Function to compute the **posterior predictive checks** for the barcode
 frequency for adaptive mutants. Our model predicts the frequency at time ``t+1``
@@ -127,11 +127,11 @@ function generates samples out of this distribution.
 ## Optional Arguments
 - `param::Dict{Symbol, Symbol}`: Dictionary indicating the name of the variables
   in the mcmc chain defining the following variables:
-  - `:mutant_mean_fitness`: Variable defining the inferred mutant fitness value
+  - `:bc_mean_fitness`: Variable defining the inferred mutant fitness value
     `s⁽ᵐ⁾`.
-  - `:mutant_std_fitness`: Variable defining the standard defining the inferred
+  - `:bc_std_fitness`: Variable defining the standard defining the inferred
     standard deviation on the likelihood function `σ⁽ᵐ⁾`.
-  - `mutant_freq`: Variable defining the inferred initial frequency for the
+  - `bc_freq`: Variable defining the inferred initial frequency for the
     mutant.
   - `population_mean_fitness`: Common pattern in all population mean fitness
     variables.
@@ -145,13 +145,13 @@ function generates samples out of this distribution.
 - `fₜ₊₁ = fₜ × exp(s⁽ᵐ⁾ - s̅ₜ)::Array{Float64}`: Evaluation of the frequency
   posterior predictive checks at all times for each MCMC sample.
 """
-function freq_mutant_ppc(
+function freq_bc_ppc(
     df::DF.AbstractDataFrame,
     n_ppc::Int;
     param::Dict{Symbol,Symbol}=Dict(
-        :mutant_mean_fitness => :s⁽ᵐ⁾,
-        :mutant_std_fitness => :σ⁽ᵐ⁾,
-        :mutant_freq => Symbol("f̲⁽ᵐ⁾[1]"),
+        :bc_mean_fitness => :s⁽ᵐ⁾,
+        :bc_std_fitness => :σ⁽ᵐ⁾,
+        :bc_freq => Symbol("f̲⁽ᵐ⁾[1]"),
         :population_mean_fitness => :s̲ₜ,
     ),
     model::Symbol=:lognormal,
@@ -168,7 +168,7 @@ function freq_mutant_ppc(
     f_ppc = Array{Float64}(undef, size(df, 1), length(mean_vars) + 1, n_ppc)
 
     # Set initial frequency
-    f_ppc[:, 1, :] = hcat(repeat([df[:, param[:mutant_freq]]], n_ppc)...)
+    f_ppc[:, 1, :] = hcat(repeat([df[:, param[:bc_freq]]], n_ppc)...)
 
     # Loop through time points
     for (i, var) in enumerate(mean_vars)
@@ -176,9 +176,9 @@ function freq_mutant_ppc(
             # Sample out of posterior distribution
             f_ppc[:, i+1, :] = f_ppc[:, i, :] .* Random.rand(
                 Distributions.MvLogNormal(
-                    df[:, param[:mutant_mean_fitness]] .- df[:, var],
+                    df[:, param[:bc_mean_fitness]] .- df[:, var],
                     LinearAlgebra.Diagonal(
-                        df[:, param[:mutant_std_fitness]] .^ 2
+                        df[:, param[:bc_std_fitness]] .^ 2
                     )
                 ),
                 n_ppc
@@ -187,9 +187,9 @@ function freq_mutant_ppc(
             # Sample out of posterior distribution
             f_ppc[:, i+1, :] = f_ppc[:, i, :] .* Random.rand(
                 Distributions.MvLogNormal(
-                    df[:, param[:mutant_mean_fitness]] .- df[:, var],
+                    df[:, param[:bc_mean_fitness]] .- df[:, var],
                     LinearAlgebra.Diagonal(
-                        exp.(df[:, param[:mutant_std_fitness]]) .^ 2
+                        exp.(df[:, param[:bc_std_fitness]]) .^ 2
                     )
                 ),
                 n_ppc
@@ -209,7 +209,7 @@ function freq_mutant_ppc(
 end # function
 
 @doc raw"""
-    freq_mutant_ppc(chain, n_ppc; kwargs)
+    freq_bc_ppc(chain, n_ppc; kwargs)
 
 Function to compute the **posterior predictive checks** for the barcode
 frequency for adaptive mutants. Our model predicts the frequency at time ``t+1``
@@ -244,11 +244,11 @@ function generates samples out of this distribution.
 ## Optional Arguments
 - `param::Dict{Symbol, Symbol}`: Dictionary indicating the name of the variables
   in the mcmc chain defining the following variables:
-  - `:mutant_mean_fitness`: Variable defining the inferred mutant fitness value
+  - `:bc_mean_fitness`: Variable defining the inferred mutant fitness value
     `s⁽ᵐ⁾`.
-  - `:mutant_std_fitness`: Variable defining the standard defining the inferred
+  - `:bc_std_fitness`: Variable defining the standard defining the inferred
     standard deviation on the likelihood function `σ⁽ᵐ⁾`.
-  - `mutant_freq`: Variable defining the inferred initial frequency for the
+  - `bc_freq`: Variable defining the inferred initial frequency for the
     mutant.
   - `population_mean_fitness`: Common pattern in all population mean fitness
     variables.
@@ -263,13 +263,13 @@ function generates samples out of this distribution.
 - `fₜ₊₁ = fₜ × exp(s⁽ᵐ⁾ - s̅ₜ)::Array{Float64}`: Evaluation of the frequency
   posterior predictive checks at all times for each MCMC sample.
 """
-function freq_mutant_ppc(
+function freq_bc_ppc(
     chain::MCMCChains.Chains,
     n_ppc::Int;
     param::Dict{Symbol,Symbol}=Dict(
-        :mutant_mean_fitness => :s⁽ᵐ⁾,
-        :mutant_std_fitness => :σ⁽ᵐ⁾,
-        :mutant_freq => Symbol("f̲⁽ᵐ⁾[1]"),
+        :bc_mean_fitness => :s⁽ᵐ⁾,
+        :bc_std_fitness => :σ⁽ᵐ⁾,
+        :bc_freq => Symbol("f̲⁽ᵐ⁾[1]"),
         :population_mean_fitness => :s̲ₜ,
     ),
     model::Symbol=:lognormal,
@@ -289,7 +289,7 @@ function freq_mutant_ppc(
     f_ppc = Array{Float64}(undef, n_samples, length(mean_vars) + 1, n_ppc)
 
     # Set initial frequency
-    f_ppc[:, 1, :] = hcat(repeat([chain[param[:mutant_freq]][:]], n_ppc)...)
+    f_ppc[:, 1, :] = hcat(repeat([chain[param[:bc_freq]][:]], n_ppc)...)
 
     # Loop through time points
     for (i, var) in enumerate(mean_vars)
@@ -297,9 +297,9 @@ function freq_mutant_ppc(
             # Sample out of posterior distribution
             f_ppc[:, i+1, :] = f_ppc[:, i, :] .* Random.rand(
                 Distributions.MvLogNormal(
-                    chain[param[:mutant_mean_fitness]][:] .- chain[var][:],
+                    chain[param[:bc_mean_fitness]][:] .- chain[var][:],
                     LinearAlgebra.Diagonal(
-                        chain[param[:mutant_std_fitness]][:] .^ 2
+                        chain[param[:bc_std_fitness]][:] .^ 2
                     )
                 ),
                 n_ppc
@@ -308,9 +308,9 @@ function freq_mutant_ppc(
             # Sample out of posterior distribution
             f_ppc[:, i+1, :] = f_ppc[:, i, :] .* Random.rand(
                 Distributions.MvLogNormal(
-                    chain[param[:mutant_mean_fitness]][:] .- chain[var][:],
+                    chain[param[:bc_mean_fitness]][:] .- chain[var][:],
                     LinearAlgebra.Diagonal(
-                        exp.(chain[param[:mutant_std_fitness]][:]) .^ 2
+                        exp.(chain[param[:bc_std_fitness]][:]) .^ 2
                     )
                 ),
                 n_ppc
@@ -334,7 +334,7 @@ end # function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    logfreq_ratio_mutant_ppc(df, n_ppc; kwargs)
+    logfreq_ratio_bc_ppc(df, n_ppc; kwargs)
 
 Function to compute the **posterior predictive checks** for the barcode
 log-frequency ratio for adaptive mutants. Our model predicts the frequency at
@@ -368,9 +368,9 @@ function generates samples out of this distribution.
 ## Optional Keyword Arguments
 - `param::Dict{Symbol, Symbol}`: Dictionary indicating the name of the variables
 in the mcmc chain defining the following variables:
-  - `:mutant_mean_fitness`: Variable defining the inferred mutant fitness value
+  - `:bc_mean_fitness`: Variable defining the inferred mutant fitness value
     `s⁽ᵐ⁾`.
-  - `:mutant_std_fitness`: Variable defining the standard defining the inferred
+  - `:bc_std_fitness`: Variable defining the standard defining the inferred
     standard deviation on the likelihood function `σ⁽ᵐ⁾`.
   - `population_mean_fitness`: Common pattern in all population mean fitness
     variables.
@@ -385,12 +385,12 @@ in the mcmc chain defining the following variables:
 - `log(fₜ₊₁ / fₜ) = s⁽ᵐ⁾ - s̅ₜ::Array{Float64}`: Evaluation of the frequency
   posterior predictive checks at all times for each MCMC sample.
 """
-function logfreq_ratio_mutant_ppc(
+function logfreq_ratio_bc_ppc(
     df::DF.AbstractDataFrame,
     n_ppc::Int;
     param::Dict{Symbol,Symbol}=Dict(
-        :mutant_mean_fitness => :s⁽ᵐ⁾,
-        :mutant_std_fitness => :σ⁽ᵐ⁾,
+        :bc_mean_fitness => :s⁽ᵐ⁾,
+        :bc_std_fitness => :σ⁽ᵐ⁾,
         :population_mean_fitness => :s̲ₜ,
     ),
     model::Symbol=:lognormal,
@@ -412,9 +412,9 @@ function logfreq_ratio_mutant_ppc(
             # Sample out of posterior distribution
             logγ_ppc[:, i, :] = Random.rand(
                 Distributions.MvNormal(
-                    df[:, param[:mutant_mean_fitness]] .- df[:, var],
+                    df[:, param[:bc_mean_fitness]] .- df[:, var],
                     LinearAlgebra.Diagonal(
-                        df[:, param[:mutant_std_fitness]] .^ 2
+                        df[:, param[:bc_std_fitness]] .^ 2
                     )
                 ),
                 n_ppc
@@ -423,9 +423,9 @@ function logfreq_ratio_mutant_ppc(
             # Sample out of posterior distribution
             logγ_ppc[:, i, :] = Random.rand(
                 Distributions.MvNormal(
-                    df[:, param[:mutant_mean_fitness]] .- df[:, var],
+                    df[:, param[:bc_mean_fitness]] .- df[:, var],
                     LinearAlgebra.Diagonal(
-                        exp.(df[:, param[:mutant_std_fitness]]) .^ 2
+                        exp.(df[:, param[:bc_std_fitness]]) .^ 2
                     )
                 ),
                 n_ppc
@@ -445,7 +445,7 @@ function logfreq_ratio_mutant_ppc(
 end # function
 
 @doc raw"""
-    logfreq_ratio_mutant_ppc(chain, n_ppc; kwargs)
+    logfreq_ratio_bc_ppc(chain, n_ppc; kwargs)
 
 Function to compute the **posterior predictive checks** for the barcode
 log-frequency ratio for adaptive mutants. Our model predicts the frequency at
@@ -479,9 +479,9 @@ function generates samples out of this distribution.
 ## Optional Arguments
 - `param::Dict{Symbol, Symbol}`: Dictionary indicating the name of the variables
 in the mcmc chain defining the following variables:
-  - `:mutant_mean_fitness`: Variable defining the inferred mutant fitness value
+  - `:bc_mean_fitness`: Variable defining the inferred mutant fitness value
     `s⁽ᵐ⁾`.
-  - `:mutant_std_fitness`: Variable defining the standard defining the inferred
+  - `:bc_std_fitness`: Variable defining the standard defining the inferred
     standard deviation on the likelihood function `σ⁽ᵐ⁾`.
   - `population_mean_fitness`: Common pattern in all population mean fitness
     variables.
@@ -496,12 +496,12 @@ in the mcmc chain defining the following variables:
 - `log(fₜ₊₁ / fₜ) = s⁽ᵐ⁾ - s̅ₜ::Array{Float64}`: Evaluation of the frequency
   posterior predictive checks at all times for each MCMC sample.
 """
-function logfreq_ratio_mutant_ppc(
+function logfreq_ratio_bc_ppc(
     chain::MCMCChains.Chains,
     n_ppc::Int;
     param::Dict{Symbol,Symbol}=Dict(
-        :mutant_mean_fitness => :s⁽ᵐ⁾,
-        :mutant_std_fitness => :σ⁽ᵐ⁾,
+        :bc_mean_fitness => :s⁽ᵐ⁾,
+        :bc_std_fitness => :σ⁽ᵐ⁾,
         :population_mean_fitness => :s̲ₜ,
     ),
     model::Symbol=:lognormal,
@@ -526,9 +526,9 @@ function logfreq_ratio_mutant_ppc(
             # Sample out of posterior distribution
             logγ_ppc[:, i, :] = Random.rand(
                 Distributions.MvNormal(
-                    chain[param[:mutant_mean_fitness]][:] .- chain[var][:],
+                    chain[param[:bc_mean_fitness]][:] .- chain[var][:],
                     LinearAlgebra.Diagonal(
-                        chain[param[:mutant_std_fitness]][:] .^ 2
+                        chain[param[:bc_std_fitness]][:] .^ 2
                     )
                 ),
                 n_ppc
@@ -537,9 +537,9 @@ function logfreq_ratio_mutant_ppc(
             # Sample out of posterior distribution
             logγ_ppc[:, i, :] = Random.rand(
                 Distributions.MvNormal(
-                    chain[param[:mutant_mean_fitness]][:] .- chain[var][:],
+                    chain[param[:bc_mean_fitness]][:] .- chain[var][:],
                     LinearAlgebra.Diagonal(
-                        exp.(chain[param[:mutant_std_fitness]][:]) .^ 2
+                        exp.(chain[param[:bc_std_fitness]][:]) .^ 2
                     )
                 ),
                 n_ppc
@@ -834,9 +834,9 @@ function generates samples out of this distribution.
 ## Optional Keyword Arguments
 - `param::Dict{Symbol, Symbol}`: Dictionary indicating the name of the variables
 in the mcmc chain defining the following variables:
-  - `:mutant_mean_fitness`: Variable defining the inferred mutant fitness value
+  - `:bc_mean_fitness`: Variable defining the inferred mutant fitness value
     `s⁽ᵐ⁾`.
-  - `:mutant_std_fitness`: Variable defining the standard defining the inferred
+  - `:bc_std_fitness`: Variable defining the standard defining the inferred
     standard deviation on the likelihood function `σ⁽ᵐ⁾`.
   - `population_mean_fitness`: Common pattern in all population mean fitness
     variables.
@@ -856,8 +856,8 @@ function logfreq_ratio_multienv_ppc(
     n_ppc::Int,
     envs::Vector{<:Any};
     param::Dict{Symbol,Symbol}=Dict(
-        :mutant_mean_fitness => :s̲⁽ᵐ⁾,
-        :mutant_std_fitness => :σ̲⁽ᵐ⁾,
+        :bc_mean_fitness => :s̲⁽ᵐ⁾,
+        :bc_std_fitness => :σ̲⁽ᵐ⁾,
         :population_mean_fitness => :s̲ₜ,
     ),
     model::Symbol=:lognormal,
@@ -880,14 +880,14 @@ function logfreq_ratio_multienv_ppc(
     # Extract variable names for mutant relative fitness
     s_vars = sort(
         DF.names(df)[
-            occursin.(String(param[:mutant_mean_fitness]), DF.names(df))
+            occursin.(String(param[:bc_mean_fitness]), DF.names(df))
         ]
     )
 
     # Extract variable names for mutant relative fitness error
     σ_vars = sort(
         DF.names(df)[
-            occursin.(String(param[:mutant_std_fitness]), DF.names(df))
+            occursin.(String(param[:bc_std_fitness]), DF.names(df))
         ]
     )
 
@@ -1002,8 +1002,8 @@ function logfreq_ratio_multienv_ppc(
     n_ppc::Int,
     envs::Vector{<:Any};
     param::Dict{Symbol,Symbol}=Dict(
-        :mutant_mean_fitness => :s̲⁽ᵐ⁾,
-        :mutant_std_fitness => :σ̲⁽ᵐ⁾,
+        :bc_mean_fitness => :s̲⁽ᵐ⁾,
+        :bc_std_fitness => :σ̲⁽ᵐ⁾,
         :population_mean_fitness => :s̲ₜ,
     ),
     model::Symbol=:lognormal,
@@ -1023,12 +1023,12 @@ function logfreq_ratio_multienv_ppc(
 
     # Extract variable names for mutant relative fitness
     s_vars = sort(
-        MCMCChains.namesingroup(chain, param[:mutant_mean_fitness])
+        MCMCChains.namesingroup(chain, param[:bc_mean_fitness])
     )
 
     # Extract variable names for mutant relative fitness error
     σ_vars = sort(
-        MCMCChains.namesingroup(chain, param[:mutant_std_fitness])
+        MCMCChains.namesingroup(chain, param[:bc_std_fitness])
     )
 
     # Check that number of environments matches number of variables
