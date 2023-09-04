@@ -431,6 +431,10 @@ a tidy dataframe.
 - `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
   the barcode belongs to a neutral lineage or not. The column must contain
   entries of type `Bool`.
+- `rm_T0::Bool=false`: Optional argument to remove the first time point from the
+  inference. The data from this first time point is commonly of much lower
+  quality. Therefore, removing this first time point might result in a better
+  inference.
 - `n_samples::Int=10_000`: Number of posterior samples to draw used for
   hierarchical models. Default is 10,000.
 
@@ -495,7 +499,8 @@ function advi_to_df(
         neutral_col=neutral_col,
         rep_col=rep_col,
         env_col=env_col,
-        genotype_col=genotype_col
+        genotype_col=genotype_col,
+        rm_T0=rm_T0
     )
 
     # Extract number of neutral and mutant lineages
