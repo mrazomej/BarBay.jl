@@ -707,14 +707,14 @@ function advi_to_df(
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
     # Add mutant id column. To be modified
-    df_par[:, :id] .= "N/A"
+    df_par[!, :id] = Vector{Any}(undef, size(df_par, 1))
 
     # Loop through var groups
     for (i, var) in enumerate(var_groups)
         if occursin("̲ₜ", var)
             # Population mean fitness variables are not associated with any
             # particular barcode.
-            continue
+            df_par[var_range[i], :id] .= "N/A"
         elseif var == "θ̲⁽ᵐ⁾"
             if (n_env == 1) & (typeof(genotype_col) <: Nothing)
                 # Add ID information to hyperparameter for single environment
