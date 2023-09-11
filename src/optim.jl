@@ -92,7 +92,7 @@ function optim_joint_fitness(;
     count_col::Symbol=:count,
     neutral_col::Symbol=:neutral,
     rm_T0::Bool=false,
-    optim::Union{Turing.ModeEstimation.MLE,Turing.ModeEstimation.MAP},
+    optim::Union{Turing.MLE,Turing.MAP},
     optimizer::Optim.AbstractOptimizer=Optim.LBFGS(),
     options::Optim.Options=Optim.Options(),
     optimize_kwargs::Dict=Dict(),
