@@ -39,8 +39,8 @@ The `DataFrame` must contain at least the following columns:
     sequence, for example.
 - `time_col`: Column defining the measurement time point.  
 - `count_col`: Column with the raw barcode count.
-- `neutral_col`: Column indicating whether the barcode is from a neutral lineage
-.
+- `neutral_col`: Column indicating whether the barcode is from a neutral
+  lineage.
 
 # Keyword Arguments
 - `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
@@ -120,9 +120,9 @@ used to sample from the population mean fitness posterior distribution.
           likelihood function for the mutant lineages.
         - `freq`: (Nuisance parameter) Log of the Poisson parameter used to
           define the frequency of each lineage.
-    - rep: Experimental replicate number.
-    - env: Environment for each parameter.
-    - id: Mutant or neutral strain ID.
+    - `rep`: Experimental replicate number.
+    - `env`: Environment for each parameter.
+    - `id`: Mutant or neutral strain ID.
 """
 function advi(;
     data::DF.AbstractDataFrame,
