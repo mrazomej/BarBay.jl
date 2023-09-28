@@ -570,13 +570,12 @@ the frequencies of the neutral lineages, i.e.,
 \tag{40}
 ```
 
-Recall that in sec-fitness_model we emphasized that the frequencies
-``f_t^{(n)}`` do not represent the true frequency of a particular lineage in the
-population but rather a "normalized number of cells." Therefore, it is safe to
-assume each of the ``N`` neutral lineages' frequencies is changing
-independently. The correlation of how increasing the frequency of one lineage
-will decrease the frequency of others is already captured in the model presented
-in sec-bayes_freq. Thus, we write
+Earlier, we emphasized that the frequencies ``f_t^{(n)}`` do not represent the
+true frequency of a particular lineage in the population but rather a
+"normalized number of cells." Therefore, it is safe to assume each of the ``N``
+neutral lineages' frequencies is changing independently. The correlation of how
+increasing the frequency of one lineage will decrease the frequency of others is
+already captured in the model presented in sec-bayes_freq. Thus, we write
 
 
 ```math
