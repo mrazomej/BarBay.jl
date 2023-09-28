@@ -3,8 +3,8 @@
 Welcome to the documentation of `BayesFitness.jl`! The accompanying paper,
 *Bayesian inference of relative fitness on high-throughput pooled competition
 assays*, explains all of the biological and mathematical background needed to
-understand this package. Here, we only focus on how to use the package, assuming
-the user already understands the objective of inferring the posterior
+understand this package. Here, we mainly focus on how to use the package,
+assuming the user already understands the objective of inferring the posterior
 probability distribution of the relative fitness of mutant strains in a pooled
 competition assay.
 
@@ -22,7 +22,15 @@ what each module is intended for.
   variational inference modality of the inference pipeline.
 - `mcmc`: The module with which to perform the Markov-Chain Monte Carlo sampling
   of the posterior distributions.
-  
+
+If you are interested in the mathematical details or want to get a quick 
+reminder, please check the [math](@ref) tab.
+
+## Contents
+
+```@contents
+```
+
 ## Example inference
 
 To get you going with the package, let's walk through a basic inference pipeline
@@ -66,11 +74,11 @@ After having imported the libraries, we need to load our dataset into memory.
 
 ```julia
 # Import data
-data = CSV.read("~/git/BayesFitness/test/data/data_example_01.csv", DF.DataFrame)
+data = CSV.read("/path/to/data/tidy_data.csv", DF.DataFrame)
 ```
-Here you will replace `"~/git/BayesFitness/test/data"` with the directory where
-your data is stored, and `"data_example_01.csv"` with the name of the file
-containing the data. The resulting `DataFrame` looks something like this:
+Here you will replace `"/path/to/data/"` with the directory where your data is
+stored, and `"tidy_data.csv"` with the name of the file containing the data. The
+resulting `DataFrame` looks something like this:
 ```
 | time | barcode    | count | neutral | freq        |
 |------|------------|-------|---------|-------------|
@@ -321,183 +329,120 @@ Next, we run the inference.
 BayesFitness.vi.advi(; param...)
 ```
 
-The output of this function is a `.csv` file with `outputname`.
+## Inference output
 
-### Validating the inference
-
-The first step to check the inference results is to load the MCMC chain into
-memory. For this, we need to load the `JLD2.jl` package as well as the
-`MCMCChains.jl` package that allows us to manipulate the data structure
-containing the MCMC chains.
-
-```julia
-# Import package to search file name
-import Glob
-# Import package to load .jld2 files into memory
-import JLD2
-# Import package to manipulate MCMCChains.Chain objects
-import MCMCChains
-
-# Define file
-file = first(Glob.glob("./output/chain_joint_fitness_*"))
-
-# Load list of mutants and MCMC chain
-ids, chn = values(JLD2.load(file))
+After running the inference, the output of is a `.csv` file of the form
+```
+| mean                  | std                  | varname   | vartype          | rep | env  | id     |
+|-----------------------|----------------------|-----------|------------------|-----|------|--------|
+| 0.6769813021009923    | 0.019270434240452546 | s̲ₜ[1]    | pop_mean_fitness | R1  | env1 | N/A    |
+| 0.5979391468267903    | 0.023068814619647663 | s̲ₜ[2]    | pop_mean_fitness | R1  | env1 | N/A    |
+| 0.7794031847044068    | 0.021637905105449048 | s̲ₜ[3]    | pop_mean_fitness | R1  | env1 | N/A    |
+| 1.097531601258874     | 0.020140458476711063 | s̲ₜ[4]    | pop_mean_fitness | R1  | env1 | N/A    |
+| -1.1349279694117884   | 0.13764164137709486  | logσ̲ₜ[1] | pop_std          | R1  | env1 | N/A    |
+| -0.8537538300547914   | 0.14427221564497342  | logσ̲ₜ[2] | pop_std          | R1  | env1 | N/A    |
+| -1.0036841099650615   | 0.14850736993662278  | logσ̲ₜ[3] | pop_std          | R1  | env1 | N/A    |
+| -1.0111319869238307   | 0.13429835511246288  | logσ̲ₜ[4] | pop_std          | R1  | env1 | N/A    |
+| -0.023508979117674522 | 0.42814608044575164  | s̲⁽ᵐ⁾[1]  | bc_fitness       | R1  | env1 | mut001 |
+| -0.08443525829413444  | 0.2749553846185592   | s̲⁽ᵐ⁾[2]  | bc_fitness       | R1  | env1 | mut002 |
+| -0.05274382497169921  | 0.1535891599128269   | s̲⁽ᵐ⁾[3]  | bc_fitness       | R1  | env1 | mut003 |
+| 0.14655295685583677   | 0.32454211197027244  | s̲⁽ᵐ⁾[4]  | bc_fitness       | R1  | env1 | mut004 |
+| 0.06093015139986163   | 0.055690708045292796 | s̲⁽ᵐ⁾[5]  | bc_fitness       | R1  | env1 | mut005 |
+| 0.07170404879708663   | 0.2969475992920767   | s̲⁽ᵐ⁾[6]  | bc_fitness       | R1  | env1 | mut006 |
+| 0.03640967790708551   | 0.2664593948070634   | s̲⁽ᵐ⁾[7]  | bc_fitness       | R1  | env1 | mut007 |
 ```
 
-To diagnose the inference, it is useful to plot both the MCMC traces for each
-walker as well as the resulting density plots. Let's first do this for the
-population mean fitness-related values ``\underline{\bar{s}}_t`` and
-``\underline{\bar{\sigma}}_t``. To do this, we feed the `chain` data structure
-to the `BayesFitnUtils.viz.mcmc_trace_density!` function to
-automatically generate these plots.
+!!! note
+    Recall that our implementation of variational inference assumes the true
+    posterior distribution can be approximated by a multivariate Gaussian
+    distribution with a diagonal covariance matrix. Therefore, the marginal
+    posterior distribution for each of the inferred parameters can be fully
+    parametrized with two numbers: the mean and the standard deviation.
+
+The columns of this file are
+
+- `mean`: The mean of the marginal posterior distribution for the variable.
+- `std`: The standard deviation of the marginal posterior distribution for the
+  variable.
+- `varname`: The name of the variable within the `Turing.jl` model. For the most
+  part, you can ignore this column.
+- `vartype`: Description of the type of parameter. The types are:
+    - `pop_mean_fitness`: Population mean fitness value `s̲ₜ`.
+    - `pop_error`: (Nuisance parameter) Log of standard deviation in the
+      likelihood function for the neutral lineages.
+    - `bc_fitness`: Mutant relative fitness `s⁽ᵐ⁾`.
+    - `bc_hyperfitness`: For hierarchical models, mutant hyperparameter that
+      connects the fitness over multiple experimental replicates or multiple
+      genotypes `θ⁽ᵐ⁾`.
+    - `bc_noncenter`: (Nuisance parameter) For hierarchical models, non-centered
+      samples used to connect the experimental replicates to the hyperparameter
+      `θ̃⁽ᵐ⁾`.
+    - `bc_deviations`: (Nuisance parameter) For hierarchical models, samples
+      that define the log of the deviation from the hyperparameter fitness value
+      `logτ⁽ᵐ⁾`.
+    - `bc_error`: (Nuisance parameter) Log of standard deviation in the
+      likelihood function for the mutant lineages.
+    - `freq`: (Nuisance parameter) Log of the Poisson parameter used to define
+      the frequency of each lineage.
+- `rep`: Experimental replicate number.
+- `env`: Environment for each parameter.
+- `id`: Mutant or neutral strain ID.
+
+## Validating the inference
+
+To visualize the performance of the inference pipeline in fitting the fitness
+model to data, we can compute the so-called posterior predictive checks (PPC).
+In short, the PPC consists of repeatedly generating synthetic datasets in
+agreement with the results from the inference results. In other words, we use
+the resulting parameter values from the ADVI inference to generate possible
+datasets in agreement with the inferred values.
+
+The first step consists of loading the inference results into memory
 
 ```julia
-# Extract variable names
-var_names = vcat(
-    [MCMCChains.namesingroup(chn, :s̲ₜ), MCMCChains.namesingroup(chn, :σ̲ₜ)]...
-)
+# Read ADVI results
+df_advi = CSV.read("/path/to/advi/advi_results.csv", DF.DataFrame)
+```
 
+Next, we generate random samples from the posterior distribution. The idea being
+that we will generate synthetic data for each of these parameter samples 
+consistent with our data. With a large enough number of samples, we should be
+able to determine the range where we expect our data to lie.
+
+```julia
+# Define number of samples
+n_samples = 10_000
+
+# Sample from posterior MvNormal
+df_samples = DF.DataFrame(
+    Random.rand(
+        Distributions.MvNormal(
+            df_advi.mean, LinearAlgebra.Diagonal(df_advi.std .^ 2)
+        ),
+        n_samples
+    )',
+    df_advi.varname
+)
+```
+
+Finally, we can use the [`BayesFitness.stats.logfreq_ratio_popmean_ppc`](@ref)
+function for neutral lineages or
+[`BayesFitness.stats.logfreq_ratio_bc_ppc`](@ref) for non-neutral lineages to
+generate the corresponding posterior predictive checks. In the code that
+follows, we embed this ppc sampling within the generation of diagnostic plots.
+
+!!! warning
+    We remind users that the custom plotting functions are **not** included in
+    the `BayesFitness.jl` package. The following code is only meant to serve as
+    a guidance for users to know how to generate diagnostic plots.
+
+```julia
 # Initialize figure
-fig = Figure(resolution=(600, 800))
+fig = Figure(resolution=(600, 600))
 
-# Generate mcmc_trace_density! plot
-BayesFitUtils.viz.mcmc_trace_density!(fig, chn[var_names]; alpha=0.5)
-```
+# Add grid layout for posterior predictive checks
+gl_ppc = fig[1, 1] = GridLayout()
 
-!!! tip 
-    What we want to see from these plots is that all traces look relatively
-    similar, with no big gaps where the walker got stuck. Furthermore, we want
-    to see that all the densities converged to very similar-looking
-    distributions. That is indeed the case for our dataset.
-
-![](./figs/fig03.svg)
-
-Another way of assessing the output of this inference step is to plot the
-posterior predictive checks against the data. The logic behind the posterior
-predictive checks is the following: before performing the inference on the
-parameters we seek to learn form the data, we have a prior belief of what those
-values can be encoded in our prior distribution. We update this prior belief
-after observing the experimental data given our likelihood function that
-captures our model for the data generating process. Thus, the posterior
-distribution of the parameter values contains our updated belief for what the
-parameter values can be. Therefore, we can sample out of this parameter
-posterior distribution and feed such parameters to our likelihood function to
-generate synthetic data. The expectation is that this simulated data should
-capture the range of experimental data we observed if the model and the inferred
-parameters describe the data generation process.
-
-For this particular case of the population mean fitness, we can use the
-[`BayesFitness.stats.logfreq_ratio_mean_ppc`](@ref) from the
-[`stats`](./stats.md) module to compute the posterior predictive checks. What
-this function does is to generate samples for the log-frequency ratios used to
-infer the population mean fitness values.
-
-!!! info
-    Note that the [`BayesFitness.stats.logfreq_ratio_mean_ppc`](@ref) function
-    has methods to work with either `MCMCChains.Chains` objects or with tidy
-    `DataFrames.DataFrame`. This allows you to use the data structure you are
-    more comfortable working with.
-
-```julia
-# Define dictionary with corresponding parameters for variables needed for
-# the posterior predictive checks
-param = Dict(
-    :population_mean_fitness => :s̲ₜ,
-    :population_std_fitness => :σ̲ₜ,
-)
-
-# Define number of posterior predictive check samples
-n_ppc = 500
-
-# Define colors
-colors = get(ColorSchemes.Blues_9, LinRange(0.25, 1.0, length(qs)))
-
-# Compute posterior predictive checks
-ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
-    chn, n_ppc; param=param
-)
-```
-
-Once we generate these samples, we can plot the quantiles of the simulated data
-with different shades. The `BayesFitUtils.viz.ppc_time_series!` function makes
-this plotting really simple. Let us plot the standard 68-95 as well as the 5
-percentile with different shades of blue and then add the data on top of these
-shaded areas
-
-!!! tip
-    What we expect from this plot is to see that most of the experimental data
-    falls within the range of the simulated data, meaning that the model and the
-    inferred parameters can reproduce the range of our observations.
-
-```julia
-# Define quantiles to compute
-qs = [0.05, 0.68, 0.95]
-
-# Define colors
-colors = get(ColorSchemes.Blues_9, LinRange(0.25, 1.0, length(qs)))
-
-# Define time
-t = vec(collect(axes(ppc_mat, 2)) .+ 1)
-
-# Initialize figure
-fig = Figure(resolution=(450, 350))
-
-# Add axis
-ax = Axis(
-    fig[1, 1],
-    xlabel="time point",
-    ylabel="ln(fₜ₊₁/fₜ)",
-    title="neutral lineages PPC"
-)
-
-# Plot posterior predictive checks
-BayesFitUtils.viz.ppc_time_series!(
-    ax, qs, ppc_mat; colors=colors, time=t
-)
-
-# Plot log-frequency ratio of neutrals
-BayesFitUtils.viz.logfreq_ratio_time_series!(
-    ax,
-    data[data.neutral, :];
-    freq_col=:freq,
-    color=:black,
-    alpha=1.0,
-    linewidth=2
-)
-```
-
-![](./figs/fig04.svg)
-
-This plot shows that the range of inferred population mean fitnesses does
-capture the log-frequency ratios of the neutral lineages. 
-
-Let us repeat this analysis for the mutants. Obviously, with the incredibly
-large number of unique mutant barcodes, it would be difficult to visualize all
-trace-density plots as well as all posterior predictive checks. But we can take
-a random subset of them to make sure they look okay in general.
-
-```julia
-
-# Find columns with mutant fitness values and error
-s_names = MCMCChains.namesingroup(chn, :s̲⁽ᵐ⁾)
-
-# Define barcodes to include
-var_names = StatsBase.sample(s_names, 8)
-
-# Initialize figure
-fig = Figure(resolution=(600, 800))
-
-# Generate mcmc_trace_density! plot
-BayesFitUtils.viz.mcmc_trace_density!(fig, chn[var_names]; alpha=0.5)
-```
-
-![](./figs/fig05.svg)
-
-All these example density and trace plots look good. Next, let us compute and
-plot some example posterior predictive checks for a few mutants. 
-
-```julia
 # Define number of posterior predictive check samples
 n_ppc = 500
 # Define quantiles to compute
@@ -506,11 +451,13 @@ qs = [0.95, 0.675, 0.05]
 # Define number of rows and columns
 n_row, n_col = [4, 4]
 
-# Initialize figure
-fig = Figure(resolution=(300 * n_col, 300 * n_row))
-
 # List example barcodes to plot
-bc_plot = StatsBase.sample(eachrow(df_summary), n_row * n_col)
+bc_plot = StatsBase.sample(
+    eachrow(DF.sort(df_fitness, :mean)),
+    n_row * n_col,
+    replace=false,
+    ordered=true
+)
 
 # Initialize plot counter
 counter = 1
@@ -519,28 +466,76 @@ for row in 1:n_row
     # Loop through columns
     for col in 1:n_col
         # Add axis
-        ax = Axis(fig[row, col])
+        local ax = Axis(gl_ppc[row, col], aspect=AxisAspect(1.25))
+
+        # Check if first first entry
+        if (row == 1) & (col == 1)
+            # Define dictionary with corresponding parameters for variables
+            # needed for the posterior predictive checks
+            param = Dict(
+                :population_mean_fitness => :s̲ₜ,
+                :population_std_fitness => :σ̲ₜ,
+            )
+
+            # Define colors
+            local colors = get(
+                ColorSchemes.Purples_9, LinRange(0.5, 1.0, length(qs))
+            )
+
+            # Compute posterior predictive checks
+            local ppc_mat = BayesFitness.stats.logfreq_ratio_popmean_ppc(
+                df_samples, n_ppc; model=:normal, param=param
+            )
+
+            # Define time
+            t = vec(collect(axes(ppc_mat, 2)) .+ 1)
+
+            # Plot posterior predictive checks
+            BayesFitUtils.viz.ppc_time_series!(
+                ax, qs, ppc_mat; colors=colors, time=t
+            )
+
+            # Plot log-frequency ratio of neutrals
+            BayesFitUtils.viz.logfreq_ratio_time_series!(
+                ax,
+                data[data.neutral, :];
+                freq_col=:freq,
+                color=:black,
+                alpha=1.0,
+                linewidth=1.5
+            )
+
+            # Hide axis decorations
+            hidedecorations!.(ax, grid=false)
+
+            ax.title = "neutral lineages"
+            # ax.titlesize = 18
+
+            counter += 1
+
+            continue
+        end # if
 
         # Extract data
         data_bc = DF.sort(
-            data[data.barcode.==bc_plot[counter].barcode, :], :time
+            data[data.barcode.==bc_plot[counter].id, :], :time
         )
 
         # Define colors
-        colors = get(ColorSchemes.Blues_9, LinRange(0.5, 1.0, length(qs)))
+        local colors = get(ColorSchemes.Blues_9, LinRange(0.5, 1.0, length(qs)))
 
         # Define dictionary with corresponding parameters for variables needed
         # for the posterior predictive checks
-        param = Dict(
-            :mutant_mean_fitness => Symbol(bc_plot[counter].variable),
-            :mutant_std_fitness => Symbol(
-                replace(bc_plot[counter].variable, "s" => "σ")
+        local param = Dict(
+            :bc_mean_fitness => Symbol(bc_plot[counter].varname),
+            :bc_std_fitness => Symbol(
+                replace(bc_plot[counter].varname, "s" => "logσ")
             ),
             :population_mean_fitness => :s̲ₜ,
         )
         # Compute posterior predictive checks
-        ppc_mat = BayesFitness.stats.logfreq_ratio_mutant_ppc(
-            chn, n_ppc; param=param
+        local ppc_mat = BayesFitness.stats.logfreq_ratio_bc_ppc(
+            df_samples, n_ppc; model=:normal, param=param
         )
         # Plot posterior predictive checks
         BayesFitUtils.viz.ppc_time_series!(
@@ -548,11 +543,16 @@ for row in 1:n_row
         )
 
         # Add scatter of data
-        scatterlines!(ax, diff(log.(data_bc.freq)), color=:black, linewidth=2.5)
+        scatterlines!(ax, diff(log.(data_bc.freq)), color=:black, linewidth=2.0)
+
+        # Define fitness ranges to display in title
+        vals = [
+            round(bc_plot[counter].mean; sigdigits=2),
+            round(bc_plot[counter].std; sigdigits=2),
+        ]
 
         # Add title
-        ax.title = "barcode $(first(data_bc.barcode))"
-        ax.titlesize = 18
+        ax.title = "s⁽ᵐ⁾= $(vals[1])±$(vals[2])"
 
         ## == Plot format == ##
 
@@ -565,20 +565,22 @@ for row in 1:n_row
 end # for
 
 # Add x-axis label
-Label(fig[end, :, Bottom()], "time points", fontsize=22)
+Label(gl_ppc[end, :, Bottom()], "time points", fontsize=22)
 # Add y-axis label
-Label(fig[:, 1, Left()], "ln(fₜ₊₁/fₜ)", rotation=π / 2, fontsize=22)
+Label(gl_ppc[:, 1, Left()], "ln(fₜ₊₁/fₜ)", rotation=π / 2, fontsize=22)
+# Set spacing
+rowgap!(gl_ppc, 0)
+colgap!(gl_ppc, 4)
 ```
 
-![](./figs/fig06.svg)
+![](./figs/fig03.svg)
 
-We can see that indeed the recovered fitness value greatly agrees with the data.
+These are examples of the posterior predictive checks for all neutral lineages
+(upper left panel) and a subset of representative mutant lineages. Shaded
+regions represent the 95%, 68%, and 5% credible regions for the data. The
+reported errors above the plot represent the 68% credible region on the mutant
+relative fitness marginal distribution.
 
-This concludes the example inference pipeline. We invited you to explore more
-the potential in the package and please send any comments/requests through the
-GitHub repository issues.
-
-## Contents
-
-```@contents
-```
+As we can see, the data lies within the quantiles, suggesting the inference
+worked and the model is able to capture the general trend of the barcode
+trajectories!
