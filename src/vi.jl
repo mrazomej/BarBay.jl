@@ -97,32 +97,32 @@ used to sample from the population mean fitness posterior distribution.
 - `verbose::Bool=true`: Boolean indicating if the function should print partial
   progress to the screen or not.
   
-  # Returns
-  - `df::DataFrames.DataFrame`: DataFrame containing summary statistics of
+# Returns
+- `df::DataFrames.DataFrame`: DataFrame containing summary statistics of
   posterior samples for each parameter. Columns include:
-      - `mean, std`: posterior mean and standard deviation for each variable.
-      - `varname`: parameter name from the ADVI posterior distribution.
-      - `vartype`: Description of the type of parameter. The types are:
-          - `pop_mean_fitness`: Population mean fitness value `s̲ₜ`.
-          - `pop_error`: (Nuisance parameter) Log of standard deviation in the
-            likelihood function for the neutral lineages.
-          - `bc_fitness`: Mutant relative fitness `s⁽ᵐ⁾`.
-          - `bc_hyperfitness`: For hierarchical models, mutant hyperparameter
-            that connects the fitness over multiple experimental replicates or
-            multiple genotypes `θ⁽ᵐ⁾`.
-          - `bc_noncenter`: (Nuisance parameter) For hierarchical models,
-            non-centered samples used to connect the experimental replicates to
-            the hyperparameter `θ̃⁽ᵐ⁾`.
-          - `bc_deviations`: (Nuisance parameter) For hierarchical models,
-            samples that define the log of the deviation from the hyperparameter
-            fitness value `logτ⁽ᵐ⁾`.
-          - `bc_error`: (Nuisance parameter) Log of standard deviation in the
-            likelihood function for the mutant lineages.
-          - `freq`: (Nuisance parameter) Log of the Poisson parameter used to
-            define the frequency of each lineage.
-      - rep: Experimental replicate number.
-      - env: Environment for each parameter.
-      - id: Mutant or neutral strain ID.
+    - `mean, std`: posterior mean and standard deviation for each variable.
+    - `varname`: parameter name from the ADVI posterior distribution.
+    - `vartype`: Description of the type of parameter. The types are:
+        - `pop_mean_fitness`: Population mean fitness value `s̲ₜ`.
+        - `pop_error`: (Nuisance parameter) Log of standard deviation in the
+          likelihood function for the neutral lineages.
+        - `bc_fitness`: Mutant relative fitness `s⁽ᵐ⁾`.
+        - `bc_hyperfitness`: For hierarchical models, mutant hyperparameter that
+          connects the fitness over multiple experimental replicates or multiple
+          genotypes `θ⁽ᵐ⁾`.
+        - `bc_noncenter`: (Nuisance parameter) For hierarchical models,
+          non-centered samples used to connect the experimental replicates to
+          the hyperparameter `θ̃⁽ᵐ⁾`.
+        - `bc_deviations`: (Nuisance parameter) For hierarchical models, samples
+          that define the log of the deviation from the hyperparameter fitness
+          value `logτ⁽ᵐ⁾`.
+        - `bc_error`: (Nuisance parameter) Log of standard deviation in the
+          likelihood function for the mutant lineages.
+        - `freq`: (Nuisance parameter) Log of the Poisson parameter used to
+          define the frequency of each lineage.
+    - rep: Experimental replicate number.
+    - env: Environment for each parameter.
+    - id: Mutant or neutral strain ID.
 """
 function advi(;
     data::DF.AbstractDataFrame,
