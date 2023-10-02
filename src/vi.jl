@@ -1,12 +1,6 @@
-# Import Suppressor to silence warnings
-import Suppressor
-
 # Import libraries relevant for Bayesian inference
 import Turing
 import DynamicPPL
-
-# Import library to locate files
-import Glob
 
 # Import package to handle DataFrames
 import DataFrames as DF

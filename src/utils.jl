@@ -8,9 +8,6 @@ import StatsBase
 import Distributions
 import Random
 
-# Import function to list files
-import Glob
-
 ##
 
 @doc raw"""

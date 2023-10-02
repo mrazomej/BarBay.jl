@@ -1,6 +1,3 @@
-# Import library to suppress output
-import Suppressor
-
 # Import libraries relevant for MCMC
 import Turing
 import MCMCChains
@@ -8,9 +5,6 @@ import DynamicHMC
 
 # Import library to store output
 import JLD2
-
-# Import library to locate files
-import Glob
 
 # Import package to handle DataFrames
 import DataFrames as DF

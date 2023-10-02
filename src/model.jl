@@ -8,9 +8,6 @@ import Random
 # Import libraries relevant for MCMC
 import Turing
 
-# Functionality for constructing arrays with identical elements efficiently
-import FillArrays
-##
 # Export functions
 
 # Export joint fitness models
