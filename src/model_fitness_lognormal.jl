@@ -3,11 +3,64 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-fitness_lognormal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64}, n_neutral::Int,
-                  n_bc::Int; kwargs...)
+`fitness_lognormal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64}, n_neutral::Int,
+                  n_bc::Int; kwargs...)`
 
 Defines a model to estimate fitness effects in a competitive fitness experiment
 across growth-dilution cycles.
+
+# Model summary
+
+Note: All multivariate normal distributions listed below have diagonal
+covariance matrices. This is equivalent to independent normal random variables,
+but evaluation and sampling is much more computationally efficient.
+
+- Prior on population mean fitness π(s̲ₜ)
+
+s̲ₜ ~ MvNormal(params=s_pop_prior)
+
+- Prior on population mean fitness associated error π(σ̲ₜ)
+
+σ̲ₜ ~ MvLogNormal(params=σ_pop_prior)
+
+- Prior on non-neutral relative fitness π(s̲⁽ᵐ⁾)
+
+s̲⁽ᵐ⁾ ~ MvNormal(params=s_bc_prior)
+
+- Prior on non-neutral relative fitness associated error π(σ̲⁽ᵐ⁾)
+
+σ̲⁽ᵐ⁾ ~ MvLogNormal(params=σ_bc_prior)
+
+- Prior on Poisson distribtion parameters π(λ) (sampled as a T × B matrix for
+  each of the B barcodes over T time points)
+
+Λ̲̲ ~ MvLogNormal(params=λ_prior)
+
+- Probability of total number of barcodes read given the Poisosn distribution
+  parameters π(nₜ | λ̲ₜ)
+
+nₜ ~ Poisson(∑ₜ λₜ)
+
+- Barcode frequencies (deterministic relationship from the Poisson parameters)
+
+fₜ⁽ⁱ⁾ = λₜ⁽ⁱ⁾ / ∑ⱼ λₜ⁽ʲ⁾
+
+- frequency ratios (deterministic relationship from barcode frequencies)
+
+γₜ⁽ⁱ⁾ = fₜ₊₁⁽ⁱ⁾ / fₜ⁽ⁱ⁾
+
+- Probability of number of reads at time t for all barcodes given the total
+  number of reads and the barcode frequencies π(r̲ₜ | nₜ, f̲ₜ)
+
+r̲ₜ ~ Multinomial(nₜ, f̲ₜ)
+
+- Probability of neutral barcodes frequency ratios π(γₜ⁽ⁿ⁾| sₜ, σₜ)
+
+γₜ⁽ⁿ⁾ ~ LogNormal(μ = -sₜ, σ = σₜ)
+
+- Probability of non-neutral barcodes frequency ratios π(γₜ⁽ᵐ⁾| s⁽ᵐ⁾, σ⁽ᵐ⁾, sₜ)
+
+γₜ⁽ᵐ⁾ ~ LogNormal(μ = s⁽ᵐ⁾ - sₜ, σ = σ⁽ᵐ⁾)
 
 # Arguments
 - `R̲̲::Matrix{Int64}`:: `T × B` matrix--split into a vector of vectors for
@@ -44,9 +97,9 @@ across growth-dilution cycles.
   corresponding parameters (Vector: `σ_bc_prior[1]` = mean, `σ_bc_prior[2]` =
   standard deviation, Matrix: `σ_bc_prior[:, 1]` = mean, `σ_bc_prior[:, 2]` =
   standard deviation) for a Log-Normal prior on the mutant fitness error
-  utilized in the log-likelihood function. If `typeof(logσ_bc_prior) <:
-  Matrix`, there should be as many rows in the matrix as mutant lineages ×
-  number of replicates in the dataset.
+  utilized in the log-likelihood function. If `typeof(logσ_bc_prior) <: Matrix`,
+  there should be as many rows in the matrix as mutant lineages × number of
+  replicates in the dataset.
 - `λ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
   corresponding parameters (Vector: `λ_prior[1]` = mean, `λ_prior[2]` = standard
   deviation, Matrix: `λ_prior[:, 1]` = mean, `λ_prior[:, 2]` = standard
