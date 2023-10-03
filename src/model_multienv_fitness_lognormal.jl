@@ -5,16 +5,71 @@
 @doc raw"""
     multienv_fitness_lognormal(R̲̲, n̲ₜ, n_neutral, n_bc; kwargs)
 
-`Turing.jl` model to sample the joint posterior distribution for a competitive
-fitness experiment with different environments on each growth-dilution cycle.
+Defines a model to estimate fitness effects in a competitive fitness experiment
+with different environments across growth-dilution cycles.
 
-# Model
-`[write model here]`
+# Model summary
+
+Note: All multivariate normal distributions listed below have diagonal
+covariance matrices. This is equivalent to independent normal random variables,
+but evaluation and sampling is much more computationally efficient.
+
+- Prior on population mean fitness `π(s̲ₜ)`
+
+`s̲ₜ ~ MvNormal(params=s_pop_prior)`
+
+- Prior on population mean fitness associated error `π(σ̲ₜ)`
+
+`σ̲ₜ ~ MvLogNormal(params=σ_pop_prior)`
+
+- Prior on non-neutral relative fitness `π(sᵢ⁽ᵐ⁾)` (subindex `i` indicates the
+  environment).
+
+`sᵢ⁽ᵐ⁾ ~ Normal(params=s_bc_prior)`
+
+- Prior on non-neutral relative fitness associated error `π(σᵢ⁽ᵐ⁾)` (subindex
+  `i` indicates the environment)
+
+`σᵢ⁽ᵐ⁾ ~ LogNormal(params=σ_bc_prior)`
+
+- Prior on Poisson distribtion parameters `π(λ)` (sampled as a `T × B` matrix
+  for each of the `B` barcodes over `T` time points)
+
+`Λ̲̲ ~ MvLogNormal(params=logλ_prior)`
+
+- Probability of total number of barcodes read given the Poisson distribution
+  parameters `π(nₜ | λ̲ₜ)`
+
+`nₜ ~ Poisson(∑ₜ λₜ)`
+
+- Barcode frequencies (deterministic relationship from the Poisson parameters)
+
+`fₜ⁽ⁱ⁾ = λₜ⁽ⁱ⁾ / ∑ⱼ λₜ⁽ʲ⁾`
+
+- frequency ratios (deterministic relationship from barcode frequencies)
+
+`γₜ⁽ⁱ⁾ = fₜ₊₁⁽ⁱ⁾ / fₜ⁽ⁱ⁾`
+
+- Probability of number of reads at time t for all barcodes given the total
+  number of reads and the barcode frequencies `π(r̲ₜ | nₜ, f̲ₜ)`
+
+`r̲ₜ ~ Multinomial(nₜ, f̲ₜ)`
+
+- Probability of neutral barcodes frequency ratios `π(γₜ⁽ⁿ⁾| sₜ, σₜ)`
+
+`logγₜ⁽ⁿ⁾ ~ Normal(μ = -sₜ, σ = exp(logσₜ))`
+
+- Probability of non-neutral barcodes frequency ratios `π(logγₜ⁽ᵐ⁾| s⁽ᵐ⁾, σ⁽ᵐ⁾,
+    sₜ)`. **Note**: This is done grouping by corresponding environment such that
+    if time `t` is associated with environment `i`, sᵢ⁽ᵐ⁾ is used as the fitness
+    value.
+
+`logγₜ⁽ᵐ⁾ ~ Normal(μ = sᵢ⁽ᵐ⁾ - sₜ, σ = exp(σ⁽ᵐ⁾))`
 
 # Arguments
-- `R̲̲::Matrix{Int64}`:: `T × B` matrix--split into a vector of vectors
-  for computational efficiency--where `T` is the number of time points in the
-  data set and `B` is the number of barcodes. Each column represents the barcode
+- `R̲̲::Matrix{Int64}`:: `T × B` matrix--split into a vector of vectors for
+  computational efficiency--where `T` is the number of time points in the data
+  set and `B` is the number of barcodes. Each column represents the barcode
   count trajectory for a single lineage. **NOTE**: This matrix does not
   necessarily need to be equivalent to `hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)`. This is because
   `R̲̲⁽ᵐ⁾` can exclude mutant barcodes to perform the joint inference only for a
