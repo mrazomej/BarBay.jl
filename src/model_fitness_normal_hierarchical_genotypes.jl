@@ -3,14 +3,86 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-genotype_fitness_normal(R̲̲::Vector{Matrix{Int64}}, n̲ₜ::Vector{Vector{Int64}},
-                        n_neutral::Int, n_bc::Int; kwargs...)
+`genotype_fitness_normal(R̲̲::Vector{Matrix{Int64}}, n̲ₜ::Vector{Vector{Int64}},
+                        n_neutral::Int, n_bc::Int; kwargs...)`
 
 Defines a hierarchical model to estimate fitness effects in a competitive
 fitness experiment where multiple barcodes belong to a specific "genotype." This
 means that different barcodes are grouped together through a fitness
 hyperparameter where each barcode samples from the distribution of this
 hyperparameter.
+
+# Model summary
+
+Note: All multivariate normal distributions listed below have diagonal
+covariance matrices. This is equivalent to independent normal random variables,
+but evaluation and sampling is much more computationally efficient.
+
+- Prior on population mean fitness `π(s̲ₜ)`
+
+`s̲ₜ ~ MvNormal(params=s_pop_prior)`
+
+- Prior on population *log* mean fitness associated error `π(logσ̲ₜ)`
+
+`logσ̲ₜ ~ MvNormal(params=logσ_pop_prior)`
+
+- Prior on non-neutral relative **hyper**-fitness `π(θ̲⁽ᵐ⁾)`
+
+`θ̲⁽ᵐ⁾ ~ MvNormal(params=s_bc_prior)`
+
+- prior on non-centered samples that allow local fitness to vary in the positive
+  and negative direction for genotype `i` `π(θ̲̃ᵢ⁽ᵐ⁾)`. Note, this is a standard
+  normal with mean zero and standard deviation one. 
+
+`θ̲̃ᵢ⁽ᵐ⁾ ~ MvNormal(μ = 0̲, σ = I̲̲)`
+
+- prior on *log* deviations of local fitness from hyper-fitness for genotype `i`
+  π(logτ̲ᵢ⁽ᵐ⁾)
+
+`logτ̲ᵢ⁽ᵐ⁾ ~ MvNormal(params=logτ_prior)`
+
+- *local* relative fitness for non-neutral barcode `m` with genotype `i`
+  (deterministic relationship from hyper-priors)
+
+`sᵢ⁽ᵐ⁾ ~ θ̲⁽ᵐ⁾ + θ̲̃ᵢ⁽ᵐ⁾ * exp(logτ̲ᵢ⁽ᵐ⁾)`
+
+- Prior on non-neutral *log* relative fitness associated error for non-neutrla
+  barcode `m` with genotype `i`, `π(logσ̲ᵢ⁽ᵐ⁾)`
+
+`logσ̲ᵢ⁽ᵐ⁾ ~ MvNormal(params=logσ_bc_prior)`
+
+- Prior on *log* Poisson distribtion parameters `π(logλ)` (sampled as a `T × B`
+  matrix for each of the `B` barcodes over `T` time points)
+
+`logΛ̲̲ ~ MvLogNormal(params=logλ_prior)`
+
+- Probability of total number of barcodes read given the Poisson distribution
+  parameters `π(nₜ | exp(logλ̲ₜ))`
+
+`nₜ ~ Poisson(∑ₜ exp(λₜ))`
+
+- Barcode frequencies (deterministic relationship from the Poisson parameters)
+
+`fₜ⁽ʲ⁾ = λₜ⁽ʲ⁾ / ∑ₖ λₜ⁽ᵏ⁾`
+
+- *log* frequency ratios (deterministic relationship from barcode frequencies)
+
+`logγₜ⁽ʲ⁾ = log(fₜ₊₁⁽ʲ⁾ / fₜ⁽ʲ⁾`)
+
+- Probability of number of reads at time t for all barcodes given the total
+  number of reads and the barcode frequencies `π(r̲ₜ | nₜ, f̲ₜ)`
+
+`r̲ₜ ~ Multinomial(nₜ, f̲ₜ)`
+
+- Probability of neutral barcodes frequency ratios `π(logγₜ⁽ⁿ⁾| sₜ, σₜ)`
+
+`logγₜ⁽ⁿ⁾ ~ Normal(μ = -sₜ, σ = exp(logσₜ))`
+
+- Probability of non-neutral barcodes frequency ratios for non-neutrla barcode
+  `m` with genotype `i` `π(logγₜ⁽ᵐ⁾| sᵢ⁽ᵐ⁾, logσᵢ⁽ᵐ⁾,
+  sₜ)`
+
+`logγₜ⁽ᵐ⁾ ~ Normal(μ = sᵢ⁽ᵐ⁾ - sₜ, σ = exp(logσᵢ⁽ᵐ⁾))`
 
 # Arguments
 - `R̲̲::Vector{Matrix{Int64}}`:: Length `R` vector wth `T × B` matrices where
@@ -50,9 +122,9 @@ hyperparameter.
   number of mutant lineages × number of replicates in the dataset. 
 - `logσ_bc_prior::VecOrMat{Float64}=[0.0, 1.0]`: Vector or Matrix with the
   corresponding parameters (Vector: `logσ_bc_prior[1]` = mean,
-  `logσ_bc_prior[2]` = standard deviation, Matrix: `logσ_bc_prior[:, 1]` =
-  mean, `logσ_bc_prior[:, 2]` = standard deviation) for a Normal prior on the
-  mutant fitness error utilized in the log-likelihood function. If
+  `logσ_bc_prior[2]` = standard deviation, Matrix: `logσ_bc_prior[:, 1]` = mean,
+  `logσ_bc_prior[:, 2]` = standard deviation) for a Normal prior on the mutant
+  fitness error utilized in the log-likelihood function. If
   `typeof(logσ_bc_prior) <: Matrix`, there should be as many rows in the matrix
   as mutant lineages × number of replicates in the dataset.
 - `logλ_prior::VecOrMat{Float64}=[3.0, 3.0]`: Vector or Matrix with the
