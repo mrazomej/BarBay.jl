@@ -8,19 +8,9 @@ import Random
 # Import libraries relevant for MCMC
 import Turing
 
-# Export functions
-
-# Export joint fitness models
-export fitness_lognormal
-
-##
-
 # ============================================================================ # 
 # Include functions
 # ============================================================================ # 
-
-# Population mean fitness inference from neutrals data π(s̲ₜ | data)
-include("./model_neutrals_normal.jl")
 
 # fitness inference π(s̲⁽ᵐ⁾, s̲ₜ | data)
 include("./model_fitness_normal.jl")
