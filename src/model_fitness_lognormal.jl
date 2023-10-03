@@ -15,52 +15,52 @@ Note: All multivariate normal distributions listed below have diagonal
 covariance matrices. This is equivalent to independent normal random variables,
 but evaluation and sampling is much more computationally efficient.
 
-- Prior on population mean fitness π(s̲ₜ)
+- Prior on population mean fitness `π(s̲ₜ)`
 
-s̲ₜ ~ MvNormal(params=s_pop_prior)
+`s̲ₜ ~ MvNormal(params=s_pop_prior)`
 
-- Prior on population mean fitness associated error π(σ̲ₜ)
+- Prior on population mean fitness associated error `π(σ̲ₜ)`
 
-σ̲ₜ ~ MvLogNormal(params=σ_pop_prior)
+`σ̲ₜ ~ MvLogNormal(params=σ_pop_prior)`
 
-- Prior on non-neutral relative fitness π(s̲⁽ᵐ⁾)
+- Prior on non-neutral relative fitness `π(s̲⁽ᵐ⁾)`
 
-s̲⁽ᵐ⁾ ~ MvNormal(params=s_bc_prior)
+`s̲⁽ᵐ⁾ ~ MvNormal(params=s_bc_prior)`
 
-- Prior on non-neutral relative fitness associated error π(σ̲⁽ᵐ⁾)
+- Prior on non-neutral relative fitness associated error `π(σ̲⁽ᵐ⁾)`
 
-σ̲⁽ᵐ⁾ ~ MvLogNormal(params=σ_bc_prior)
+`σ̲⁽ᵐ⁾ ~ MvLogNormal(params=σ_bc_prior)`
 
-- Prior on Poisson distribtion parameters π(λ) (sampled as a T × B matrix for
-  each of the B barcodes over T time points)
+- Prior on Poisson distribtion parameters `π(λ)` (sampled as a `T × B` matrix for
+  each of the `B` barcodes over `T` time points)
 
-Λ̲̲ ~ MvLogNormal(params=λ_prior)
+`Λ̲̲ ~ MvLogNormal(params=λ_prior)`
 
-- Probability of total number of barcodes read given the Poisosn distribution
-  parameters π(nₜ | λ̲ₜ)
+- Probability of total number of barcodes read given the Poisson distribution
+  parameters `π(nₜ | λ̲ₜ)`
 
-nₜ ~ Poisson(∑ₜ λₜ)
+`nₜ ~ Poisson(∑ₜ λₜ)`
 
 - Barcode frequencies (deterministic relationship from the Poisson parameters)
 
-fₜ⁽ⁱ⁾ = λₜ⁽ⁱ⁾ / ∑ⱼ λₜ⁽ʲ⁾
+`fₜ⁽ⁱ⁾ = λₜ⁽ⁱ⁾ / ∑ⱼ λₜ⁽ʲ⁾`
 
 - frequency ratios (deterministic relationship from barcode frequencies)
 
-γₜ⁽ⁱ⁾ = fₜ₊₁⁽ⁱ⁾ / fₜ⁽ⁱ⁾
+`γₜ⁽ⁱ⁾ = fₜ₊₁⁽ⁱ⁾ / fₜ⁽ⁱ⁾`
 
 - Probability of number of reads at time t for all barcodes given the total
-  number of reads and the barcode frequencies π(r̲ₜ | nₜ, f̲ₜ)
+  number of reads and the barcode frequencies `π(r̲ₜ | nₜ, f̲ₜ)`
 
-r̲ₜ ~ Multinomial(nₜ, f̲ₜ)
+`r̲ₜ ~ Multinomial(nₜ, f̲ₜ)`
 
-- Probability of neutral barcodes frequency ratios π(γₜ⁽ⁿ⁾| sₜ, σₜ)
+- Probability of neutral barcodes frequency ratios `π(γₜ⁽ⁿ⁾| sₜ, σₜ)`
 
-γₜ⁽ⁿ⁾ ~ LogNormal(μ = -sₜ, σ = σₜ)
+`γₜ⁽ⁿ⁾ ~ LogNormal(μ = -sₜ, σ = σₜ)`
 
-- Probability of non-neutral barcodes frequency ratios π(γₜ⁽ᵐ⁾| s⁽ᵐ⁾, σ⁽ᵐ⁾, sₜ)
+- Probability of non-neutral barcodes frequency ratios `π(γₜ⁽ᵐ⁾| s⁽ᵐ⁾, σ⁽ᵐ⁾, sₜ)`
 
-γₜ⁽ᵐ⁾ ~ LogNormal(μ = s⁽ᵐ⁾ - sₜ, σ = σ⁽ᵐ⁾)
+`γₜ⁽ᵐ⁾ ~ LogNormal(μ = s⁽ᵐ⁾ - sₜ, σ = σ⁽ᵐ⁾)`
 
 # Arguments
 - `R̲̲::Matrix{Int64}`:: `T × B` matrix--split into a vector of vectors for
