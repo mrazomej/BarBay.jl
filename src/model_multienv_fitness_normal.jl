@@ -36,16 +36,16 @@ but evaluation and sampling is much more computationally efficient.
 - Prior on *log* Poisson distribtion parameters `π(logλ)` (sampled as a `T × B`
   matrix for each of the `B` barcodes over `T` time points)
 
-`logΛ̲̲ ~ MvLogNormal(params=logλ_prior)`
+`logΛ̲̲ ~ MvNormal(params=logλ_prior)`
 
 - Probability of total number of barcodes read given the Poisson distribution
-  parameters `π(nₜ | exp(logλ̲ₜ))`
+  parameters `π(nₜ | logλ̲ₜ)`
 
-`nₜ ~ Poisson(∑ₜ exp(λₜ))`
+`nₜ ~ Poisson(∑ₜ exp(logλₜ))`
 
 - Barcode frequencies (deterministic relationship from the Poisson parameters)
 
-`fₜ⁽ⁱ⁾ = λₜ⁽ⁱ⁾ / ∑ⱼ λₜ⁽ʲ⁾`
+`fₜ⁽ⁱ⁾ = exp(logλₜ⁽ⁱ⁾) / ∑ⱼ exp(λₜ⁽ʲ⁾)`
 
 - *log* frequency ratios (deterministic relationship from barcode frequencies)
 
@@ -56,7 +56,7 @@ but evaluation and sampling is much more computationally efficient.
 
 `r̲ₜ ~ Multinomial(nₜ, f̲ₜ)`
 
-- Probability of neutral barcodes frequency ratios `π(logγₜ⁽ⁿ⁾| sₜ, σₜ)`
+- Probability of neutral *log* barcodes frequency ratios `π(logγₜ⁽ⁿ⁾| sₜ, σₜ)`
 
 `logγₜ⁽ⁿ⁾ ~ Normal(μ = -sₜ, σ = exp(logσₜ))`
 
