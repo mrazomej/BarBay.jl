@@ -1127,9 +1127,9 @@ end # function
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-    Function to build a full-rank distribution to be used for ADVI optimization.
-    The code in this function comes from (`Turing.jl
-    tutorial`)[https://turinglang.org/v0.28/tutorials/09-variational-inference/]
+Function to build a full-rank distribution to be used for ADVI optimization.
+The code in this function comes from (`Turing.jl
+tutorial`)[https://turinglang.org/v0.28/tutorials/09-variational-inference/]
 
 # Arguments
 - `dim::Int`: Dimensionality of parameter space.
