@@ -3,8 +3,8 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-replicate_fitness_normal(R̲̲::Array{Int64,3}, n̲ₜ::Matrix{Int64},
-                      n_neutral::Int, n_bc::Int; kwargs...)
+`replicate_fitness_normal(R̲̲::Array{Int64,3}, n̲ₜ::Matrix{Int64},
+                      n_neutral::Int, n_bc::Int; kwargs...)`
 
 Defines a hierarchical model to estimate fitness effects in a competitive
 fitness experiment across growth-dilution cycles over multiple experimental

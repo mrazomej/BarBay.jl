@@ -4,8 +4,8 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-multienv_replicate_fitness_normal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64},
-                               n_neutral::Int, n_bc::Int; kwargs...)
+`multienv_replicate_fitness_normal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64},
+                               n_neutral::Int, n_bc::Int; kwargs...)`
 
 Defines a hierarchical model to estimate fitness effects in a competitive
 fitness experiment with different environments across growth-dilution cycles

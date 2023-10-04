@@ -1,6 +1,6 @@
 @doc raw"""
-fitness_normal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64}, n_neutral::Int,
-                  n_bc::Int; kwargs...)
+`fitness_normal(R̲̲::Matrix{Int64}, n̲ₜ::Vector{Int64}, n_neutral::Int,
+                  n_bc::Int; kwargs...)`
 
 Defines a model to estimate fitness effects in a competitive fitness experiment
 across growth-dilution cycles.
