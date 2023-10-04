@@ -46,7 +46,7 @@ Turing.setadbackend(:reversediff)
 Turing.setrdcache(true)
 ```
 
-## Single dataset inference
+## Single dataset single environment variational inference
 
 For the case where there is a single dataset produced with a series of
 growth-dilution cycles over a single environment.
@@ -152,7 +152,98 @@ println("Running Variational Inference...")
 @time BayesFitness.vi.advi(; param...)
 ```
 
-## Multi-environment single dataset
+## Single dataset single environment MCMC sampling
+
+If the number of barcodes is relatively small, one can try a more exact sampling
+of the posterior with MCMC. `BayesFitness` is structured such that the changes
+from fitting a model with ADVI vs MCMC are minimal. Here is an example script to
+fit the same dataset as before using Dynamic HMC:
+
+```julia
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Define MCMC hyerparameters
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+n_steps = 3_000
+n_walkers = 4
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Generate output directories
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Generate output directory 
+if !isdir("./output/")
+    mkdir("./output/")
+end # if
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Loading the data
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+println("Loading data...")
+
+# Import data
+data = CSV.read(
+    "path/to/data/tidy_data.csv", DF.DataFrame
+)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Obtain priors on expected errors from neutral measurements
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Compute naive priors from neutral strains
+naive_priors = BayesFitness.stats.naive_prior(data)
+
+# Select standard deviation parameters
+s_pop_prior = hcat(
+    naive_priors[:s_pop_prior],
+    repeat([0.05], length(naive_priors[:s_pop_prior]))
+)
+
+logσ_pop_prior = hcat(
+    naive_priors[:logσ_pop_prior],
+    repeat([1.0], length(naive_priors[:logσ_pop_prior]))
+)
+
+logσ_bc_prior = [StatsBase.mean(naive_priors[:logσ_pop_prior]), 1.0]
+
+logλ_prior = hcat(
+    naive_priors[:logλ_prior],
+    repeat([3.0], length(naive_priors[:logλ_prior]))
+)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Initialize MCMC sampling
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+println("Initializing MCMC sampling...\n")
+
+# Define function parameters
+param = Dict(
+    :data => data,
+    :n_walkers => n_walkers,
+    :n_steps => n_steps,
+    :outputname => "./output/chain_joint_fitness_$(n_steps)steps_$(lpad(n_walkers, 2, "0"))walkers",
+    :model => BayesFitness.model.fitness_normal,
+    :model_kwargs => Dict(
+        :s_pop_prior => s_pop_prior,
+        :logσ_pop_prior => logσ_pop_prior,
+        :logσ_bc_prior => logσ_bc_prior,
+        :s_bc_prior => [0.0, 1.0],
+        :logλ_prior => logλ_prior,
+    ),
+    :sampler => Turing.externalsampler(DynamicHMC.NUTS()),
+    :ensemble => Turing.MCMCThreads(),
+    :rm_T0 => false,
+)
+
+# Run inference
+println("Running Inference...")
+
+@time BayesFitness.mcmc.mcmc_sample(; param...)
+```
+
+## Multi-environment single dataset variational inference
 
 When dealing with an experiment where the growth-dilution cycles were done into
 different environments, the data should include a column indicating the 
@@ -255,7 +346,7 @@ println("Running Variational Inference...")
 @time BayesFitness.vi.advi(; param...)
 ```
 
-## Hierarchical model for multiple experimental replicates
+## Hierarchical model for multiple experimental replicates variational inference
 
 If there are more than one experimental replicates, the dataset must include a
 column indicating the replicate ID for each observation. The dataset ends up
@@ -361,7 +452,7 @@ println("Running Variational Inference...")
 @time BayesFitness.vi.advi(; param...)
 ```
 
-## Hierarchical model for multiple barcodes mapping to same genotype
+## Hierarchical model for multiple barcodes mapping to same genotype variational inference
 
 When multiple barcodes map to the same genotype within a single experiment, the
 dataset must include a column indicating the genotype each barcode belongs to.

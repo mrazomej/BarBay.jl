@@ -1,5 +1,9 @@
 # math
 
+In this section we specify the core of the mathematical and statistical model
+behind the package. We invite the user to read the accompanying paper if some
+questions remain after reading this section.
+
 ## Preliminaries on mathematical notation
 
 Before jumping directly into the Bayesian inference pipeline, let us establish
