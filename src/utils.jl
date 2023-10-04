@@ -11,7 +11,7 @@ import Random
 ##
 
 @doc raw"""
-    data_to_arrays(data; kwargs)
+`data_to_arrays(data; kwargs)`
 
 Function to preprocess the tidy dataframe `data` into the corresponding inputs
 for the models in the `model` submodule.
@@ -404,8 +404,8 @@ function data_to_arrays(
 end # function
 
 @doc raw"""
-advi_to_df(data::DataFrames.AbstractDataFrame, dist::Distribution.Sampleable,
-           vars::Vector{<:Any}; kwargs)
+`advi_to_df(data::DataFrames.AbstractDataFrame, dist::Distribution.Sampleable,
+           vars::Vector{<:Any}; kwargs)`
 
 Convert the output of automatic differentiation variational inference (ADVI) to
 a tidy dataframe.
