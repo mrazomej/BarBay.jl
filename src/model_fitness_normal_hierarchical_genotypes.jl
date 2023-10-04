@@ -14,73 +14,71 @@ hyperparameter.
 
 # Model summary
 
-Note: All multivariate normal distributions listed below have diagonal
-covariance matrices. This is equivalent to independent normal random variables,
-but evaluation and sampling is much more computationally efficient.
+- Prior on population mean fitness at time `t`, `π(sₜ)`
 
-- Prior on population mean fitness `π(s̲ₜ)`
+`sₜ ~ Normal(params=s_pop_prior)`
 
-`s̲ₜ ~ MvNormal(params=s_pop_prior)`
+- Prior on population *log* mean fitness associated error `π(logσₜ)`
 
-- Prior on population *log* mean fitness associated error `π(logσ̲ₜ)`
+`logσₜ ~ Normal(params=logσ_pop_prior)`
 
-`logσ̲ₜ ~ MvNormal(params=logσ_pop_prior)`
+- Prior on non-neutral relative **hyper**-fitness for genotype `i` `π(θᵢ)`
 
-- Prior on non-neutral relative **hyper**-fitness `π(θ̲⁽ᵐ⁾)`
-
-`θ̲⁽ᵐ⁾ ~ MvNormal(params=s_bc_prior)`
+`θᵢ ~ Normal(params=s_bc_prior)`
 
 - prior on non-centered samples that allow local fitness to vary in the positive
-  and negative direction for genotype `i` `π(θ̲̃ᵢ⁽ᵐ⁾)`. Note, this is a standard
+  and negative direction for genotype `i` `π(θ̃ᵢ⁽ᵐ⁾)`. Note, this is a standard
   normal with mean zero and standard deviation one. 
 
-`θ̲̃ᵢ⁽ᵐ⁾ ~ MvNormal(μ = 0̲, σ = I̲̲)`
+`θ̃ᵢ⁽ᵐ⁾ ~ Normal(μ = 0, σ = 1)`
 
-- prior on *log* deviations of local fitness from hyper-fitness for genotype `i`
-  π(logτ̲ᵢ⁽ᵐ⁾)
+- prior on *log* deviations of local fitness of barcode `m` from hyper-fitness
+  for genotype `i` π(logτᵢ⁽ᵐ⁾)
 
-`logτ̲ᵢ⁽ᵐ⁾ ~ MvNormal(params=logτ_prior)`
+`logτᵢ⁽ᵐ⁾ ~ Normal(params=logτ_prior)`
 
 - *local* relative fitness for non-neutral barcode `m` with genotype `i`
   (deterministic relationship from hyper-priors)
 
-`sᵢ⁽ᵐ⁾ ~ θ̲⁽ᵐ⁾ + θ̲̃ᵢ⁽ᵐ⁾ * exp(logτ̲ᵢ⁽ᵐ⁾)`
+`sᵢ⁽ᵐ⁾ = θᵢ + θ̃ᵢ⁽ᵐ⁾ * exp(logτᵢ⁽ᵐ⁾)`
 
-- Prior on non-neutral *log* relative fitness associated error for non-neutrla
-  barcode `m` with genotype `i`, `π(logσ̲ᵢ⁽ᵐ⁾)`
+- Prior on non-neutral *log* relative fitness associated error for non-neutral
+  barcode `m` with genotype `i`, `π(logσᵢ⁽ᵐ⁾)`
 
-`logσ̲ᵢ⁽ᵐ⁾ ~ MvNormal(params=logσ_bc_prior)`
+`logσᵢ⁽ᵐ⁾ ~ Normal(params=logσ_bc_prior)`
 
-- Prior on *log* Poisson distribtion parameters `π(logλ)` (sampled as a `T × B`
-  matrix for each of the `B` barcodes over `T` time points)
+- Prior on *log* Poisson distribtion parameters for barcode `m` at time `t` in
+  replicate `r`, `π(logλₜᵣ⁽ᵐ⁾)` 
 
-`logΛ̲̲ ~ MvLogNormal(params=logλ_prior)`
+`logλₜᵣ⁽ᵐ⁾ ~ Normal(params=logλ_prior)`
 
 - Probability of total number of barcodes read given the Poisson distribution
-  parameters `π(nₜ | exp(logλ̲ₜ))`
+  parameters `π(nₜ | logλ̲ₜ)`
 
-`nₜ ~ Poisson(∑ₜ exp(λₜ))`
+`nₜ ~ Poisson(∑ₖ exp(λₜ⁽ᵏ⁾))`
 
-- Barcode frequencies (deterministic relationship from the Poisson parameters)
+- Barcode `j` frequency at time `t` (deterministic relationship from the Poisson
+  parameters)
 
 `fₜ⁽ʲ⁾ = λₜ⁽ʲ⁾ / ∑ₖ λₜ⁽ᵏ⁾`
 
-- *log* frequency ratios (deterministic relationship from barcode frequencies)
+- - *log* frequency ratio for barcode `j` at time `t` (deterministic
+    relationship from barcode frequencies)
 
 `logγₜ⁽ʲ⁾ = log(fₜ₊₁⁽ʲ⁾ / fₜ⁽ʲ⁾`)
 
-- Probability of number of reads at time t for all barcodes given the total
+- Probability of number of reads at time `t` for all barcodes given the total
   number of reads and the barcode frequencies `π(r̲ₜ | nₜ, f̲ₜ)`
 
 `r̲ₜ ~ Multinomial(nₜ, f̲ₜ)`
 
-- Probability of neutral barcodes frequency ratios `π(logγₜ⁽ⁿ⁾| sₜ, σₜ)`
+- Probability of neutral barcodes `n` frequency ratio at time `t` `π(logγₜ⁽ⁿ⁾|
+  sₜ, logσₜ)`
 
 `logγₜ⁽ⁿ⁾ ~ Normal(μ = -sₜ, σ = exp(logσₜ))`
 
-- Probability of non-neutral barcodes frequency ratios for non-neutrla barcode
-  `m` with genotype `i` `π(logγₜ⁽ᵐ⁾| sᵢ⁽ᵐ⁾, logσᵢ⁽ᵐ⁾,
-  sₜ)`
+- Probability of non-neutral barcode `m` with genotype `i` frequency ratio at
+  time `t` `π(logγₜ⁽ᵐ⁾| sᵢ⁽ᵐ⁾, logσᵢ⁽ᵐ⁾, sₜ)`
 
 `logγₜ⁽ᵐ⁾ ~ Normal(μ = sᵢ⁽ᵐ⁾ - sₜ, σ = exp(logσᵢ⁽ᵐ⁾))`
 

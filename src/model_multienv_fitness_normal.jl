@@ -11,59 +11,59 @@ with different environments across growth-dilution cycles.
 
 # Model summary
 
-Note: All multivariate normal distributions listed below have diagonal
-covariance matrices. This is equivalent to independent normal random variables,
-but evaluation and sampling is much more computationally efficient.
+- Prior on population mean fitness at time `t`, `π(sₜ)`
 
-- Prior on population mean fitness `π(s̲ₜ)`
+`sₜ ~ Normal(params=s_pop_prior)`
 
-`s̲ₜ ~ MvNormal(params=s_pop_prior)`
+- Prior on population *log* mean fitness associated error at time `t`,
+  `π(logσₜ)`
 
-- Prior on population *log* mean fitness associated error `π(logσ̲ₜ)`
+`logσₜ ~ Normal(params=logσ_pop_prior)`
 
-`logσ̲ₜ ~ MvNormal(params=logσ_pop_prior)`
-
-- Prior on non-neutral relative fitness `π(sᵢ⁽ᵐ⁾)` (subindex `i` indicates the
-  environment).
+- Prior on non-neutral relative fitness for barcode `m` in environment `i`
+  `π(sᵢ⁽ᵐ⁾)`
 
 `sᵢ⁽ᵐ⁾ ~ Normal(params=s_bc_prior)`
 
-- Prior on non-neutral *log* relative fitness associated error `π(logσᵢ⁽ᵐ⁾)`
-  (subindex `i` indicates the environment)
+- Prior on non-neutral *log* relative fitness associated error for barcode `m`
+  in environment `i` `π(logσᵢ⁽ᵐ⁾)`
 
 `logσᵢ⁽ᵐ⁾ ~ Normal(params=logσ_bc_prior)`
 
-- Prior on *log* Poisson distribtion parameters `π(logλ)` (sampled as a `T × B`
-  matrix for each of the `B` barcodes over `T` time points)
+- Prior on *log* Poisson distribtion parameters for barcode `m` at time `t` ,
+  `π(logλₜᵣ⁽ᵐ⁾)` 
 
-`logΛ̲̲ ~ MvNormal(params=logλ_prior)`
+`logλₜ⁽ᵐ⁾ ~ Normal(params=logλ_prior)`
 
 - Probability of total number of barcodes read given the Poisson distribution
-  parameters `π(nₜ | logλ̲ₜ)`
+  parameters at time `t` `π(nₜ | logλ̲ₜ)`
 
-`nₜ ~ Poisson(∑ₜ exp(logλₜ))`
+`nₜ ~ Poisson(∑ₘ exp(λₜ⁽ᵐ⁾))`
 
-- Barcode frequencies (deterministic relationship from the Poisson parameters)
+- Barcode `j` frequency at time `t` (deterministic relationship from the Poisson
+  parameters)
 
-`fₜ⁽ⁱ⁾ = exp(logλₜ⁽ⁱ⁾) / ∑ⱼ exp(λₜ⁽ʲ⁾)`
+`fₜ⁽ʲ⁾ = λₜ⁽ʲ⁾ / ∑ₖ λₜ⁽ᵏ⁾`
 
-- *log* frequency ratios (deterministic relationship from barcode frequencies)
+- *log* frequency ratio for barcode `j` at time `t` (deterministic relationship
+  from barcode frequencies)
 
-`logγₜ⁽ⁱ⁾ = log(fₜ₊₁⁽ⁱ⁾ / fₜ⁽ⁱ⁾`)
+`logγₜ⁽ʲ⁾ = log(f₍ₜ₊₁₎⁽ʲ⁾ / fₜ⁽ʲ⁾`)
 
-- Probability of number of reads at time t for all barcodes given the total
+- Probability of number of reads at time `t` for all barcodes given the total
   number of reads and the barcode frequencies `π(r̲ₜ | nₜ, f̲ₜ)`
 
 `r̲ₜ ~ Multinomial(nₜ, f̲ₜ)`
 
-- Probability of neutral *log* barcodes frequency ratios `π(logγₜ⁽ⁿ⁾| sₜ, σₜ)`
+- Probability of neutral barcodes frequency ratio for barcode `n` at time `t`
+  `π(logγₜ⁽ⁿ⁾| sₜ, logσₜ)`
 
 `logγₜ⁽ⁿ⁾ ~ Normal(μ = -sₜ, σ = exp(logσₜ))`
 
-- Probability of non-neutral barcodes frequency ratios `π(logγₜ⁽ᵐ⁾| s⁽ᵐ⁾, σ⁽ᵐ⁾,
-  sₜ)`. **Note**: This is done grouping by corresponding environment such that
-  if time `t` is associated with environment `i`, sᵢ⁽ᵐ⁾ is used as the fitness
-  value.
+- Probability of non-neutral barcodes frequency ratios `π(logγₜ⁽ᵐ⁾| s⁽ᵐ⁾,
+  logσ⁽ᵐ⁾, sₜ)`. **Note**: This is done grouping by corresponding environment
+  such that if time `t` is associated with environment `i`, sᵢ⁽ᵐ⁾ is used as the
+  fitness value.
 
 `logγₜ⁽ᵐ⁾ ~ Normal(μ = sᵢ⁽ᵐ⁾ - sₜ, σ = exp(σ⁽ᵐ⁾))`
 

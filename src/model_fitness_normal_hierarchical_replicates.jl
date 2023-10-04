@@ -3,12 +3,84 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 @doc raw"""
-replicate_fitness_normal(R̲̲::Array{Int64,3}, n̲ₜ::Matrix{Int64}, n_neutral::Int,
-                      n_bc::Int; kwargs...)
+replicate_fitness_normal(R̲̲::Array{Int64,3}, n̲ₜ::Matrix{Int64},
+                      n_neutral::Int, n_bc::Int; kwargs...)
 
 Defines a hierarchical model to estimate fitness effects in a competitive
 fitness experiment across growth-dilution cycles over multiple experimental
 replicates. 
+
+# Model summary
+
+- Prior on population mean fitness at time `t` in replicate `r`, `π(sₜᵣ)`
+
+`sₜᵣ ~ Normal(params=s_pop_prior)`
+
+- Prior on population *log* mean fitness associated error at time `t` in
+  replicate `r`, `π(logσₜ)`
+
+`logσₜᵣ ~ Normal(params=logσ_pop_prior)`
+
+- Prior on non-neutral relative **hyper**-fitness for barcode `m` `π(θ⁽ᵐ⁾)`
+
+`θ⁽ᵐ⁾ ~ Normal(params=s_bc_prior)`
+
+- Prior on non-centered samples that allow local fitness to vary in the positive
+  and negative direction for barcode `m` in experimental replicate `r`
+  `π(θ̃ᵣ⁽ᵐ⁾)`. Note, this is a standard normal with mean zero and standard
+  deviation one. 
+
+`θ̃ᵣ⁽ᵐ⁾ ~ Normal(μ = 0, σ = 1)`
+
+- Prior on *log* deviations of local fitness from hyper-fitness for barcode `m`
+  in replicate `r` π(logτᵣ⁽ᵐ⁾)
+
+`logτᵣ⁽ᵐ⁾ ~ Normal(params=logτ_prior)`
+
+- *Local* relative fitness for non-neutral barcode `m` in replicate `r`
+  (deterministic relationship from hyper-priors)
+
+`sᵣ⁽ᵐ⁾ = θ⁽ᵐ⁾ + θ̃ᵣ⁽ᵐ⁾ * exp(logτᵣ⁽ᵐ⁾)`
+
+- Prior on non-neutral *log* relative fitness associated error for non-neutral
+  barcode `m` in replcate `r`, `π(logσᵣ⁽ᵐ⁾)`
+
+`logσᵣ⁽ᵐ⁾ ~ Normal(params=logσ_bc_prior)`
+
+- Prior on *log* Poisson distribtion parameters for barcode `m` at time `t` in
+  replicate `r`, `π(logλₜᵣ⁽ᵐ⁾)` 
+
+`logλₜᵣ⁽ᵐ⁾ ~ Normal(params=logλ_prior)`
+
+- Probability of total number of barcodes read given the Poisson distribution
+  parameters at time `t` in replicate `r` `π(nₜᵣ | logλ̲ₜᵣ)`
+
+`nₜᵣ ~ Poisson(∑ₘ exp(λₜᵣ⁽ᵐ⁾))`
+
+- Barcode `j` frequency at time `t` in replciate `r` (deterministic relationship
+  from the Poisson parameters)
+
+`fₜᵣ⁽ʲ⁾ = λₜᵣ⁽ʲ⁾ / ∑ₖ λₜᵣ⁽ᵏ⁾`
+
+- *Log* frequency ratio for barcode `j` at time `t` in replicate `r`
+  (deterministic relationship from barcode frequencies)
+
+`logγₜᵣ⁽ʲ⁾ = log(f₍ₜ₊₁₎ᵣ⁽ʲ⁾ / fₜᵣ⁽ʲ⁾`)
+
+- Probability of number of reads at time `t` for all barcodes in replicate `r`
+  given the total number of reads and the barcode frequencies `π(r̲ₜᵣ | nₜᵣ, f̲ₜᵣ)`
+
+`r̲ₜᵣ ~ Multinomial(nₜᵣ, f̲ₜᵣ)`
+
+- Probability of neutral barcodes `n` frequency ratio at time `t` in replicate
+  `r`, `π(logγₜᵣ⁽ⁿ⁾| sₜᵣ, logσₜᵣ)`
+
+`logγₜᵣ⁽ⁿ⁾ ~ Normal(μ = -sₜᵣ, σ = exp(logσₜᵣ))`
+
+- Probability of non-neutral barcode `m` frequency ratio at time `t` in
+  replicate `r`  `π(logγₜᵣ⁽ᵐ⁾| sᵣ⁽ᵐ⁾, logσᵣ⁽ᵐ⁾, sₜᵣ)`
+
+`logγₜ⁽ᵐ⁾ ~ Normal(μ = sᵣ⁽ᵐ⁾ - sₜᵣ, σ = exp(logσᵣ⁽ᵐ⁾))`
 
 # Arguments
 - `R̲̲::Array{Int64, 3}`:: `T × B × R` where `T` is the number of time points in
