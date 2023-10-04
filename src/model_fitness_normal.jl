@@ -61,7 +61,7 @@ across growth-dilution cycles.
 `logγₜ⁽ᵐ⁾ ~ Normal(μ = s⁽ᵐ⁾ - sₜ, σ = exp(logσ⁽ᵐ⁾))`
 
 # Arguments
-- `R̲̲::Matrix{Int64}`:: `T × B` matrix--split into a vector of vectors for
+- `R̲̲::Matrix{Int64}`: `T × B` matrix--split into a vector of vectors for
   computational efficiency--where `T` is the number of time points in the data
   set and `B` is the number of barcodes. Each column represents the barcode
   count trajectory for a single lineage.
