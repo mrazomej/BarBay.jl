@@ -23,6 +23,18 @@ Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
+Bijectors = "^0.13"
+CSV = "^0.10"
+DataFrames = "^1.6"
+Distributions = "^0.25"
+DynamicHMC = "^3.4"
+JLD2 = "^0.4"
+MCMCChains = "^6"
+Memoization = "^0.2"
+ReverseDiff = "^1.15"
+StatsBase = "^0.34"
+Turing = "0.29"
+UnPack = "^1"
 julia = "1"
 
 [extras]
