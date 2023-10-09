@@ -356,6 +356,6 @@ This `vi` module includes (so far) a single function to run variational
 inference using the ADVI algorithm implemented in `Turing.jl`.
 
 ```@autodocs
-Modules = [BayesFitness.vi]
+Modules = [BarBay.vi]
 Order   = [:function, :type]
 ```

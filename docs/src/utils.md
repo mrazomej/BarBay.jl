@@ -9,7 +9,7 @@ function has different options to build the slight variations needed for each of
 the models.
 
 ```@docs
-BayesFitness.utils.data_to_arrays
+BarBay.utils.data_to_arrays
 ```
 
 The `advi_to_df` function takes the output when fitting a model performing
@@ -17,5 +17,5 @@ variational inference **using the mean-field approximation**, i.e., assuming a
 diagonal covariance matrix.
 
 ```@docs
-BayesFitness.utils.advi_to_df
+BarBay.utils.advi_to_df
 ```

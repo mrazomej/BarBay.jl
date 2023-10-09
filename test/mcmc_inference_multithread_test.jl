@@ -7,7 +7,7 @@
 import Revise
 
 # Import library package
-import BayesFitness
+import BarBay
 
 # Import basic mathematical functions
 import LinearAlgebra
@@ -344,7 +344,7 @@ param = Dict(
 )
 
 # Compute posterior predictive checks
-ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
+ppc_mat = BarBay.stats.logfreq_ratio_mean_ppc(
     chain, n_ppc; param=param
 )
 
@@ -370,18 +370,18 @@ qs = [0.68, 0.95, 0.997]
 colors = get(ColorSchemes.Blues_9, LinRange(0.25, 0.75, length(qs)))
 
 # Plot posterior predictive checks
-BayesFitness.viz.ppc_time_series!(
+BarBay.viz.ppc_time_series!(
     ax, qs, ppc_mat; colors=colors
 )
 
 # Add plot for median (we use the 5 percentile to have a "thicker" line showing
 # the median)
-BayesFitness.viz.ppc_time_series!(
+BarBay.viz.ppc_time_series!(
     ax, [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
 )
 
 # Plot log-frequency ratio of neutrals
-BayesFitness.viz.logfreq_ratio_time_series!(
+BarBay.viz.logfreq_ratio_time_series!(
     ax,
     data[data.neutral, :];
     freq_col=:freq,
@@ -439,7 +439,7 @@ param = Dict(
 )
 
 # Compute posterior predictive checks
-ppc_mat = BayesFitness.stats.logfreq_ratio_mutant_ppc(
+ppc_mat = BarBay.stats.logfreq_ratio_mutant_ppc(
     chn, n_ppc; param=param
 )
 
@@ -463,13 +463,13 @@ qs = [0.95, 0.675]
 colors = get(ColorSchemes.Blues_9, LinRange(0.5, 0.75, length(qs)))
 
 # Plot posterior predictive checks
-BayesFitness.viz.ppc_time_series!(
+BarBay.viz.ppc_time_series!(
     ax, qs, ppc_mat; colors=colors
 )
 
 # Add plot for median (we use the 5 percentile to have a "thicker" line showing
 # the median)
-BayesFitness.viz.ppc_time_series!(
+BarBay.viz.ppc_time_series!(
     ax, [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
 )
 

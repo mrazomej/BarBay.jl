@@ -5,7 +5,7 @@
 import Revise
 
 # Import library package
-import BayesFitness
+import BarBay
 
 # Import libraries to manipulate data
 import DataFrames as DF
@@ -67,7 +67,7 @@ param = Dict(
     :n_walkers => n_walkers,
     :n_steps => n_steps,
     :outputname => "./output/chain_freq_$(n_steps)steps_$(lpad(n_walkers, 2, "0"))walkers",
-    :model => BayesFitness.model.freq_lognormal,
+    :model => BarBay.model.freq_lognormal,
     :model_kwargs => Dict(
         :λ_prior => [3.0, 3.0]
     ),
@@ -84,7 +84,7 @@ end # if
 
 # Run inference
 println("Running Inference...")
-@time BayesFitness.mcmc.mcmc_joint_fitness(; param...)
+@time BarBay.mcmc.mcmc_joint_fitness(; param...)
 
 ##
 
@@ -133,7 +133,7 @@ if gen_plots
     # Loop through time points
     for (i, j) in enumerate(idx)
         # Plot ECDF
-        BayesFitness.viz.mcmc_fitdist_cdf!(
+        BarBay.viz.mcmc_fitdist_cdf!(
             axes[i],
             vec(chn[var_name[j]])[:],
             freq_dist[j]

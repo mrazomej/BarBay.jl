@@ -1,6 +1,6 @@
-# BayesFitness
+# BarBay
 
-Welcome to the documentation of `BayesFitness.jl`! The accompanying paper,
+Welcome to the documentation of `BarBay.jl`! The accompanying paper,
 *Bayesian inference of relative fitness on high-throughput pooled competition
 assays*, explains all of the biological and mathematical background needed to
 understand this package. Here, we mainly focus on how to use the package,
@@ -55,7 +55,7 @@ The first step consists of importing the necessary packages.
 
 ```julia
 # Import Bayesian inference package
-import BayesFitness
+import BarBay
 
 # Import libraries to manipulate data
 import DataFrames as DF
@@ -65,7 +65,7 @@ import CSV
 After having imported the libraries, we need to load our dataset into memory.
 
 !!! warning
-    `BayesFitness.jl` requires the dataset to follow the so-called [tidy
+    `BarBay.jl` requires the dataset to follow the so-called [tidy
     format](http://www.jstatsoft.org/v59/i10/). Effectively, what this means is
     that each observation is stored as a single line in the table. So, instead
     of having all barcode counts for a particular time point across some row (or
@@ -228,14 +228,14 @@ measurements to define the priors for our inference. Let's now take the neutrals
 data and obtain these parameters
 
 !!! note
-    `BayesFitness.jl` includes the function `naive_prior` within the
+    `BarBay.jl` includes the function `naive_prior` within the
     [stats](@ref) module to compute priors for some of the parameters based on
     the neutral lineages data. We point the user to the accompanying paper to
     see details on these prior selection.
 
 ```julia
 # Compute naive priors from neutral strains
-naive_priors = BayesFitness.stats.naive_prior(data)
+naive_priors = BarBay.stats.naive_prior(data)
 
 # Select standard deviation parameters
 s_pop_prior = hcat(
@@ -259,7 +259,7 @@ logλ_prior = hcat(
 ### Running the inference
 
 With these priors in hand, we can run the inference. For this, we use the
-[`BayesFitness.vi.advi`](@ref) function from the [vi](@ref) module. The main
+[`BarBay.vi.advi`](@ref) function from the [vi](@ref) module. The main
 parameters we need to define are:
 - `:data`: Tidy data frame containing the raw barcode counts.
 - `:outputname`: String defining the pattern for the output file. This can be
@@ -296,7 +296,7 @@ Turing.setadbackend(:reversediff)
 Turing.setrdcache(true)
 ```
 
-For this dataset, we use the [`BayesFitness.model.fitness_normal`](@ref)
+For this dataset, we use the [`BarBay.model.fitness_normal`](@ref)
 model from the [model](@ref) module. Now, we can compile all of the
 necessary parameters into a dictionary.
 
@@ -310,7 +310,7 @@ param = Dict(
     :data => data,
     :outputname => "./output/advi_meanfield_" *
                    "$(lpad(n_samples, 2, "0"))samples_$(n_steps)steps",
-    :model => BayesFitness.model.fitness_normal,
+    :model => BarBay.model.fitness_normal,
     :model_kwargs => Dict(
         :s_pop_prior => s_pop_prior,
         :logσ_pop_prior => logσ_pop_prior,
@@ -326,7 +326,7 @@ param = Dict(
 Next, we run the inference.
 
 ```julia
-BayesFitness.vi.advi(; param...)
+BarBay.vi.advi(; param...)
 ```
 
 ## Inference output
@@ -425,15 +425,15 @@ df_samples = DF.DataFrame(
 )
 ```
 
-Finally, we can use the [`BayesFitness.stats.logfreq_ratio_popmean_ppc`](@ref)
+Finally, we can use the [`BarBay.stats.logfreq_ratio_popmean_ppc`](@ref)
 function for neutral lineages or
-[`BayesFitness.stats.logfreq_ratio_bc_ppc`](@ref) for non-neutral lineages to
+[`BarBay.stats.logfreq_ratio_bc_ppc`](@ref) for non-neutral lineages to
 generate the corresponding posterior predictive checks. In the code that
 follows, we embed this ppc sampling within the generation of diagnostic plots.
 
 !!! warning
     We remind users that the custom plotting functions are **not** included in
-    the `BayesFitness.jl` package. The following code is only meant to serve as
+    the `BarBay.jl` package. The following code is only meant to serve as
     a guidance for users to know how to generate diagnostic plots.
 
 ```julia
@@ -483,7 +483,7 @@ for row in 1:n_row
             )
 
             # Compute posterior predictive checks
-            local ppc_mat = BayesFitness.stats.logfreq_ratio_popmean_ppc(
+            local ppc_mat = BarBay.stats.logfreq_ratio_popmean_ppc(
                 df_samples, n_ppc; model=:normal, param=param
             )
 
@@ -534,7 +534,7 @@ for row in 1:n_row
             :population_mean_fitness => :s̲ₜ,
         )
         # Compute posterior predictive checks
-        local ppc_mat = BayesFitness.stats.logfreq_ratio_bc_ppc(
+        local ppc_mat = BarBay.stats.logfreq_ratio_bc_ppc(
             df_samples, n_ppc; model=:normal, param=param
         )
         # Plot posterior predictive checks

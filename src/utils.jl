@@ -412,7 +412,7 @@ a tidy dataframe.
 
 # Arguments
 - `data::DataFrames.AbstractDataFrame`: Tidy dataframe used to perform the ADVI
-  inference. See `BayesFitness.vi` module for the dataframe requirements.
+  inference. See `BarBay.vi` module for the dataframe requirements.
 - `dist::Distributions.Sampleable`: The ADVI posterior sampleable distribution
   object.
 - `vars::Vector{<:Any}`: Vector of variable/parameter names from the ADVI run. 

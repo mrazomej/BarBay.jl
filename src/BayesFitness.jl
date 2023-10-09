@@ -1,4 +1,4 @@
-module BayesFitness
+module BarBay
 
 module utils
 include("utils.jl")

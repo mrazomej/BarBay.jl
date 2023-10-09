@@ -7,7 +7,7 @@
 import Revise
 
 # Import library package
-import BayesFitness
+import BarBay
 
 # Import libraries to manipulate data
 import DataFrames as DF
@@ -102,7 +102,7 @@ if plot_trajectories
     end # for
 
     # Plot mutant barcode frequency trajectories
-    BayesFitness.viz.bc_time_series!(
+    BarBay.viz.bc_time_series!(
         ax,
         data[.!data.neutral, :];
         quant_col=:freq,
@@ -113,7 +113,7 @@ if plot_trajectories
     )
 
     # Plot Neutral barcode trajectories
-    BayesFitness.viz.bc_time_series!(
+    BarBay.viz.bc_time_series!(
         ax,
         data[data.neutral, :];
         quant_col=:freq,
@@ -167,7 +167,7 @@ if plot_trajectories
     end # for
 
     # Plot mutant barcode frequency trajectories
-    BayesFitness.viz.logfreq_ratio_time_series!(
+    BarBay.viz.logfreq_ratio_time_series!(
         ax,
         data[.!data.neutral, :];
         freq_col=:freq,
@@ -176,7 +176,7 @@ if plot_trajectories
     )
 
     # Plot Neutral barcode trajectories
-    BayesFitness.viz.logfreq_ratio_time_series!(
+    BarBay.viz.logfreq_ratio_time_series!(
         ax,
         data[data.neutral, :];
         freq_col=:freq,
@@ -220,7 +220,7 @@ param = Dict(
     :outputname => "./output/single_mutant_multi-env_inference/" *
                    "chain_multi-env_$(lpad(n_steps, 2, "0"))steps_" *
                    "$(lpad(n_walkers, 2, "0"))walkers_bc",
-    :model => BayesFitness.model.multienv_fitness_lognormal,
+    :model => BarBay.model.multienv_fitness_lognormal,
     :model_kwargs => Dict(
         :envs => ["G", "H", "N", "G", "H", "N"],
         :λ_prior => λ_prior,
@@ -249,7 +249,7 @@ end # if
 
 # Run inference
 println("Running Inference...")
-@time BayesFitness.mcmc.mcmc_single_fitness(; param...)
+@time BarBay.mcmc.mcmc_single_fitness(; param...)
 
 ##
 
@@ -356,7 +356,7 @@ qs = [0.68, 0.95, 0.995]
 # Loop through elements
 for (i, chn) in enumerate(collect(keys(chn_dict))[1:length(axes)])
     # Compute posterior predictive checks
-    ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
+    ppc_mat = BarBay.stats.logfreq_ratio_mean_ppc(
         chn_dict[chn], n_ppc; param=param
     )
 
@@ -364,18 +364,18 @@ for (i, chn) in enumerate(collect(keys(chn_dict))[1:length(axes)])
     colors = get(ColorSchemes.Blues_9, LinRange(0.5, 0.75, length(qs)))
 
     # Plot posterior predictive checks
-    BayesFitness.viz.ppc_time_series!(
+    BarBay.viz.ppc_time_series!(
         axes[i], qs, ppc_mat; colors=colors
     )
 
     # Add plot for median (we use the 5 percentile to have a "thicker" line
     # showing the median)
-    BayesFitness.viz.ppc_time_series!(
+    BarBay.viz.ppc_time_series!(
         axes[i], [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
     )
 
     # Plot log-frequency ratio of neutrals
-    BayesFitness.viz.logfreq_ratio_time_series!(
+    BarBay.viz.logfreq_ratio_time_series!(
         axes[i],
         data[data.neutral, :];
         freq_col=:freq,
@@ -445,12 +445,12 @@ col_dict = Dict(
 # Loop through elements
 for (i, chn) in enumerate(collect(keys(chn_dict))[1:length(axes)])
     # Compute posterior predictive checks
-    ppc_mat = BayesFitness.stats.logfreq_ratio_multienv_ppc(
+    ppc_mat = BarBay.stats.logfreq_ratio_multienv_ppc(
         chn_dict[chn], n_ppc, envs; param=param
     )
 
     # Add first environment inference
-    BayesFitness.viz.ppc_time_series!(
+    BarBay.viz.ppc_time_series!(
         axes[i],
         qs,
         ppc_mat[:, [1, 1]];
@@ -464,13 +464,13 @@ for (i, chn) in enumerate(collect(keys(chn_dict))[1:length(axes)])
         colors = get(col_dict[envs[j]], LinRange(0.5, 0.75, length(qs)))
 
         # Plot posterior predictive checks
-        BayesFitness.viz.ppc_time_series!(
+        BarBay.viz.ppc_time_series!(
             axes[i], qs, ppc_mat[:, j-1:j]; time=[j - 1, j], colors=colors
         )
 
         # Add plot for median (we use the 5 percentile to have a "thicker" line
         # showing the median)
-        BayesFitness.viz.ppc_time_series!(
+        BarBay.viz.ppc_time_series!(
             axes[i],
             [0.05],
             ppc_mat[:, j-1:j];
@@ -481,7 +481,7 @@ for (i, chn) in enumerate(collect(keys(chn_dict))[1:length(axes)])
 
 
     # Plot log-frequency ratio of neutrals
-    BayesFitness.viz.logfreq_ratio_time_series!(
+    BarBay.viz.logfreq_ratio_time_series!(
         axes[i],
         data[data.barcode.==chn, :];
         freq_col=:freq,

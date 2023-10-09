@@ -5,7 +5,7 @@
 import Revise
 
 # Import library package
-import BayesFitness
+import BarBay
 
 # Import libraries to manipulate data
 import DataFrames as DF
@@ -63,7 +63,7 @@ param = Dict(
     :n_walkers => 4,
     :n_steps => 1_000,
     :outputname => "./output/data_example_01_meanfitness_1000steps_04walkers",
-    :model => BayesFitness.model.mean_fitness_lognormal,
+    :model => BarBay.model.mean_fitness_lognormal,
     :model_kwargs => Dict(
         :λ_prior => λ_prior
     ),
@@ -80,7 +80,7 @@ end # if
 
 # Run inference
 println("Running Inference...")
-@time BayesFitness.mcmc.mcmc_joint_mean_fitness(; param...)
+@time BarBay.mcmc.mcmc_joint_mean_fitness(; param...)
 
 ##
 
@@ -97,7 +97,7 @@ var_names = MCMCChains.namesingroup(chains, :s̲ₜ)
 fig = Figure(resolution=(600, 600))
 
 # Generate mcmc_trace_density! plot
-BayesFitness.viz.mcmc_trace_density!(fig, chains[var_names]; alpha=0.5)
+BarBay.viz.mcmc_trace_density!(fig, chains[var_names]; alpha=0.5)
 
 # save("../docs/src/figs/fig03.svg", fig)
 
@@ -116,7 +116,7 @@ param = Dict(
 )
 
 # Compute posterior predictive checks
-ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
+ppc_mat = BarBay.stats.logfreq_ratio_mean_ppc(
     chains, n_ppc; param=param
 )
 
@@ -140,18 +140,18 @@ qs = [0.68, 0.95, 0.997]
 colors = get(ColorSchemes.Blues_9, LinRange(0.25, 0.75, length(qs)))
 
 # Plot posterior predictive checks
-BayesFitness.viz.ppc_time_series!(
+BarBay.viz.ppc_time_series!(
     ax, qs, ppc_mat; colors=colors
 )
 
 # Add plot for median (we use the 5 percentile to have a "thicker" line showing
 # the median)
-BayesFitness.viz.ppc_time_series!(
+BarBay.viz.ppc_time_series!(
     ax, [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
 )
 
 # Plot log-frequency ratio of neutrals
-BayesFitness.viz.logfreq_ratio_time_series!(
+BarBay.viz.logfreq_ratio_time_series!(
     ax,
     data[data.neutral, :];
     freq_col=:freq,

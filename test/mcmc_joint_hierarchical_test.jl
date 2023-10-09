@@ -7,7 +7,7 @@
 import Revise
 
 # Import library package
-import BayesFitness
+import BarBay
 
 # Import libraries to manipulate data
 import DataFrames as DF
@@ -84,7 +84,7 @@ axes = [ax1, ax2]
 # Loop through repeats
 for (i, rep) in enumerate(unique(data.rep))
     # Plot Mutant barcode trajectories
-    BayesFitness.viz.bc_time_series!(
+    BarBay.viz.bc_time_series!(
         axes[i],
         data[(.!data.neutral).&(data.rep.==rep), :];
         quant_col=:freq,
@@ -95,7 +95,7 @@ for (i, rep) in enumerate(unique(data.rep))
     )
 
     # Plot Neutral barcode trajectories for R1
-    BayesFitness.viz.bc_time_series!(
+    BarBay.viz.bc_time_series!(
         axes[i],
         data[(data.neutral).&(data.rep.==rep), :];
         quant_col=:freq,
@@ -115,7 +115,7 @@ param = Dict(
     :n_walkers => n_walkers,
     :n_steps => n_steps,
     :outputname => "./output/data_example_01_hierarchical_$(n_steps)steps_$(lpad(n_walkers, 2, "0"))walkers",
-    :model => BayesFitness.model.fitness_hierarchical_replicates,
+    :model => BarBay.model.fitness_hierarchical_replicates,
     :model_kwargs => Dict(
         :λ_prior => [3.0, 3.0]
     ),
@@ -132,7 +132,7 @@ end # if
 
 # Run inference
 println("Running Inference...")
-@time BayesFitness.mcmc.mcmc_fitness_hierarchical_replicates(; param...)
+@time BarBay.mcmc.mcmc_fitness_hierarchical_replicates(; param...)
 
 ##
 
@@ -284,24 +284,24 @@ for rep = 1:n_rep
     )
 
     # Compute posterior predictive checks
-    ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
+    ppc_mat = BarBay.stats.logfreq_ratio_mean_ppc(
         df_chain, n_ppc; param=param
     )
 
 
     # Plot posterior predictive checks
-    BayesFitness.viz.ppc_time_series!(
+    BarBay.viz.ppc_time_series!(
         axes[rep], qs, ppc_mat; colors=colors
     )
 
     # Add plot for median (we use the 5 percentile to have a "thicker" line
     # showing the median)
-    BayesFitness.viz.ppc_time_series!(
+    BarBay.viz.ppc_time_series!(
         axes[rep], [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
     )
 
     # Plot log-frequency ratio of neutrals
-    BayesFitness.viz.logfreq_ratio_time_series!(
+    BarBay.viz.logfreq_ratio_time_series!(
         axes[rep],
         data[(data.neutral).&(data.rep.=="R$rep"), :];
         freq_col=:freq,
@@ -567,17 +567,17 @@ for row in 1:n_row
                 :population_mean_fitness => Symbol("s̲ₜ_R$rep"),
             )
             # Compute posterior predictive checks
-            ppc_mat = BayesFitness.stats.logfreq_ratio_mutant_ppc(
+            ppc_mat = BarBay.stats.logfreq_ratio_mutant_ppc(
                 df_chain, n_ppc; param=param
             )
             # Plot posterior predictive checks
-            BayesFitness.viz.ppc_time_series!(
+            BarBay.viz.ppc_time_series!(
                 axes[rep], qs, ppc_mat; colors=colors[rep]
             )
 
             # Add plot for median (we use the 5 percentile to have a "thicker"
             # line showing the median)
-            BayesFitness.viz.ppc_time_series!(
+            BarBay.viz.ppc_time_series!(
                 axes[rep], [0.05], ppc_mat; colors=[colors[rep][end]]
             )
 

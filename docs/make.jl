@@ -1,15 +1,15 @@
 using Documenter
-using BayesFitness
+using BarBay
 
 makedocs(
-    sitename="BayesFitness",
+    sitename="BarBay",
     format=Documenter.HTML(),
-    modules=[BayesFitness]
+    modules=[BarBay]
 )
 
 # Documenter can also automatically deploy documentation to gh-pages.
 # See "Hosting Documentation" and deploydocs() in the Documenter manual
 # for more information.
 deploydocs(
-    repo="github.com/mrazomej/BayesFitness.jl.git"
+    repo="github.com/mrazomej/BarBay.jl.git"
 )

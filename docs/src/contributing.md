@@ -8,7 +8,7 @@
 
 We welcome contributions to the package via pull requests. One such example
 could be adding a new variation of the base model to the [model](@ref) module.
-All models within `BayesFitness.jl` that can be fit with the [mcmc](@ref) or the
+All models within `BarBay.jl` that can be fit with the [mcmc](@ref) or the
 [vi](@ref) modules are standardized to take as the first four arguments the
 following:
 
@@ -67,7 +67,7 @@ Furthermore, the four inputs to the model are automatically generated within the
 [mcmc](@ref) and the [vi](@ref) modules via the `data_to_arrays` function from
 the [utils](@ref) module. Take a look at the source code for this function to
 familiarize yourself with it. In case this is inconvenient, please open an issue
-in the [GitHub repository](https://github.com/mrazomej/BayesFitness.jl) and we
+in the [GitHub repository](https://github.com/mrazomej/BarBay.jl) and we
 will be happy to make changes to adapt the package to your needs!
 
 If your defined model follows these standards, you should be able to fit it with
@@ -78,5 +78,5 @@ with the model structure within [`Turing.jl`](https://turinglang.org/stable/):
 - [Bayesian Statistics using Julia and Turing](https://storopoli.io/Bayesian-Julia/)
 
 Furthermore, we recommend looking at the source code within [this package GitHub
-repository](https://github.com/mrazomej/BayesFitness.jl). Every function and
+repository](https://github.com/mrazomej/BarBay.jl). Every function and
 model is highly annotated and can serve as a guide to get you going!

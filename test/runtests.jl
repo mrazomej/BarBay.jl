@@ -1,7 +1,7 @@
-using BayesFitness
+using BarBay
 using Test
 
 @test true
-#@testset "BayesFitness.jl" begin
-    # Write your tests here.
+#@testset "BarBay.jl" begin
+# Write your tests here.
 #end

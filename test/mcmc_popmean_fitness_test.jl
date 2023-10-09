@@ -7,7 +7,7 @@
 import Revise
 
 # Import library package
-import BayesFitness
+import BarBay
 
 # Import libraries to manipulate data
 import DataFrames as DF
@@ -80,7 +80,7 @@ if gen_plots
     )
 
     # Plot Mutant barcode trajectories
-    BayesFitness.viz.bc_time_series!(
+    BarBay.viz.bc_time_series!(
         ax,
         data[.!data.neutral, :];
         quant_col=:freq,
@@ -91,7 +91,7 @@ if gen_plots
     )
 
     # Plot Neutral barcode trajectories
-    BayesFitness.viz.bc_time_series!(
+    BarBay.viz.bc_time_series!(
         ax,
         data[data.neutral, :];
         quant_col=:freq,
@@ -122,7 +122,7 @@ if gen_plots
     )
 
     # Plot log-frequency ratio of mutants
-    BayesFitness.viz.logfreq_ratio_time_series!(
+    BarBay.viz.logfreq_ratio_time_series!(
         ax,
         data[.!data.neutral, :];
         freq_col=:freq,
@@ -131,7 +131,7 @@ if gen_plots
     )
 
     # Plot log-frequency ratio of neutrals
-    BayesFitness.viz.logfreq_ratio_time_series!(
+    BarBay.viz.logfreq_ratio_time_series!(
         ax,
         data[data.neutral, :];
         freq_col=:freq,
@@ -154,7 +154,7 @@ param = Dict(
     :n_walkers => n_walkers,
     :n_steps => n_steps,
     :outputname => "./output/chain_popmean_fitness_$(n_steps)steps_$(lpad(n_walkers, 2, "0"))walkers",
-    :model => BayesFitness.model.neutrals_lognormal,
+    :model => BarBay.model.neutrals_lognormal,
     :sampler => Turing.DynamicNUTS(),
     :ensemble => Turing.MCMCThreads(),
 )
@@ -168,7 +168,7 @@ end # if
 
 # Run inference
 println("Running Inference...")
-BayesFitness.mcmc.mcmc_popmean_fitness(; param...)
+BarBay.mcmc.mcmc_popmean_fitness(; param...)
 
 ##
 
@@ -185,7 +185,7 @@ if gen_plots
     fig = Figure(resolution=(600, 800))
 
     # Generate mcmc_trace_density! plot
-    BayesFitness.viz.mcmc_trace_density!(fig, chn[var_name]; alpha=0.5)
+    BarBay.viz.mcmc_trace_density!(fig, chn[var_name]; alpha=0.5)
 
     # save("../docs/src/figs/fig03.svg", fig)
 
@@ -208,7 +208,7 @@ if gen_plots
     )
 
     # Compute posterior predictive checks
-    ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
+    ppc_mat = BarBay.stats.logfreq_ratio_mean_ppc(
         chn, n_ppc; param=param
     )
 
@@ -237,12 +237,12 @@ if gen_plots
     colors = get(ColorSchemes.Blues_9, LinRange(0.25, 1, length(qs)))
 
     # Plot posterior predictive checks
-    BayesFitness.viz.ppc_time_series!(
+    BarBay.viz.ppc_time_series!(
         ax, qs, ppc_mat; colors=colors
     )
 
     # Plot log-frequency ratio of neutrals
-    BayesFitness.viz.logfreq_ratio_time_series!(
+    BarBay.viz.logfreq_ratio_time_series!(
         ax,
         data[data.neutral, :];
         freq_col=:freq,
@@ -297,7 +297,7 @@ if gen_plots
     # Loop through time points
     for (i, var) in enumerate(var_name[1])
         # Plot ECDF
-        BayesFitness.viz.mcmc_fitdist_cdf!(
+        BarBay.viz.mcmc_fitdist_cdf!(
             axes[i],
             vec(chn[var])[:],
             pop_mean[i]
@@ -330,7 +330,7 @@ if gen_plots
     # Loop through time points
     for (i, var) in enumerate(var_name[2])
         # Plot ECDF
-        BayesFitness.viz.mcmc_fitdist_cdf!(
+        BarBay.viz.mcmc_fitdist_cdf!(
             axes[i],
             vec(chn[var])[:],
             pop_std[i]

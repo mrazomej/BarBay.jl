@@ -42,7 +42,7 @@ used to sample from the population mean fitness posterior distribution.
 - `n_steps::Int`: Number of steps to take.
 - `outputname::String`: String to be used to name the `.jld2` output file.
 - `model::Function`: `Turing.jl` model defining the posterior distribution from
-    which to sample (see `BayesFitness.model` module). This function must take
+    which to sample (see `BarBay.model` module). This function must take
     as the first four inputs the following:
     - `R̲̲::Array{Int64}`:: 2 or 3D array containing the raw barcode counts for
       all tracked genotypes. The dimensions of this array represent:

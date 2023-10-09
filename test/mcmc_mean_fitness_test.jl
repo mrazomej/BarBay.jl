@@ -7,7 +7,7 @@
 import Revise
 
 # Import library package
-import BayesFitness
+import BarBay
 
 # Import libraries to manipulate data
 import DataFrames as DF
@@ -46,7 +46,7 @@ ax = Axis(
 )
 
 # Plot Mutant barcode trajectories
-BayesFitness.viz.bc_time_series!(
+BarBay.viz.bc_time_series!(
     ax,
     data[.!data.neutral, :];
     quant_col=:freq,
@@ -57,7 +57,7 @@ BayesFitness.viz.bc_time_series!(
 )
 
 # Plot Neutral barcode trajectories
-BayesFitness.viz.bc_time_series!(
+BarBay.viz.bc_time_series!(
     ax,
     data[data.neutral, :];
     quant_col=:freq,
@@ -86,7 +86,7 @@ ax = Axis(
 )
 
 # Plot log-frequency ratio of mutants
-BayesFitness.viz.logfreq_ratio_time_series!(
+BarBay.viz.logfreq_ratio_time_series!(
     ax,
     data[.!data.neutral, :];
     freq_col=:freq,
@@ -95,7 +95,7 @@ BayesFitness.viz.logfreq_ratio_time_series!(
 )
 
 # Plot log-frequency ratio of neutrals
-BayesFitness.viz.logfreq_ratio_time_series!(
+BarBay.viz.logfreq_ratio_time_series!(
     ax,
     data[data.neutral, :];
     freq_col=:freq,
@@ -118,9 +118,9 @@ param = Dict(
     :n_steps => 4_000,
     :outputdir => "./output",
     :outputname => "data_01_meanfitness",
-    :model => BayesFitness.model.mean_fitness_neutrals_lognormal,
+    :model => BarBay.model.mean_fitness_neutrals_lognormal,
     :model_kwargs => Dict(
-        :α => BayesFitness.stats.dirichlet_prior_neutral(
+        :α => BarBay.stats.dirichlet_prior_neutral(
             data[data.time.==0, :neutral],
         )
     )
@@ -134,13 +134,13 @@ end # if
 
 # Run inference
 println("Running Inference...")
-BayesFitness.mcmc.mcmc_mean_fitness(; param...)
+BarBay.mcmc.mcmc_mean_fitness(; param...)
 
 ##
 
 println("Plotting trances and densities...\n")
 # Concatenate population mean fitness chains into single chain
-chains = BayesFitness.utils.jld2_concat_chains(
+chains = BarBay.utils.jld2_concat_chains(
     param[:outputdir], param[:outputname], [:sₜ]; id_str=""
 )
 
@@ -148,7 +148,7 @@ chains = BayesFitness.utils.jld2_concat_chains(
 fig = Figure(resolution=(600, 600))
 
 # Generate mcmc_trace_density! plot
-BayesFitness.viz.mcmc_trace_density!(fig, chains; alpha=0.5)
+BarBay.viz.mcmc_trace_density!(fig, chains; alpha=0.5)
 
 save("../docs/src/figs/fig03.svg", fig)
 
@@ -160,7 +160,7 @@ fig
 chain_vars = [:sₜ, :σₜ]
 
 # Extract variables into single chain object
-chains = BayesFitness.utils.jld2_concat_chains(
+chains = BarBay.utils.jld2_concat_chains(
     param[:outputdir], param[:outputname], chain_vars; id_str=""
 )
 
@@ -175,7 +175,7 @@ param = Dict(
 )
 
 # Compute posterior predictive checks
-ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
+ppc_mat = BarBay.stats.logfreq_ratio_mean_ppc(
     chains, n_ppc; param=param
 )
 
@@ -199,18 +199,18 @@ qs = [0.68, 0.95, 0.997]
 colors = get(ColorSchemes.Blues_9, LinRange(0.25, 0.75, length(qs)))
 
 # Plot posterior predictive checks
-BayesFitness.viz.ppc_time_series!(
+BarBay.viz.ppc_time_series!(
     ax, qs, ppc_mat; colors=colors
 )
 
 # Add plot for median (we use the 5 percentile to have a "thicker" line showing
 # the median)
-BayesFitness.viz.ppc_time_series!(
+BarBay.viz.ppc_time_series!(
     ax, [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
 )
 
 # Plot log-frequency ratio of neutrals
-BayesFitness.viz.logfreq_ratio_time_series!(
+BarBay.viz.logfreq_ratio_time_series!(
     ax,
     data[data.neutral, :];
     freq_col=:freq,

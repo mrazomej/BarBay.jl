@@ -6,37 +6,37 @@ characterizations of the data and the output results.
 ## Posterior Predictive Checks
 
 ```@docs
-BayesFitness.stats.logfreq_ratio_popmean_ppc
+BarBay.stats.logfreq_ratio_popmean_ppc
 ```
 
 ```@docs
-BayesFitness.stats.logfreq_ratio_bc_ppc
+BarBay.stats.logfreq_ratio_bc_ppc
 ```
 
 ```@docs
-BayesFitness.stats.logfreq_ratio_multienv_ppc
+BarBay.stats.logfreq_ratio_multienv_ppc
 ```
 
 ```@docs
-BayesFitness.stats.freq_bc_ppc
+BarBay.stats.freq_bc_ppc
 ```
 
 ## Naive estimates
 
 ```@docs
-BayesFitness.stats.naive_prior
+BarBay.stats.naive_prior
 ```
 
 ```@docs
-BayesFitness.stats.naive_fitness
+BarBay.stats.naive_fitness
 ```
 
 ## Miscellaneous statistical functions
 
 ```@docs
-BayesFitness.stats.build_getq
+BarBay.stats.build_getq
 ```
 
 ```@docs
-BayesFitness.stats.matrix_quantile_range
+BarBay.stats.matrix_quantile_range
 ```

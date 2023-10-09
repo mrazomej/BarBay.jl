@@ -5,7 +5,7 @@
 import Revise
 
 # Import library package
-import BayesFitness
+import BarBay
 
 # Import basic math
 import StatsBase
@@ -204,7 +204,7 @@ col = [ColorSchemes.Purples_9; repeat([ColorSchemes.Blues_9], length(axes) - 1)]
 # Loop through elements
 for (i, chn) in enumerate([["joint"]; collect(keys(chn_dict))[2:length(axes)]])
     # Compute posterior predictive checks
-    ppc_mat = BayesFitness.stats.logfreq_ratio_mean_ppc(
+    ppc_mat = BarBay.stats.logfreq_ratio_mean_ppc(
         chn_dict[chn], n_ppc; param=param
     )
 
@@ -212,18 +212,18 @@ for (i, chn) in enumerate([["joint"]; collect(keys(chn_dict))[2:length(axes)]])
     colors = get(col[i], LinRange(0.5, 0.75, length(qs)))
 
     # Plot posterior predictive checks
-    BayesFitness.viz.ppc_time_series!(
+    BarBay.viz.ppc_time_series!(
         axes[i], qs, ppc_mat; colors=colors
     )
 
     # Add plot for median (we use the 5 percentile to have a "thicker" line
     # showing the median)
-    BayesFitness.viz.ppc_time_series!(
+    BarBay.viz.ppc_time_series!(
         axes[i], [0.05], ppc_mat; colors=col[i][end:end]
     )
 
     # Plot log-frequency ratio of neutrals
-    BayesFitness.viz.logfreq_ratio_time_series!(
+    BarBay.viz.logfreq_ratio_time_series!(
         axes[i],
         data[data.neutral, :];
         freq_col=:freq,
@@ -430,17 +430,17 @@ for row in 1:n_row
             :population_mean_fitness => :s̲ₜ,
         )
         # Compute posterior predictive checks
-        ppc_mat = BayesFitness.stats.logfreq_ratio_mutant_ppc(
+        ppc_mat = BarBay.stats.logfreq_ratio_mutant_ppc(
             df_dict["joint"], n_ppc; param=param
         )
         # Plot posterior predictive checks
-        BayesFitness.viz.ppc_time_series!(
+        BarBay.viz.ppc_time_series!(
             axes[1], qs, ppc_mat; colors=colors
         )
 
         # Add plot for median (we use the 5 percentile to have a "thicker" line
         # showing the median)
-        BayesFitness.viz.ppc_time_series!(
+        BarBay.viz.ppc_time_series!(
             axes[1], [0.05], ppc_mat; colors=ColorSchemes.Purples[end:end]
         )
 
@@ -463,17 +463,17 @@ for row in 1:n_row
             :population_mean_fitness => :s̲ₜ,
         )
         # Compute posterior predictive checks
-        ppc_mat = BayesFitness.stats.logfreq_ratio_mutant_ppc(
+        ppc_mat = BarBay.stats.logfreq_ratio_mutant_ppc(
             df_dict[bc_plot[counter]], n_ppc; param=param
         )
         # Plot posterior predictive checks
-        BayesFitness.viz.ppc_time_series!(
+        BarBay.viz.ppc_time_series!(
             axes[2], qs, ppc_mat; colors=colors
         )
 
         # Add plot for median (we use the 5 percentile to have a "thicker" line
         # showing the median)
-        BayesFitness.viz.ppc_time_series!(
+        BarBay.viz.ppc_time_series!(
             axes[2], [0.05], ppc_mat; colors=ColorSchemes.Blues[end:end]
         )
 
@@ -558,18 +558,18 @@ titles = ["full", "grouped"]
 for (i, d) in enumerate([df_joint, first(df_groups[group_idx])])
 
     # Compute posterior predictive checks
-    ppc_mat = BayesFitness.stats.logfreq_ratio_mutant_ppc(
+    ppc_mat = BarBay.stats.logfreq_ratio_mutant_ppc(
         d, n_ppc; param=param
     )
 
     # Plot posterior predictive checks
-    BayesFitness.viz.ppc_time_series!(
+    BarBay.viz.ppc_time_series!(
         ax[i], qs, ppc_mat; colors=colors
     )
 
     # Add plot for median (we use the 5 percentile to have a "thicker" line showing
     # the median)
-    BayesFitness.viz.ppc_time_series!(
+    BarBay.viz.ppc_time_series!(
         ax[i], [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
     )
 

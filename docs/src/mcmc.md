@@ -7,6 +7,6 @@ to the "true" posterior distribution. Therefore, for small number of barcodes (â
 the [vi](@ref) module for variational inference.
 
 ```@autodocs
-Modules = [BayesFitness.mcmc]
+Modules = [BarBay.mcmc]
 Order   = [:function, :type]
 ```

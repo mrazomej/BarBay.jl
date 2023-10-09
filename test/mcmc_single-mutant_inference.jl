@@ -5,7 +5,7 @@
 import Revise
 
 # Import library package
-import BayesFitness
+import BarBay
 
 # Import libraries to manipulate data
 import DataFrames as DF
@@ -61,7 +61,7 @@ param = Dict(
     :n_walkers => 4,
     :n_steps => 1_000,
     :outputname => "./output/data_example_01_meanfitness_1000steps_04walkers_bc",
-    :model => BayesFitness.model.fitness_lognormal,
+    :model => BarBay.model.fitness_lognormal,
     :model_kwargs => Dict(
         :λ_prior => λ_prior,
     ),
@@ -79,4 +79,4 @@ end # if
 
 # Run inference
 println("Running Inference...")
-@time BayesFitness.mcmc.mcmc_single_fitness(; param...)
+@time BarBay.mcmc.mcmc_single_fitness(; param...)

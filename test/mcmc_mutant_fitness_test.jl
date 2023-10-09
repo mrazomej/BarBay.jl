@@ -7,7 +7,7 @@
 import Revise
 
 # Import library package
-import BayesFitness
+import BarBay
 
 # Import libraries to manipulate data
 import DataFrames as DF
@@ -34,18 +34,18 @@ data = CSV.read("$(git_root())/test/data/data_example_01.csv", DF.DataFrame)
 println("Fitting Gaussian distributions to inferred mean fitness...\n")
 
 # Extract mean fitness MCMC chains
-mean_fitness_chains = BayesFitness.utils.jld2_concat_chains(
+mean_fitness_chains = BarBay.utils.jld2_concat_chains(
     "./output/", "data_01_meanfitness", [:sₜ]; id_str=""
 )
 
 # Infer mean fitness distribution parameters by fitting a Gaussian
-mean_fitness_dist = BayesFitness.stats.gaussian_prior_mean_fitness(
+mean_fitness_dist = BarBay.stats.gaussian_prior_mean_fitness(
     mean_fitness_chains
 )
 ##
 
 # Infer mean fitness distributions by fitting a Gaussian
-fit_dists = BayesFitness.stats.gaussian_prior_mean_fitness(
+fit_dists = BarBay.stats.gaussian_prior_mean_fitness(
     mean_fitness_chains,
     params=false
 )
@@ -65,7 +65,7 @@ axes = [
 # Loop through time points
 for (i, var) in enumerate(names(mean_fitness_chains))
     # Plot ECDF
-    BayesFitness.viz.mcmc_fitdist_cdf!(
+    BarBay.viz.mcmc_fitdist_cdf!(
         axes[i],
         Array(mean_fitness_chains[var])[:],
         fit_dists[i]
@@ -87,9 +87,9 @@ param = Dict(
     :n_steps => 4_000,
     :outputdir => "./output/",
     :outputname => "data_01_mutantfitness",
-    :model => BayesFitness.model.mutant_fitness_lognormal,
+    :model => BarBay.model.mutant_fitness_lognormal,
     :model_kwargs => Dict(
-        :α => BayesFitness.stats.beta_prior_mutant(
+        :α => BarBay.stats.beta_prior_mutant(
             data[data.time.==0, :barcode],
         ),
         :μ_s̄ => mean_fitness_dist[1],
@@ -102,7 +102,7 @@ param = Dict(
 
 println("Running inference...\n")
 # Run inference
-BayesFitness.mcmc.mcmc_mutant_fitness(; param...)
+BarBay.mcmc.mcmc_mutant_fitness(; param...)
 
 ##
 
@@ -129,7 +129,7 @@ chn = chain[chain_vars]
 fig = Figure(resolution=(600, 350))
 
 # Generate mcmc_trace_density! plot
-BayesFitness.viz.mcmc_trace_density!(fig, chn; alpha=0.5)
+BarBay.viz.mcmc_trace_density!(fig, chn; alpha=0.5)
 
 save("../docs/src/figs/fig06.svg", fig)
 
@@ -170,7 +170,7 @@ param = Dict(
 )
 
 # Compute posterior predictive checks
-ppc_mat = BayesFitness.stats.freq_mutant_ppc(
+ppc_mat = BarBay.stats.freq_mutant_ppc(
     chn,
     n_ppc;
     param=param
@@ -197,12 +197,12 @@ qs = [0.95, 0.675]
 colors = get(ColorSchemes.Blues_9, LinRange(0.5, 0.75, length(qs)))
 
 # Plot posterior predictive checks
-BayesFitness.viz.ppc_time_series!(
+BarBay.viz.ppc_time_series!(
     ax, qs, ppc_mat; colors=colors
 )
 
 # Add plot for median
-BayesFitness.viz.ppc_time_series!(
+BarBay.viz.ppc_time_series!(
     ax, [0.03], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
 )
 
@@ -238,7 +238,7 @@ param = Dict(
 )
 
 # Compute posterior predictive checks
-ppc_mat = BayesFitness.stats.logfreq_ratio_mutant_ppc(
+ppc_mat = BarBay.stats.logfreq_ratio_mutant_ppc(
     chn, n_ppc; param=param
 )
 
@@ -262,13 +262,13 @@ qs = [0.95, 0.675]
 colors = get(ColorSchemes.Blues_9, LinRange(0.5, 0.75, length(qs)))
 
 # Plot posterior predictive checks
-BayesFitness.viz.ppc_time_series!(
+BarBay.viz.ppc_time_series!(
     ax, qs, ppc_mat; colors=colors
 )
 
 # Add plot for median (we use the 5 percentile to have a "thicker" line showing
 # the median)
-BayesFitness.viz.ppc_time_series!(
+BarBay.viz.ppc_time_series!(
     ax, [0.05], ppc_mat; colors=ColorSchemes.Blues_9[end:end]
 )
 

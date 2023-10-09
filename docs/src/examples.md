@@ -18,7 +18,7 @@ suggest adding this at the beginning of all inference scripts.
 import BayesFitUtils
 
 # Import library package
-import BayesFitness
+import BarBay
 
 # Import libraries to manipulate data
 import DataFrames as DF
@@ -102,7 +102,7 @@ data = CSV.read(
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 # Compute naive priors from neutral strains
-naive_priors = BayesFitness.stats.naive_prior(data)
+naive_priors = BarBay.stats.naive_prior(data)
 
 # Select standard deviation parameters
 s_pop_prior = hcat(
@@ -130,7 +130,7 @@ param = Dict(
     :data => data,
     :outputname => "./output/advi_meanfield_" *
                    "$(lpad(n_samples, 2, "0"))samples_$(n_steps)steps",
-    :model => BayesFitness.model.fitness_normal,
+    :model => BarBay.model.fitness_normal,
     :model_kwargs => Dict(
         :s_pop_prior => s_pop_prior,
         :logσ_pop_prior => logσ_pop_prior,
@@ -149,13 +149,13 @@ param = Dict(
 
 # Run inference
 println("Running Variational Inference...")
-@time BayesFitness.vi.advi(; param...)
+@time BarBay.vi.advi(; param...)
 ```
 
 ## Single dataset single environment MCMC sampling
 
 If the number of barcodes is relatively small, one can try a more exact sampling
-of the posterior with MCMC. `BayesFitness` is structured such that the changes
+of the posterior with MCMC. `BarBay` is structured such that the changes
 from fitting a model with ADVI vs MCMC are minimal. Here is an example script to
 fit the same dataset as before using Dynamic HMC:
 
@@ -192,7 +192,7 @@ data = CSV.read(
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 # Compute naive priors from neutral strains
-naive_priors = BayesFitness.stats.naive_prior(data)
+naive_priors = BarBay.stats.naive_prior(data)
 
 # Select standard deviation parameters
 s_pop_prior = hcat(
@@ -224,7 +224,7 @@ param = Dict(
     :n_walkers => n_walkers,
     :n_steps => n_steps,
     :outputname => "./output/chain_joint_fitness_$(n_steps)steps_$(lpad(n_walkers, 2, "0"))walkers",
-    :model => BayesFitness.model.fitness_normal,
+    :model => BarBay.model.fitness_normal,
     :model_kwargs => Dict(
         :s_pop_prior => s_pop_prior,
         :logσ_pop_prior => logσ_pop_prior,
@@ -240,7 +240,7 @@ param = Dict(
 # Run inference
 println("Running Inference...")
 
-@time BayesFitness.mcmc.mcmc_sample(; param...)
+@time BarBay.mcmc.mcmc_sample(; param...)
 ```
 
 ## Multi-environment single dataset variational inference
@@ -296,7 +296,7 @@ data = CSV.read("path/to/data/tidy_data.csv", DF.DataFrame)
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 # Compute naive priors from neutral strains
-naive_priors = BayesFitness.stats.naive_prior(data; pseudocount=1)
+naive_priors = BarBay.stats.naive_prior(data; pseudocount=1)
 
 # Select standard deviation parameters
 s_pop_prior = hcat(
@@ -323,7 +323,7 @@ logλ_prior = hcat(
 param = Dict(
     :data => data,
     :outputname => "./output/advi_meanfield_$(lpad(n_samples, 2, "0"))samples_$(n_steps)steps",
-    :model => BayesFitness.model.multienv_fitness_normal,
+    :model => BarBay.model.multienv_fitness_normal,
     :model_kwargs => Dict(
         :s_pop_prior => s_pop_prior,
         :logσ_pop_prior => logσ_pop_prior,
@@ -343,7 +343,7 @@ param = Dict(
 
 # Run inference
 println("Running Variational Inference...")
-@time BayesFitness.vi.advi(; param...)
+@time BarBay.vi.advi(; param...)
 ```
 
 ## Hierarchical model for multiple experimental replicates variational inference
@@ -400,7 +400,7 @@ data = CSV.read("path/to/data/tidy_data.csv", DF.DataFrame)
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 # Compute naive priors from neutral strains
-naive_priors = BayesFitness.stats.naive_prior(data; rep_col=:rep, pseudocount=1)
+naive_priors = BarBay.stats.naive_prior(data; rep_col=:rep, pseudocount=1)
 
 # Select standard deviation parameters
 s_pop_prior = hcat(
@@ -428,7 +428,7 @@ param = Dict(
     :data => data,
     :outputname => "./output/advi_meanfield_" *
                    "$(lpad(n_samples, 2, "0"))samples_$(n_steps)steps",
-    :model => BayesFitness.model.replicate_fitness_normal,
+    :model => BarBay.model.replicate_fitness_normal,
     :model_kwargs => Dict(
         :s_pop_prior => s_pop_prior,
         :logσ_pop_prior => logσ_pop_prior,
@@ -449,7 +449,7 @@ param = Dict(
 
 # Run inference
 println("Running Variational Inference...")
-@time BayesFitness.vi.advi(; param...)
+@time BarBay.vi.advi(; param...)
 ```
 
 ## Hierarchical model for multiple barcodes mapping to same genotype variational inference
@@ -506,7 +506,7 @@ data = CSV.read("path/to/data/tidy_data.csv", DF.DataFrame)
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
 # Compute naive priors from neutral strains
-naive_priors = BayesFitness.stats.naive_prior(data; pseudocount=1)
+naive_priors = BarBay.stats.naive_prior(data; pseudocount=1)
 
 # Select standard deviation parameters
 s_pop_prior = hcat(
@@ -534,7 +534,7 @@ param = Dict(
     :data => data,
     :outputname => "./output/advi_meanfield_hierarchicalgenotypes_" *
                    "$(lpad(n_samples, 2, "0"))samples_$(n_steps)steps",
-    :model => BayesFitness.model.genotype_fitness_normal,
+    :model => BarBay.model.genotype_fitness_normal,
     :model_kwargs => Dict(
         :s_pop_prior => s_pop_prior,
         :logσ_pop_prior => logσ_pop_prior,
@@ -554,5 +554,5 @@ param = Dict(
 
 # Run inference
 println("Running Variational Inference...")
-@time dist = BayesFitness.vi.advi(; param...)
+@time dist = BarBay.vi.advi(; param...)
 ```
