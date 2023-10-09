@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>examples · BarBay</title><meta name="title" content="examples · BarBay"/><meta property="og:title" content="examples · BarBay"/><meta property="twitter:title" content="examples · BarBay"/><meta name="description" content="Documentation for BarBay."/><meta property="og:description" content="Documentation for BarBay."/><meta property="twitter:description" content="Documentation for BarBay."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img src="../assets/logo.svg" alt="BarBay logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">BarBay</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">BarBay</a></li><li><a class="tocitem" href="../contributing/">contributing</a></li><li class="is-active"><a class="tocitem" href>examples</a><ul class="internal"><li><a class="tocitem" href="#General-package-imports"><span>General package imports</span></a></li><li><a class="tocitem" href="#Single-dataset-single-environment-variational-inference"><span>Single dataset single environment variational inference</span></a></li><li><a class="tocitem" href="#Single-dataset-single-environment-MCMC-sampling"><span>Single dataset single environment MCMC sampling</span></a></li><li><a class="tocitem" href="#Multi-environment-single-dataset-variational-inference"><span>Multi-environment single dataset variational inference</span></a></li><li><a class="tocitem" href="#Hierarchical-model-for-multiple-experimental-replicates-variational-inference"><span>Hierarchical model for multiple experimental replicates variational inference</span></a></li><li><a class="tocitem" href="#Hierarchical-model-for-multiple-barcodes-mapping-to-same-genotype-variational-inference"><span>Hierarchical model for multiple barcodes mapping to same genotype variational inference</span></a></li></ul></li><li><a class="tocitem" href="../math/">math</a></li><li><a class="tocitem" href="../mcmc/">mcmc</a></li><li><a class="tocitem" href="../model/">model</a></li><li><a class="tocitem" href="../stats/">stats</a></li><li><a class="tocitem" href="../utils/">utils</a></li><li><a class="tocitem" href="../vi/">vi</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>examples</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>examples</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/mrazomej/BarBay.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/mrazomej/BarBay.jl/blob/main/docs/src/examples.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="examples"><a class="docs-heading-anchor" href="#examples">examples</a><a id="examples-1"></a><a class="docs-heading-anchor-permalink" href="#examples" title="Permalink"></a></h1><p>This section contains multiple example scripts to run inference using the models (included in the <a href="../model/#model">model</a> module) for different experimental designs. These are meant to serve as a guide for new users to get their analysis running ASAP.</p><p>We invite the users to check the full documentation to adapt the inference to their specific needs. Also, we invite the users to open an issue in the <code>GitHub</code> repository to report bugs or ask questions.</p><h2 id="General-package-imports"><a class="docs-heading-anchor" href="#General-package-imports">General package imports</a><a id="General-package-imports-1"></a><a class="docs-heading-anchor-permalink" href="#General-package-imports" title="Permalink"></a></h2><p>All of the examples listed below make use of the same libraries. Therefore, we suggest adding this at the beginning of all inference scripts.</p><pre><code class="language-julia hljs"># Import project package
+import BayesFitUtils
+
+# Import library package
+import BarBay
+
+# Import libraries to manipulate data
+import DataFrames as DF
+import CSV
+
+# Import library to perform Bayesian inference
+import Turing
+
+# Import AutoDiff backend
+using ReverseDiff
+
+# Import Memoization
+using Memoization
+
+# Impor statistical libraries
+import Random
+import StatsBase
+import Distributions
+
+Random.seed!(42)
+
+# Set AutoDiff backend
+Turing.setadbackend(:reversediff)
+# Allow system to generate cache to speed up computation
+Turing.setrdcache(true)</code></pre><h2 id="Single-dataset-single-environment-variational-inference"><a class="docs-heading-anchor" href="#Single-dataset-single-environment-variational-inference">Single dataset single environment variational inference</a><a id="Single-dataset-single-environment-variational-inference-1"></a><a class="docs-heading-anchor-permalink" href="#Single-dataset-single-environment-variational-inference" title="Permalink"></a></h2><p>For the case where there is a single dataset produced with a series of growth-dilution cycles over a single environment.</p><p>The dataset should look something like</p><pre><code class="nohighlight hljs">| time | barcode    | count | neutral | freq        |
+|------|------------|-------|---------|-------------|
+| 3    | neutral025 | 12478 | TRUE    | 0.000543716 |
+| 4    | neutral025 | 10252 | TRUE    | 0.00034368  |
+| 5    | neutral025 | 2883  | TRUE    | 6.74E-05    |
+| 1    | mut001     | 1044  | FALSE   | 7.97E-05    |
+| 2    | mut001     | 2010  | FALSE   | 0.000121885 |
+| 3    | mut001     | 766   | FALSE   | 3.34E-05    |
+| 4    | mut001     | 216   | FALSE   | 7.24E-06    |
+| 5    | mut001     | 120   | FALSE   | 2.81E-06    |
+| 1    | mut002     | 51484 | FALSE   | 0.003930243 |</code></pre><p>The script to analyze the data then looks like</p><pre><code class="language-julia hljs"># %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Define ADVI hyerparameters
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Define number of samples and steps
+n_samples = 1
+n_steps = 3_000
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Generate output directories
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Generate output directory 
+if !isdir(&quot;./output/&quot;)
+    mkdir(&quot;./output/&quot;)
+end # if
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Loading the data
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+println(&quot;Loading data...&quot;)
+
+# Import data
+data = CSV.read(
+    &quot;path/to/data/tidy_data.csv&quot;, DF.DataFrame
+)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Obtain priors on expected errors from neutral measurements
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Compute naive priors from neutral strains
+naive_priors = BarBay.stats.naive_prior(data)
+
+# Select standard deviation parameters
+s_pop_prior = hcat(
+    naive_priors[:s_pop_prior],
+    repeat([0.05], length(naive_priors[:s_pop_prior]))
+)
+
+logσ_pop_prior = hcat(
+    naive_priors[:logσ_pop_prior],
+    repeat([1.0], length(naive_priors[:logσ_pop_prior]))
+)
+
+logσ_bc_prior = [StatsBase.mean(naive_priors[:logσ_pop_prior]), 1.0]
+
+logλ_prior = hcat(
+    naive_priors[:logλ_prior],
+    repeat([3.0], length(naive_priors[:logλ_prior]))
+)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Define ADVI function parameters
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+param = Dict(
+    :data =&gt; data,
+    :outputname =&gt; &quot;./output/advi_meanfield_&quot; *
+                   &quot;$(lpad(n_samples, 2, &quot;0&quot;))samples_$(n_steps)steps&quot;,
+    :model =&gt; BarBay.model.fitness_normal,
+    :model_kwargs =&gt; Dict(
+        :s_pop_prior =&gt; s_pop_prior,
+        :logσ_pop_prior =&gt; logσ_pop_prior,
+        :logσ_bc_prior =&gt; logσ_bc_prior,
+        :s_bc_prior =&gt; [0.0, 1.0],
+        :logλ_prior =&gt; logλ_prior,
+    ),
+    :advi =&gt; Turing.ADVI(n_samples, n_steps),
+    :opt =&gt; Turing.TruncatedADAGrad(),
+    :fullrank =&gt; false
+)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Perform optimization
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Run inference
+println(&quot;Running Variational Inference...&quot;)
+@time BarBay.vi.advi(; param...)</code></pre><h2 id="Single-dataset-single-environment-MCMC-sampling"><a class="docs-heading-anchor" href="#Single-dataset-single-environment-MCMC-sampling">Single dataset single environment MCMC sampling</a><a id="Single-dataset-single-environment-MCMC-sampling-1"></a><a class="docs-heading-anchor-permalink" href="#Single-dataset-single-environment-MCMC-sampling" title="Permalink"></a></h2><p>If the number of barcodes is relatively small, one can try a more exact sampling of the posterior with MCMC. <code>BarBay</code> is structured such that the changes from fitting a model with ADVI vs MCMC are minimal. Here is an example script to fit the same dataset as before using Dynamic HMC:</p><pre><code class="language-julia hljs"># %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Define MCMC hyerparameters
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+n_steps = 3_000
+n_walkers = 4
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Generate output directories
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Generate output directory 
+if !isdir(&quot;./output/&quot;)
+    mkdir(&quot;./output/&quot;)
+end # if
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Loading the data
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+println(&quot;Loading data...&quot;)
+
+# Import data
+data = CSV.read(
+    &quot;path/to/data/tidy_data.csv&quot;, DF.DataFrame
+)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Obtain priors on expected errors from neutral measurements
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Compute naive priors from neutral strains
+naive_priors = BarBay.stats.naive_prior(data)
+
+# Select standard deviation parameters
+s_pop_prior = hcat(
+    naive_priors[:s_pop_prior],
+    repeat([0.05], length(naive_priors[:s_pop_prior]))
+)
+
+logσ_pop_prior = hcat(
+    naive_priors[:logσ_pop_prior],
+    repeat([1.0], length(naive_priors[:logσ_pop_prior]))
+)
+
+logσ_bc_prior = [StatsBase.mean(naive_priors[:logσ_pop_prior]), 1.0]
+
+logλ_prior = hcat(
+    naive_priors[:logλ_prior],
+    repeat([3.0], length(naive_priors[:logλ_prior]))
+)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Initialize MCMC sampling
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+println(&quot;Initializing MCMC sampling...\n&quot;)
+
+# Define function parameters
+param = Dict(
+    :data =&gt; data,
+    :n_walkers =&gt; n_walkers,
+    :n_steps =&gt; n_steps,
+    :outputname =&gt; &quot;./output/chain_joint_fitness_$(n_steps)steps_$(lpad(n_walkers, 2, &quot;0&quot;))walkers&quot;,
+    :model =&gt; BarBay.model.fitness_normal,
+    :model_kwargs =&gt; Dict(
+        :s_pop_prior =&gt; s_pop_prior,
+        :logσ_pop_prior =&gt; logσ_pop_prior,
+        :logσ_bc_prior =&gt; logσ_bc_prior,
+        :s_bc_prior =&gt; [0.0, 1.0],
+        :logλ_prior =&gt; logλ_prior,
+    ),
+    :sampler =&gt; Turing.externalsampler(DynamicHMC.NUTS()),
+    :ensemble =&gt; Turing.MCMCThreads(),
+    :rm_T0 =&gt; false,
+)
+
+# Run inference
+println(&quot;Running Inference...&quot;)
+
+@time BarBay.mcmc.mcmc_sample(; param...)</code></pre><h2 id="Multi-environment-single-dataset-variational-inference"><a class="docs-heading-anchor" href="#Multi-environment-single-dataset-variational-inference">Multi-environment single dataset variational inference</a><a id="Multi-environment-single-dataset-variational-inference-1"></a><a class="docs-heading-anchor-permalink" href="#Multi-environment-single-dataset-variational-inference" title="Permalink"></a></h2><p>When dealing with an experiment where the growth-dilution cycles were done into different environments, the data should include a column indicating the  environment label. The dataset then looks something like</p><pre><code class="nohighlight hljs">| time | env | barcode    | count | neutral | freq        |
+|------|-----|------------|-------|---------|-------------|
+| 1    | 1   | neutral100 | 7327  | TRUE    | 0.000399781 |
+| 2    | 1   | neutral100 | 4034  | TRUE    | 0.000228517 |
+| 3    | 2   | neutral100 | 5135  | TRUE    | 0.000257352 |
+| 4    | 3   | neutral100 | 2011  | TRUE    | 6.80E-05    |
+| 5    | 1   | neutral100 | 1225  | TRUE    | 3.39E-05    |
+| 6    | 2   | neutral100 | 693   | TRUE    | 1.93E-05    |
+| 7    | 3   | neutral100 | 152   | TRUE    | 4.08E-06    |
+| 1    | 1   | mut001     | 268   | FALSE   | 1.46E-05    |
+| 2    | 1   | mut001     | 187   | FALSE   | 1.06E-05    |</code></pre><p>A basic script to analyze this dataset then takes the form</p><pre><code class="language-julia hljs"># %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Define ADVI hyerparameters
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Define number of samples and steps
+n_samples = 1
+n_steps = 10_000
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Generate output directories
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Generate output directory 
+if !isdir(&quot;./output/&quot;)
+    mkdir(&quot;./output/&quot;)
+end # if
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Loading the data
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+println(&quot;Loading data...&quot;)
+
+# Import data
+data = CSV.read(&quot;path/to/data/tidy_data.csv&quot;, DF.DataFrame)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Obtain priors on expected errors from neutral measurements
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Compute naive priors from neutral strains
+naive_priors = BarBay.stats.naive_prior(data; pseudocount=1)
+
+# Select standard deviation parameters
+s_pop_prior = hcat(
+    naive_priors[:s_pop_prior],
+    repeat([0.05], length(naive_priors[:s_pop_prior]))
+)
+
+logσ_pop_prior = hcat(
+    naive_priors[:logσ_pop_prior],
+    repeat([1.0], length(naive_priors[:logσ_pop_prior]))
+)
+
+logσ_bc_prior = [StatsBase.mean(naive_priors[:logσ_pop_prior]), 1.0]
+
+logλ_prior = hcat(
+    naive_priors[:logλ_prior],
+    repeat([3.0], length(naive_priors[:logλ_prior]))
+)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Define ADVI function parameters
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+param = Dict(
+    :data =&gt; data,
+    :outputname =&gt; &quot;./output/advi_meanfield_$(lpad(n_samples, 2, &quot;0&quot;))samples_$(n_steps)steps&quot;,
+    :model =&gt; BarBay.model.multienv_fitness_normal,
+    :model_kwargs =&gt; Dict(
+        :s_pop_prior =&gt; s_pop_prior,
+        :logσ_pop_prior =&gt; logσ_pop_prior,
+        :logσ_bc_prior =&gt; logσ_bc_prior,
+        :s_bc_prior =&gt; [0.0, 1.0],
+        :logλ_prior =&gt; logλ_prior,
+    ),
+    :env_col =&gt; :env,
+    :advi =&gt; Turing.ADVI(n_samples, n_steps),
+    :opt =&gt; Turing.TruncatedADAGrad(),
+    :fullrank =&gt; false
+)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Perform optimization
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Run inference
+println(&quot;Running Variational Inference...&quot;)
+@time BarBay.vi.advi(; param...)</code></pre><h2 id="Hierarchical-model-for-multiple-experimental-replicates-variational-inference"><a class="docs-heading-anchor" href="#Hierarchical-model-for-multiple-experimental-replicates-variational-inference">Hierarchical model for multiple experimental replicates variational inference</a><a id="Hierarchical-model-for-multiple-experimental-replicates-variational-inference-1"></a><a class="docs-heading-anchor-permalink" href="#Hierarchical-model-for-multiple-experimental-replicates-variational-inference" title="Permalink"></a></h2><p>If there are more than one experimental replicates, the dataset must include a column indicating the replicate ID for each observation. The dataset ends up looking like</p><pre><code class="nohighlight hljs">| time | barcode    | count | neutral | count_sum | freq        | rep  |
+|------|------------|-------|---------|-----------|-------------|------|
+| 1    | neutral001 | 9967  | TRUE    | 19321304  | 0.000515855 | R1   |
+| 2    | neutral001 | 3749  | TRUE    | 18224218  | 0.000205715 | R1   |
+| 3    | neutral001 | 3516  | TRUE    | 23317980  | 0.000150785 | R1   |
+| 4    | neutral001 | 2217  | TRUE    | 31261050  | 7.09E-05    | R1   |
+| 5    | neutral001 | 1027  | TRUE    | 38335591  | 2.68E-05    | R1   |
+| 1    | neutral002 | 8676  | TRUE    | 19321304  | 0.000449038 | R1   |
+| 2    | neutral002 | 6019  | TRUE    | 18224218  | 0.000330275 | R1   |
+| 3    | neutral002 | 2245  | TRUE    | 23317980  | 9.63E-05    | R1   |
+| 4    | neutral002 | 2179  | TRUE    | 31261050  | 6.97E-05    | R1   |</code></pre><p>To analyze multiple experimental replicates jointly, we can use a hierarchical model. The basic script to implement this looks something like</p><pre><code class="language-julia hljs"># %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Define ADVI hyerparameters
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Define number of samples and steps
+n_samples = 1
+n_steps = 10_000
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Generate output directories
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Generate output directory 
+if !isdir(&quot;./output/&quot;)
+    mkdir(&quot;./output/&quot;)
+end # if
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Loading the data
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+println(&quot;Loading data...&quot;)
+
+# Import data
+data = CSV.read(&quot;path/to/data/tidy_data.csv&quot;, DF.DataFrame)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Obtain priors on expected errors from neutral measurements
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Compute naive priors from neutral strains
+naive_priors = BarBay.stats.naive_prior(data; rep_col=:rep, pseudocount=1)
+
+# Select standard deviation parameters
+s_pop_prior = hcat(
+    naive_priors[:s_pop_prior],
+    repeat([0.05], length(naive_priors[:s_pop_prior]))
+)
+
+logσ_pop_prior = hcat(
+    naive_priors[:logσ_pop_prior],
+    repeat([1.0], length(naive_priors[:logσ_pop_prior]))
+)
+
+logσ_bc_prior = [StatsBase.mean(naive_priors[:logσ_pop_prior]), 1.0]
+
+logλ_prior = hcat(
+    naive_priors[:logλ_prior],
+    repeat([3.0], length(naive_priors[:logλ_prior]))
+)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Define ADVI function parameters
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+param = Dict(
+    :data =&gt; data,
+    :outputname =&gt; &quot;./output/advi_meanfield_&quot; *
+                   &quot;$(lpad(n_samples, 2, &quot;0&quot;))samples_$(n_steps)steps&quot;,
+    :model =&gt; BarBay.model.replicate_fitness_normal,
+    :model_kwargs =&gt; Dict(
+        :s_pop_prior =&gt; s_pop_prior,
+        :logσ_pop_prior =&gt; logσ_pop_prior,
+        :logσ_bc_prior =&gt; logσ_bc_prior,
+        :s_bc_prior =&gt; [0.0, 1.0],
+        :logλ_prior =&gt; logλ_prior,
+        :logτ_prior =&gt; [-2.0, 0.5],
+    ),
+    :advi =&gt; Turing.ADVI(n_samples, n_steps),
+    :opt =&gt; Turing.TruncatedADAGrad(),
+    :rep_col =&gt; :rep,
+    :fullrank =&gt; false
+)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Perform optimization
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Run inference
+println(&quot;Running Variational Inference...&quot;)
+@time BarBay.vi.advi(; param...)</code></pre><h2 id="Hierarchical-model-for-multiple-barcodes-mapping-to-same-genotype-variational-inference"><a class="docs-heading-anchor" href="#Hierarchical-model-for-multiple-barcodes-mapping-to-same-genotype-variational-inference">Hierarchical model for multiple barcodes mapping to same genotype variational inference</a><a id="Hierarchical-model-for-multiple-barcodes-mapping-to-same-genotype-variational-inference-1"></a><a class="docs-heading-anchor-permalink" href="#Hierarchical-model-for-multiple-barcodes-mapping-to-same-genotype-variational-inference" title="Permalink"></a></h2><p>When multiple barcodes map to the same genotype within a single experiment, the dataset must include a column indicating the genotype each barcode belongs to. The dataset ends up looking something like</p><pre><code class="nohighlight hljs">| time | barcode    | count | neutral | count_sum | freq         | genotype     |
+|------|------------|-------|---------|-----------|--------------|--------------|
+| 1    | neutral001 | 6649  | TRUE    | 17418514  | 0.00038172   | genotype000  |
+| 2    | neutral001 | 6245  | TRUE    | 16007352  | 0.000390133  | genotype000  |
+| 3    | neutral001 | 6323  | TRUE    | 22075763  | 0.000286423  | genotype000  |
+| 4    | neutral001 | 2345  | TRUE    | 27743357  | 8.45E-05     | genotype000  |
+| 5    | neutral001 | 1379  | TRUE    | 34253492  | 4.03E-05     | genotype000  |
+| 1    | neutral002 | 5160  | TRUE    | 17418514  | 0.000296237  | genotype000  |
+| 2    | neutral002 | 4078  | TRUE    | 16007352  | 0.000254758  | genotype000  |
+| 3    | neutral002 | 3386  | TRUE    | 22075763  | 0.000153381  | genotype000  |
+| 4    | neutral002 | 2821  | TRUE    | 27743357  | 0.000101682  | genotype000  |</code></pre><p>As with experimental replicates, we can implement a hierarchical model for this experimental design. The basic script to implement this looks like</p><pre><code class="language-julia hljs"># %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Define ADVI hyerparameters
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Define number of samples and steps
+n_samples = 1
+n_steps = 10_000
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Generate output directories
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Generate output directory 
+if !isdir(&quot;./output/&quot;)
+    mkdir(&quot;./output/&quot;)
+end # if
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Loading the data
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+println(&quot;Loading data...&quot;)
+
+# Import data
+data = CSV.read(&quot;path/to/data/tidy_data.csv&quot;, DF.DataFrame)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Obtain priors on expected errors from neutral measurements
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Compute naive priors from neutral strains
+naive_priors = BarBay.stats.naive_prior(data; pseudocount=1)
+
+# Select standard deviation parameters
+s_pop_prior = hcat(
+    naive_priors[:s_pop_prior],
+    repeat([0.05], length(naive_priors[:s_pop_prior]))
+)
+
+logσ_pop_prior = hcat(
+    naive_priors[:logσ_pop_prior],
+    repeat([1.0], length(naive_priors[:logσ_pop_prior]))
+)
+
+logσ_bc_prior = [StatsBase.mean(naive_priors[:logσ_pop_prior]), 1.0]
+
+logλ_prior = hcat(
+    naive_priors[:logλ_prior],
+    repeat([3.0], length(naive_priors[:logλ_prior]))
+)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Define ADVI function parameters
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+param = Dict(
+    :data =&gt; data,
+    :outputname =&gt; &quot;./output/advi_meanfield_hierarchicalgenotypes_&quot; *
+                   &quot;$(lpad(n_samples, 2, &quot;0&quot;))samples_$(n_steps)steps&quot;,
+    :model =&gt; BarBay.model.genotype_fitness_normal,
+    :model_kwargs =&gt; Dict(
+        :s_pop_prior =&gt; s_pop_prior,
+        :logσ_pop_prior =&gt; logσ_pop_prior,
+        :logσ_bc_prior =&gt; logσ_bc_prior,
+        :s_bc_prior =&gt; [0.0, 1.0],
+        :logλ_prior =&gt; logλ_prior,
+    ),
+    :genotype_col =&gt; :genotype,
+    :advi =&gt; Turing.ADVI(n_samples, n_steps),
+    :opt =&gt; Turing.TruncatedADAGrad(),
+    :fullrank =&gt; false
+)
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Perform optimization
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Run inference
+println(&quot;Running Variational Inference...&quot;)
+@time dist = BarBay.vi.advi(; param...)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../contributing/">« contributing</a><a class="docs-footer-nextpage" href="../math/">math »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.1.0 on <span class="colophon-date" title="Monday 9 October 2023 20:48">Monday 9 October 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
