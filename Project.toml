@@ -1,7 +1,7 @@
-name = "BayesFitness"
+name = "BarBay"
 uuid = "62fbbd4b-f5cc-4f91-bc02-e40b84581c65"
 authors = ["Manuel Razo-Mejia"]
-version = "0.0.2"
+version = "0.0.1"
 
 [deps]
 Bijectors = "76274a88-744f-5084-9051-94815aaf08c4"
