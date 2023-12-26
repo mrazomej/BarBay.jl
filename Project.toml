@@ -34,7 +34,7 @@ MCMCChains = "^6"
 Memoization = "^0.2"
 ReverseDiff = "^1.15"
 StatsBase = "^0.34"
-Turing = "0.29"
+Turing = "0.29, 0.30"
 UnPack = "^1"
 julia = "1"
 
