@@ -2,6 +2,9 @@ using BarBay
 using Test
 using CSV
 using StatsBase
+using Turing
+
+# ---------------------------------------------------------------------------- #
 
 @testset "data_to_array tests" begin
     # Load the minimal dataset
@@ -31,6 +34,8 @@ using StatsBase
     @test all([k in keys(result) for k in expected_keys])
 end
 
+# ---------------------------------------------------------------------------- #
+
 @testset "naive_prior tests" begin
     # Load the minimal dataset
     data = CSV.read("./test/data/data001_single.csv", DataFrame)
@@ -58,4 +63,68 @@ end
 
     # Check that the DataFrame has the correct columns
     @test all([col in Symbol.(names(result)) for col in [:barcode, :fitness]])
+end
+
+# ---------------------------------------------------------------------------- #
+
+@testset "fitness_normal tests" begin
+    # Load the minimal dataset
+    data = CSV.read("./test/data/data001_single.csv", DataFrame)
+
+    # Call the function and store the result
+    data_dict = BarBay.utils.data_to_arrays(data)
+
+    # Define model
+    model = BarBay.model.fitness_normal(
+        data_dict[:bc_count],
+        data_dict[:bc_total],
+        data_dict[:n_neutral],
+        data_dict[:n_bc];
+    )
+
+    # Check that the result is a Model
+    @test typeof(model) <: Turing.AbstractMCMC.AbstractModel
+end
+
+# ---------------------------------------------------------------------------- #
+
+@testset "fitness_normal_hierarchical_replicates tests" begin
+    # Load the minimal dataset
+    data = CSV.read("./test/data/data002_hier-rep.csv", DataFrame)
+
+    # Call the function and store the result
+    data_dict = BarBay.utils.data_to_arrays(data; rep_col=:rep)
+
+    # Define model
+    model = BarBay.model.replicate_fitness_normal(
+        data_dict[:bc_count],
+        data_dict[:bc_total],
+        data_dict[:n_neutral],
+        data_dict[:n_bc];
+    )
+
+    # Check that the result is a Model
+    @test typeof(model) <: Turing.AbstractMCMC.AbstractModel
+end
+
+# ---------------------------------------------------------------------------- #
+
+@testset "fitness_normal_hierarchical_replicates tests" begin
+    # Load the minimal dataset
+    data = CSV.read("./test/data/data003_multienv.csv", DataFrame)
+
+    # Call the function and store the result
+    data_dict = BarBay.utils.data_to_arrays(data; env_col=:env)
+
+    # Define model
+    model = BarBay.model.multienv_fitness_normal(
+        data_dict[:bc_count],
+        data_dict[:bc_total],
+        data_dict[:n_neutral],
+        data_dict[:n_bc];
+        Dict(:envs => data_dict[:envs])...
+    )
+
+    # Check that the result is a Model
+    @test typeof(model) <: Turing.AbstractMCMC.AbstractModel
 end
