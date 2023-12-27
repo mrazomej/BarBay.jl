@@ -1005,11 +1005,7 @@ end # function
 Function to compute a naive estimate of mutant fitness data based on counts. The
 fitness estimate is computed as
 
-```math
-\left\langle
-\log\frac{f^{(m)}_{t+1}}{f^{(m)}_{t}} - \log\frac{f^{(n)}_{t+1}}{f^{(n)}_{t}}
-\right\rangle = s^{(m)}
-```
+⟨log⁡(f⁽ᵐ⁾ₜ₊₁ / f⁽ᵐ⁾ₜ) - log⁡(f⁽ⁿ⁾ₜ₊₁ / f⁽ⁿ⁾ₜ))⟩ = s⁽ᵐ⁾
 
 # Arguments
 - `data::DataFrames.AbstractDataFrame`: **Tidy dataframe** with the data to be
