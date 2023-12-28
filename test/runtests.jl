@@ -1,9 +1,15 @@
 using BarBay
 using Test
 using CSV
+using DataFrames
 using StatsBase
 using Turing
+using AdvancedVI
+using Enzyme
+using ReverseDiff
+using Zygote
 
+println("Testing utility functions...")
 # ---------------------------------------------------------------------------- #
 
 @testset "data_to_array tests" begin
@@ -34,6 +40,8 @@ using Turing
     @test all([k in keys(result) for k in expected_keys])
 end
 
+println("Testing stats functions...")
+
 # ---------------------------------------------------------------------------- #
 
 @testset "naive_prior tests" begin
@@ -51,7 +59,7 @@ end
     @test all([k in keys(result) for k in expected_keys])
 end
 
-@testset "compute_mean_fitness tests" begin
+@testset "naive_fitness tests" begin
     # Load the minimal dataset
     data = CSV.read("./test/data/data001_single.csv", DataFrame)
 
@@ -66,6 +74,8 @@ end
 end
 
 # ---------------------------------------------------------------------------- #
+
+println("Testing model functions...")
 
 @testset "fitness_normal tests" begin
     # Load the minimal dataset
@@ -88,7 +98,7 @@ end
 
 # ---------------------------------------------------------------------------- #
 
-@testset "fitness_normal_hierarchical_replicates tests" begin
+@testset "replicate_fitness_normal tests" begin
     # Load the minimal dataset
     data = CSV.read("./test/data/data002_hier-rep.csv", DataFrame)
 
@@ -109,7 +119,7 @@ end
 
 # ---------------------------------------------------------------------------- #
 
-@testset "fitness_normal_hierarchical_replicates tests" begin
+@testset "multienv_fitness_normal tests" begin
     # Load the minimal dataset
     data = CSV.read("./test/data/data003_multienv.csv", DataFrame)
 
@@ -127,4 +137,48 @@ end
 
     # Check that the result is a Model
     @test typeof(model) <: Turing.AbstractMCMC.AbstractModel
+end
+
+# ---------------------------------------------------------------------------- #
+
+@testset "genotype_fitness_normal tests" begin
+    # Load the minimal dataset
+    data = CSV.read("./test/data/data004_multigen.csv", DataFrame)
+
+    # Call the function and store the result
+    data_dict = BarBay.utils.data_to_arrays(data; genotype_col=:genotype)
+
+    # Define model
+    model = BarBay.model.genotype_fitness_normal(
+        data_dict[:bc_count],
+        data_dict[:bc_total],
+        data_dict[:n_neutral],
+        data_dict[:n_bc];
+        Dict(:genotypes => data_dict[:genotypes])...
+    )
+
+    # Check that the result is a Model
+    @test typeof(model) <: Turing.AbstractMCMC.AbstractModel
+end
+
+# ---------------------------------------------------------------------------- #
+
+println("Testing variational inference functions...")
+
+@testset "advi tests" begin
+    # Load the minimal dataset
+    data = CSV.read("./test/data/data001_single.csv", DataFrame)
+
+    # Define model
+    model = BarBay.model.fitness_normal
+
+    # Call the function and store the result
+    df = BarBay.vi.advi(
+        data=data,
+        model=model,
+        advi=Turing.ADVI(1, 1)
+    )
+
+    # Check that the result is a Turing.VI
+    @test typeof(df) <: DataFrames.DataFrame
 end
