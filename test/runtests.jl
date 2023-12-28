@@ -14,7 +14,7 @@ println("Testing utility functions...")
 
 @testset "data_to_array tests" begin
     # Load the minimal dataset
-    data = CSV.read("./test/data/data001_single.csv", DataFrame)
+    data = CSV.read("data/data001_single.csv", DataFrame)
 
     # Call the function and store the result
     result = BarBay.utils.data_to_arrays(data)
@@ -46,7 +46,7 @@ println("Testing stats functions...")
 
 @testset "naive_prior tests" begin
     # Load the minimal dataset
-    data = CSV.read("./test/data/data001_single.csv", DataFrame)
+    data = CSV.read("data/data001_single.csv", DataFrame)
 
     # Call the function and store the result
     result = BarBay.stats.naive_prior(data)
@@ -61,7 +61,7 @@ end
 
 @testset "naive_fitness tests" begin
     # Load the minimal dataset
-    data = CSV.read("./test/data/data001_single.csv", DataFrame)
+    data = CSV.read("data/data001_single.csv", DataFrame)
 
     # Call the function and store the result
     result = BarBay.stats.naive_fitness(data)
@@ -79,7 +79,7 @@ println("Testing model functions...")
 
 @testset "fitness_normal tests" begin
     # Load the minimal dataset
-    data = CSV.read("./test/data/data001_single.csv", DataFrame)
+    data = CSV.read("data/data001_single.csv", DataFrame)
 
     # Call the function and store the result
     data_dict = BarBay.utils.data_to_arrays(data)
@@ -100,7 +100,7 @@ end
 
 @testset "replicate_fitness_normal tests" begin
     # Load the minimal dataset
-    data = CSV.read("./test/data/data002_hier-rep.csv", DataFrame)
+    data = CSV.read("data/data002_hier-rep.csv", DataFrame)
 
     # Call the function and store the result
     data_dict = BarBay.utils.data_to_arrays(data; rep_col=:rep)
@@ -121,7 +121,7 @@ end
 
 @testset "multienv_fitness_normal tests" begin
     # Load the minimal dataset
-    data = CSV.read("./test/data/data003_multienv.csv", DataFrame)
+    data = CSV.read("data/data003_multienv.csv", DataFrame)
 
     # Call the function and store the result
     data_dict = BarBay.utils.data_to_arrays(data; env_col=:env)
@@ -143,7 +143,7 @@ end
 
 @testset "genotype_fitness_normal tests" begin
     # Load the minimal dataset
-    data = CSV.read("./test/data/data004_multigen.csv", DataFrame)
+    data = CSV.read("data/data004_multigen.csv", DataFrame)
 
     # Call the function and store the result
     data_dict = BarBay.utils.data_to_arrays(data; genotype_col=:genotype)
@@ -167,7 +167,7 @@ println("Testing variational inference functions...")
 
 @testset "advi tests" begin
     # Load the minimal dataset
-    data = CSV.read("./test/data/data001_single.csv", DataFrame)
+    data = CSV.read("data/data001_single.csv", DataFrame)
 
     # Define model
     model = BarBay.model.fitness_normal
