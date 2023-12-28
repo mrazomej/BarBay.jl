@@ -40,7 +40,7 @@ println("Testing utility functions...")
     @test all([k in keys(result) for k in expected_keys])
 end
 
-println("Testing stats functions...")
+println("\nTesting stats functions...\n")
 
 # ---------------------------------------------------------------------------- #
 
@@ -75,7 +75,7 @@ end
 
 # ---------------------------------------------------------------------------- #
 
-println("Testing model functions...")
+println("\nTesting model functions...\n")
 
 @testset "fitness_normal tests" begin
     # Load the minimal dataset
@@ -101,6 +101,25 @@ end
 @testset "replicate_fitness_normal tests" begin
     # Load the minimal dataset
     data = CSV.read("data/data002_hier-rep.csv", DataFrame)
+
+    # Call the function and store the result
+    data_dict = BarBay.utils.data_to_arrays(data; rep_col=:rep)
+
+    # Define model
+    model = BarBay.model.replicate_fitness_normal(
+        data_dict[:bc_count],
+        data_dict[:bc_total],
+        data_dict[:n_neutral],
+        data_dict[:n_bc];
+    )
+
+    # Check that the result is a Model
+    @test typeof(model) <: Turing.AbstractMCMC.AbstractModel
+
+    # Remove last time point from last replicate
+    data = data[
+        (data.rep.!=maximum(data.rep)).|(data.time.!=maximum(data.time)),
+        :]
 
     # Call the function and store the result
     data_dict = BarBay.utils.data_to_arrays(data; rep_col=:rep)
@@ -163,20 +182,163 @@ end
 
 # ---------------------------------------------------------------------------- #
 
-println("Testing variational inference functions...")
+println("\nTesting variational inference functions...\n")
 
-@testset "advi tests" begin
+@testset "ADVI fitness_normal tests" begin
     # Load the minimal dataset
     data = CSV.read("data/data001_single.csv", DataFrame)
 
     # Define model
     model = BarBay.model.fitness_normal
 
+    println("ReverseDiffAD")
     # Call the function and store the result
     df = BarBay.vi.advi(
         data=data,
         model=model,
-        advi=Turing.ADVI(1, 1)
+        advi=Turing.ADVI{AdvancedVI.ReverseDiffAD{false}}(1, 1)
+    )
+
+    # Check that the result is a Turing.VI
+    @test typeof(df) <: DataFrames.DataFrame
+
+    println("ForwardDiffAD")
+    # Call the function and store the result
+    df = BarBay.vi.advi(
+        data=data,
+        model=model,
+        advi=Turing.ADVI{AdvancedVI.ForwardDiffAD{0}}(1, 1)
+    )
+
+    # Check that the result is a Turing.VI
+    @test typeof(df) <: DataFrames.DataFrame
+end
+
+# ---------------------------------------------------------------------------- #
+
+@testset "ADVI multienv_fitness_normal tests" begin
+    # Load the minimal dataset
+    data = CSV.read("data/data003_multienv.csv", DataFrame)
+
+    # Define model
+    model = BarBay.model.multienv_fitness_normal
+
+    println("ReverseDiffAD")
+    # # Call the function and store the result
+    df = BarBay.vi.advi(
+        data=data,
+        model=model,
+        env_col=:env,
+        advi=Turing.ADVI{AdvancedVI.ReverseDiffAD{false}}(1, 1)
+    )
+
+    # Check that the result is a Turing.VI
+    @test typeof(df) <: DataFrames.DataFrame
+
+    println("ForwardDiffAD")
+    # Call the function and store the result
+    df = BarBay.vi.advi(
+        data=data,
+        model=model,
+        env_col=:env,
+        advi=Turing.ADVI{AdvancedVI.ForwardDiffAD{0}}(1, 1)
+    )
+
+    # Check that the result is a Turing.VI
+    @test typeof(df) <: DataFrames.DataFrame
+end
+
+# ---------------------------------------------------------------------------- #
+
+@testset "ADVI replicate_fitness_normal tests" begin
+    # Load the minimal dataset
+    data = CSV.read("data/data002_hier-rep.csv", DataFrame)
+
+    # Define model
+    model = BarBay.model.replicate_fitness_normal
+
+    println("ReverseDiffAD")
+    # Call the function and store the result
+    df = BarBay.vi.advi(
+        data=data,
+        model=model,
+        rep_col=:rep,
+        advi=Turing.ADVI{AdvancedVI.ReverseDiffAD{false}}(1, 1)
+    )
+
+    # Check that the result is a Turing.VI
+    @test typeof(df) <: DataFrames.DataFrame
+
+    println("ForwardDiffAD")
+    # Call the function and store the result
+    df = BarBay.vi.advi(
+        data=data,
+        model=model,
+        rep_col=:rep,
+        advi=Turing.ADVI{AdvancedVI.ForwardDiffAD{0}}(1, 1)
+    )
+
+    # Check that the result is a Turing.VI
+    @test typeof(df) <: DataFrames.DataFrame
+
+    # Remove last time point from last replicate
+    data = data[
+        (data.rep.!=maximum(data.rep)).|(data.time.!=maximum(data.time)),
+        :]
+
+    println("ReverseDiffAD")
+    # Call the function and store the result
+    df = BarBay.vi.advi(
+        data=data,
+        model=model,
+        rep_col=:rep,
+        advi=Turing.ADVI{AdvancedVI.ReverseDiffAD{false}}(1, 1)
+    )
+
+    # Check that the result is a Turing.VI
+    @test typeof(df) <: DataFrames.DataFrame
+
+    println("ForwardDiffAD")
+    # Call the function and store the result
+    df = BarBay.vi.advi(
+        data=data,
+        model=model,
+        rep_col=:rep,
+        advi=Turing.ADVI{AdvancedVI.ForwardDiffAD{0}}(1, 1)
+    )
+
+    # Check that the result is a Turing.VI
+    @test typeof(df) <: DataFrames.DataFrame
+end
+
+# ---------------------------------------------------------------------------- #
+
+@testset "ADVI genotype_fitness_normal tests" begin
+    # Load the minimal dataset
+    data = CSV.read("data/data004_multigen.csv", DataFrame)
+
+    # Define model
+    model = BarBay.model.genotype_fitness_normal
+
+    println("ReverseDiffAD")
+    # # Call the function and store the result
+    df = BarBay.vi.advi(
+        data=data,
+        model=model,
+        genotype_col=:genotype,
+        advi=Turing.ADVI{AdvancedVI.ReverseDiffAD{false}}(1, 1)
+    )
+
+    # Check that the result is a Turing.VI
+    @test typeof(df) <: DataFrames.DataFrame
+
+    println("ForwardDiffAD")
+    # Call the function and store the result
+    df = BarBay.vi.advi(
+        data=data,
+        model=model,
+        genotype_col=:genotype,
+        advi=Turing.ADVI{AdvancedVI.ForwardDiffAD{0}}(1, 1)
     )
 
     # Check that the result is a Turing.VI
