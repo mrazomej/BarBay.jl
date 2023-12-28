@@ -261,12 +261,10 @@ Turing.@model function fitness_normal(
     # π(γₜ⁽ᵐ⁾ | s⁽ᵐ⁾, σ⁽ᵐ⁾, s̲ₜ)
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvNormal(
-            # Build vector for fitness differences
-            vcat([s⁽ᵐ⁾ .- s̲ₜ for s⁽ᵐ⁾ in s̲⁽ᵐ⁾]...),
-            # Build vector for variances
-            LinearAlgebra.Diagonal(
-                vcat([repeat([σ], n_time - 1) for σ in exp.(logσ̲⁽ᵐ⁾)]...) .^ 2
-            )
+            # Vector for fitness differences without vcat
+            repeat(s̲⁽ᵐ⁾, inner=n_time - 1) .- repeat(s̲ₜ, outer=n_bc),
+            # Diagonal matrix for variances without vcat
+            LinearAlgebra.Diagonal(repeat(exp.(logσ̲⁽ᵐ⁾) .^ 2, inner=n_time - 1))
         ),
         logΓ̲̲⁽ᵐ⁾
     )
