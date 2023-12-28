@@ -273,27 +273,33 @@ parameters we need to define are:
   samples and steps.
 - `opt`: Optimization algorithm for ADVI.
 
-To speed-up the computation, we will use
-[`ReverseDiff.jl`](https://github.com/JuliaDiff/ReverseDiff.jl) as the auto
-differentiation backend (see
+To speed-up the computation for a large number of parameters, we will use
+[`ReverseDiff.jl`](https://github.com/JuliaDiff/ReverseDiff.jl) as the automatic
+differentiation backend, also known as backpropagation (see
 [`Turing.jl`](https://turing.ml/v0.22/docs/using-turing/autodiff) documentation
-for more information on this). Let's import the necessary packages and set the
-differentiation backend options.
+for more information on this). This is generally a good practice if the number
+of barcodes is large. However, for small datasets, we recommend using
+[`ForwardDiff.jl`](https://github.com/JuliaDiff/ForwardDiff.jl) instead.
+
+!!! note
+    The AutoDiff backend for ADVI is set using the `AdvancedVI` module. This is
+    done in the `:advi` option of the `param` dictionary. For `ForwardDiff.jl`,
+    we can do `:advi => Turing.ADVI(n_samples, n_steps)`, as `ForwardDiff.jl` is
+    the default backend. For `ReverseDiff.jl`, we need to do
+    `:advi => Turing.ADVI{AdvancedVI.ReverseDiffAD{false}}(n_samples, n_steps)`,
+    where the `false` indicates that we won't use the cache for the random
+    number tape. See the
+    [`AdvancedVI.jl`](https://github.com/TuringLang/AdvancedVI.jl/tree/master)
+    repository for more information.
 
 ```julia
 # Import library to perform Bayesian inference
 import Turing
+# Import library to set AutoDiff backend for ADVI
+import AdvancedVI
 
 # Import AutoDiff backend
 using ReverseDiff
-
-# Import Memoization
-using Memoization
-
-# Set AutoDiff backend
-Turing.setadbackend(:reversediff)
-# Allow system to generate cache to speed up computation
-Turing.setrdcache(true)
 ```
 
 For this dataset, we use the [`BarBay.model.fitness_normal`](@ref)
@@ -318,7 +324,7 @@ param = Dict(
         :s_bc_prior => [0.0, 1.0],
         :logλ_prior => logλ_prior,
     ),
-    :advi => Turing.ADVI(n_samples, n_steps),
+    :advi => Turing.ADVI{AdvancedVI.ReverseDiffAD{false}}(n_samples, n_steps),
     :opt => Turing.TruncatedADAGrad(),
 )
 ```

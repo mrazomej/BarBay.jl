@@ -26,12 +26,10 @@ import CSV
 
 # Import library to perform Bayesian inference
 import Turing
+import AdvancedVI
 
 # Import AutoDiff backend
 using ReverseDiff
-
-# Import Memoization
-using Memoization
 
 # Impor statistical libraries
 import Random
@@ -39,12 +37,31 @@ import StatsBase
 import Distributions
 
 Random.seed!(42)
-
-# Set AutoDiff backend
-Turing.setadbackend(:reversediff)
-# Allow system to generate cache to speed up computation
-Turing.setrdcache(true)
 ```
+
+## Selecting the AutoDiff backend
+
+Recall that we can use either `ForwardDiff` or `ReverseDiff` as the AutoDiff
+backend. The choice usually depends on the number of parameters to be inferred.
+For large number of parameters, `ReverseDiff` is usually faster, while
+`ForwardDiff` is faster for small number of parameters. To choose the backend,
+we use the `:advi` keyword argument in the `BarBay.vi.advi` function. For
+`ForwardDiff`, we use
+
+```julia
+:advi => Turing.ADVI(n_samples, n_steps)
+```
+
+as `ForwardDiff` is the default backend. For `ReverseDiff`, we use
+
+```julia
+:advi => Turing.ADVI{AdvancedVI.ReverseDiffAD{false}}(n_samples, n_steps)
+```
+
+where the `false` indicates that we are not using the cache for the random
+number tape. See the
+[`AdvancedVI.jl`](https://github.com/TuringLang/AdvancedVI.jl/tree/master)
+repository for more information.
 
 ## Single dataset single environment variational inference
 
@@ -139,8 +156,7 @@ param = Dict(
         :logλ_prior => logλ_prior,
     ),
     :advi => Turing.ADVI(n_samples, n_steps),
-    :opt => Turing.TruncatedADAGrad(),
-    :fullrank => false
+    :opt => Turing.TruncatedADAGrad()
 )
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
@@ -333,8 +349,7 @@ param = Dict(
     ),
     :env_col => :env,
     :advi => Turing.ADVI(n_samples, n_steps),
-    :opt => Turing.TruncatedADAGrad(),
-    :fullrank => false
+    :opt => Turing.TruncatedADAGrad()
 )
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
@@ -544,8 +559,7 @@ param = Dict(
     ),
     :genotype_col => :genotype,
     :advi => Turing.ADVI(n_samples, n_steps),
-    :opt => Turing.TruncatedADAGrad(),
-    :fullrank => false
+    :opt => Turing.TruncatedADAGrad()
 )
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
