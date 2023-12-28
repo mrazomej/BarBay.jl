@@ -287,16 +287,15 @@ Turing.@model function multienv_fitness_normal(
     # Sample posterior for nutant lineage frequency ratio. Since it is a sample
     # over a generated quantity, we must use the @addlogprob! macro
     # π(γₜ⁽ᵐ⁾ | s⁽ᵐ⁾, σ⁽ᵐ⁾, s̲ₜ)
+
+    # Compute the fitness differences and variances without vcat
+
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvNormal(
             # Build vector for fitness differences
-            vcat([s⁽ᵐ⁾[env_idx[2:end]] .- s̲ₜ for s⁽ᵐ⁾ in eachcol(s̲⁽ᵐ⁾)]...),
+            vec(s̲⁽ᵐ⁾[env_idx[2:end], :]) .- repeat(s̲ₜ, outer=n_bc),
             # Build vector for variances
-            LinearAlgebra.Diagonal(
-                vcat([
-                    σ⁽ᵐ⁾[env_idx[2:end]] for σ⁽ᵐ⁾ in eachcol(exp.(logσ̲⁽ᵐ⁾))
-                ]...) .^ 2
-            )
+            LinearAlgebra.Diagonal(vec(exp.(logσ̲⁽ᵐ⁾[env_idx[2:end], :]) .^ 2))
         ),
         logΓ̲̲⁽ᵐ⁾
     )
