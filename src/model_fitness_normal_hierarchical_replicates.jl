@@ -304,10 +304,12 @@ Turing.@model function replicate_fitness_normal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvNormal(
             # Build array for MvLogNormal mean
-            -reduce(vcat, repeat.(eachcol(s̲ₜ), n_neutral)),
+            -vec(repeat(s̲ₜ, inner=(1, n_neutral))),
+            # -reduce(vcat, repeat.(eachcol(s̲ₜ), n_neutral)),
             # Build array for MvLogNormal variance
             LinearAlgebra.Diagonal(
-                reduce(vcat, repeat.(eachcol(exp.(logσ̲ₜ) .^ 2), n_neutral))
+                vec(repeat(exp.(logσ̲ₜ) .^ 2, inner=(1, n_neutral)))
+                # reduce(vcat, repeat.(eachcol(exp.(logσ̲ₜ) .^ 2), n_neutral))
             )
         ),
         logΓ̲̲⁽ⁿ⁾
@@ -319,14 +321,16 @@ Turing.@model function replicate_fitness_normal(
     Turing.@addlogprob! Turing.logpdf(
         Turing.MvNormal(
             # Build vector for fitness differences
-            reduce(vcat, [repeat([s⁽ᵐ⁾], (n_time - 1)) for s⁽ᵐ⁾ in s̲⁽ᵐ⁾]) .-
-            reduce(vcat, repeat.(eachcol(s̲ₜ), n_bc)),
+            repeat(s̲⁽ᵐ⁾, inner=n_time - 1) .- vec(repeat(s̲ₜ, inner=(1, n_bc))),
+            # reduce(vcat, [repeat([s⁽ᵐ⁾], (n_time - 1)) for s⁽ᵐ⁾ in s̲⁽ᵐ⁾]) .-
+            # reduce(vcat, repeat.(eachcol(s̲ₜ), n_bc)),
             # Build vector for variances
             LinearAlgebra.Diagonal(
-                reduce(
-                    vcat,
-                    [repeat([σ⁽ᵐ⁾^2], (n_time - 1)) for σ⁽ᵐ⁾ in exp.(logσ̲⁽ᵐ⁾)]
-                )
+                # reduce(
+                #     vcat,
+                #     [repeat([σ⁽ᵐ⁾^2], (n_time - 1)) for σ⁽ᵐ⁾ in exp.(logσ̲⁽ᵐ⁾)]
+                # )
+                repeat(exp.(logσ̲⁽ᵐ⁾) .^ 2, inner=n_time - 1)
             )
         ),
         logΓ̲̲⁽ᵐ⁾
