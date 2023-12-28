@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>math · BarBay</title><meta name="title" content="math · BarBay"/><meta property="og:title" content="math · BarBay"/><meta property="twitter:title" content="math · BarBay"/><meta name="description" content="Documentation for BarBay."/><meta property="og:description" content="Documentation for BarBay."/><meta property="twitter:description" content="Documentation for BarBay."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img src="../assets/logo.svg" alt="BarBay logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">BarBay</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">BarBay</a></li><li><a class="tocitem" href="../contributing/">contributing</a></li><li><a class="tocitem" href="../examples/">examples</a></li><li class="is-active"><a class="tocitem" href>math</a><ul class="internal"><li><a class="tocitem" href="#Preliminaries-on-mathematical-notation"><span>Preliminaries on mathematical notation</span></a></li><li><a class="tocitem" href="#Fitness-model"><span>Fitness model</span></a></li><li><a class="tocitem" href="#Bayesian-inference"><span>Bayesian inference</span></a></li></ul></li><li><a class="tocitem" href="../mcmc/">mcmc</a></li><li><a class="tocitem" href="../model/">model</a></li><li><a class="tocitem" href="../stats/">stats</a></li><li><a class="tocitem" href="../utils/">utils</a></li><li><a class="tocitem" href="../vi/">vi</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>math</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>math</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/mrazomej/BarBay.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/mrazomej/BarBay.jl/blob/main/docs/src/math.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="math"><a class="docs-heading-anchor" href="#math">math</a><a id="math-1"></a><a class="docs-heading-anchor-permalink" href="#math" title="Permalink"></a></h1><p>In this section we specify the core of the mathematical and statistical model behind the package. We invite the user to read the accompanying paper if some questions remain after reading this section.</p><h2 id="Preliminaries-on-mathematical-notation"><a class="docs-heading-anchor" href="#Preliminaries-on-mathematical-notation">Preliminaries on mathematical notation</a><a id="Preliminaries-on-mathematical-notation-1"></a><a class="docs-heading-anchor-permalink" href="#Preliminaries-on-mathematical-notation" title="Permalink"></a></h2><p>Before jumping directly into the Bayesian inference pipeline, let us establish the mathematical notation used throughout this paper. We define (column) vectors as underlined lowercase symbols such as</p><p class="math-container">\[\underline{x} = \begin{bmatrix}
+    x_1\\
+    x_2\\
+    \vdots\\
+    x_N
+\end{bmatrix}.
+\tag{1}\]</p><p>In the same way, we define matrices as double-underline uppercase symbols such as</p><p class="math-container">\[\underline{\underline{A}} =
+\begin{bmatrix}
+    A_{11} &amp; A_{12} &amp; \cdots &amp; A_{1N}\\
+    A_{21} &amp; A_{22} &amp; \cdots &amp; A_{2N}\\
+    \vdots &amp; \vdots &amp; \ddots &amp; \vdots\\
+    A_{M1} &amp; A_{M2} &amp; \cdots &amp; A_{MN}\\
+\end{bmatrix}.
+\tag{2}\]</p><p>math</p><h2 id="Fitness-model"><a class="docs-heading-anchor" href="#Fitness-model">Fitness model</a><a id="Fitness-model-1"></a><a class="docs-heading-anchor-permalink" href="#Fitness-model" title="Permalink"></a></h2><p>Empirically, the barcode relative frequency trajectories follow an exponential function of the form</p><p class="math-container">\[f_{t+1}^{(b)} = f_{t}^{(b)} \mathrm{e}^{(s^{(b)} - \bar{s}_t)\tau},
+\tag{3}\]</p><p>where <span>$f_{t}^{(b)}$</span> is the frequency of barcode <span>$b$</span> at the end of cycle number <span>$t$</span>, <span>$s^{(b)}$</span> is the relative fitness with respect to the reference strain–-the quantity we want to infer from the data–-<span>$\bar{s}_t$</span> is the mean fitness of the culture at the end of cycle number <span>$t$</span>, and <span>$\tau$</span> is the time pass between cycle <span>$t$</span> and <span>$t+1$</span>. We can rewrite Eq. 3 as</p><p class="math-container">\[\frac{1}{\tau}\ln \frac{f_{t+1}^{(b)}}{f_{t}^{(b)}} = (s^{(b)} - \bar{s}_t).
+\tag{4}\]</p><p>Eq. 4 separates the measurements–-the barcode frequencies–-from the unobserved (sometimes referred to as latent) parameters we want to infer from the data–-the population mean fitness and the barcode relative fitness. This is ultimately the functional form used in our inference pipeline. Therefore, the relative fitness is computed by knowing the log frequency ratio of each barcode throughout the growth-dilution cycles.</p><p>The presence of the neutral lineages facilitates the determination of the population mean fitness value <span>$\bar{s}_t$</span>. Since every relative fitness is determined relative to the neutral lineage that dominates the culture, we define their fitness to be <span>$s^{(n)} = 0$</span>, where the superscript <span>$(n)$</span> specifies their neutrality. This means that Eq. 4 for a neutral lineage takes the simpler form</p><p class="math-container">\[\frac{1}{\tau}\ln \frac{f_{t+1}^{(n)}}{f_{t}^{(n)}} = - \bar{s}_t.
+\tag{5}\]</p><p>Therefore, we can use the data from these reference barcodes to directly infer the value of the population mean fitness.</p><p>It is important to notice that the frequencies <span>$f_{t}^{(b)}$</span> are not the allele frequencies in the population (most of the culture is not sequenced since the reference strain is not barcoded), but rather the relative frequencies in the total number of sequencing reads. A way to conceptualize this subtle but important point is to assume exponential growth in the <em>number of cells</em> <span>$N_t^{(b)}$</span> of the form</p><p class="math-container">\[N_{t+1}^{(b)} = N_{t}^{(b)} \mathrm{e}^{\lambda^{(b)}\tau},
+\tag{6}\]</p><p>for every barcode <span>$b$</span> with growth rate <span>$\lambda^{(b)}$</span>. However, when we sequence barcodes, we do not directly measure the number of cells, but some number of reads <span>$r_t^{(b)}$</span> that map to barcode <span>$b$</span>. In the simplest possible scenario, we assume</p><p class="math-container">\[r_{t}^{(b)} \propto N_{t}^{(b)},
+\tag{7}\]</p><p>where, importantly, the proportionality constant depends on the total number of reads for the library for cycle <span>$t$</span>, which might vary from library to library. Therefore, to compare the number of reads between libraries at different time points, we must normalize the number of reads to the same scale. The simplest form is to define a relative abundance, i.e., a frequency with respect to the total number of reads,</p><p class="math-container">\[f_{t}^{(b)} \equiv \frac{r_{t}^{(b)}}{\sum_{b&#39;} r_{t}^{(b&#39;)}}.
+\tag{8}\]</p><p>This is the frequency Eq. 3 describes.</p><p>Our ultimate objective is to infer the relative fitness <span>$s^{(m)}$</span> for each of the <span>$M$</span> relevant barcodes in the experiment. To do so, we account for the three primary sources of uncertainty in our model:</p><ul><li>Uncertainty in the determination of frequencies. Our model relates frequencies</li></ul><p>between adjacent growth-dilution cycles to the fitness of the corresponding strain. However, we do not directly measure frequencies. Instead, our data for each barcode consists of a length <span>$T$</span> vector of counts <span>$\underline{r}^{(b)}$</span> for each of the <span>$T$</span> cycles in which the measurements were taken.</p><ul><li>Uncertainty in the value of the population mean fitness. We define neutral</li></ul><p>lineages to have fitness <span>$s^{(n)} = 0$</span>, helping us anchor the value of the population mean fitness <span>$\bar{s}_t$</span> for each pair of adjacent growth cycles. Moreover, we take this parameter as an empirical parameter to be obtained from the data, meaning that we do not impose a functional form that relates <span>$\bar{s}_t$</span> to <span>$\bar{s}_{t+1}$</span>. Thus, we must infer the <span>$T-1$</span> values of this population mean fitness with their uncertainty that must be propagated to the value of the mutants&#39; relative fitness.</p><ul><li>Uncertainty in each of the mutants&#39; fitness values. </li></ul><p>To account for all these sources of uncertainty in a principled way, in the next section, we develop a Bayesian inference pipeline.</p><h2 id="Bayesian-inference"><a class="docs-heading-anchor" href="#Bayesian-inference">Bayesian inference</a><a id="Bayesian-inference-1"></a><a class="docs-heading-anchor-permalink" href="#Bayesian-inference" title="Permalink"></a></h2><p>Our ultimate objective is to infer the vector of relative fitness values</p><p class="math-container">\[\underline{s}^M = (s^{(1)}, s^{(2)}, \ldots, s^{(M)})^\dagger,
+\tag{9}\]</p><p>where <span>$^\dagger$</span> indicates the transpose. Our data consists of an <span>$T \times B$</span> matrix <span>$\underline{\underline{R}}$</span>, where <span>$B = M + N$</span> is the number of unique barcodes given by the sum of the number of unique, relevant barcodes we care about, <span>$M$</span>, and the number of unique neutral barcodes, <span>$N$</span>, and <span>$T$</span> is the number of growth cycles where measurements were taken. The data matrix is then of the form</p><p class="math-container">\[\underline{\underline{R}} = \begin{bmatrix}
+- &amp; \underline{r}_1 &amp; - \\
+- &amp; \underline{r}_2 &amp; - \\
+ &amp; \vdots &amp; \\
+- &amp; \underline{r}_T &amp; - \\
+\end{bmatrix},
+\tag{10}\]</p><p>where each row <span>$\underline{r}_t$</span> is a <span>$B$</span>-dimensional array containing the raw barcode counts at cycle <span>$t$</span>. We can further split each vector <span>$\underline{r}_t$</span> into two vectors of the form</p><p class="math-container">\[\underline{r}_t = \begin{bmatrix}
+\underline{r}_t^{N} \\
+\underline{r}_t^{M}
+\end{bmatrix},
+\tag{11}\]</p><p>i.e., the vector containing the neutral lineage barcode counts <span>$\underline{r}_t^{N}$</span> and the corresponding vector containing the mutant barcode counts <span>$\underline{r}_t^{M}$</span>. Following the same logic, matrix <span>$\underline{\underline{R}}$</span> can be split into two matrices as</p><p class="math-container">\[\underline{\underline{R}} = \left[ 
+\underline{\underline{R}}^N \; \underline{\underline{R}}^M
+\right],
+\tag{12}\]</p><p>where <span>$\underline{\underline{R}}^N$</span> is a <span>$T \times N$</span> matrix with the barcode reads time series for each neutral lineage and <span>$\underline{\underline{R}}^M$</span> is the equivalent <span>$T \times M$</span> matrix for the non-neutral lineages.</p><p>Our objective is to compute the joint probability distribution for all relative fitness values given our data. We can express this joint posterior distribution using Bayes theorem as</p><p class="math-container">\[\pi(\underline{s}^M \mid \underline{\underline{R}}) = \frac{
+\pi(\underline{\underline{R}} \mid \underline{s}^M) 
+\pi(\underline{s}^M)}
+{\pi(\underline{\underline{R}})},
+\tag{13}\]</p><p>where hereafter <span>$\pi(\cdot)$</span> defines a probability density function, unless otherwise stated. When defining our statistical model, we need not to focus on the denominator on the right-hand side of Eq. 13. Thus, we can write</p><p class="math-container">\[\pi(\underline{s}^M \mid \underline{\underline{R}}) \propto
+\pi(\underline{\underline{R}} \mid \underline{s}^M) 
+\pi(\underline{s}^M).
+\tag{14}\]</p><p>However, when implementing the model computationally, the normalization constant on the right-hand side of Eq. 13 must be computed. This can be done from the definition of the model via an integral of the form</p><p class="math-container">\[\pi(\underline{\underline{R}}) = \int d^M \underline{s}^M
+\pi(\underline{\underline{R}} \mid \underline{s}^M) 
+\pi(\underline{s}^M),
+\tag{15}\]</p><p>also known as a marginalization integral. Hereafter, differentials of the form <span>$d^n$</span> imply a <span>$n$</span>-dimensional integral.</p><p>Although Eq. 13 and Eq. 14 seem simple enough, recall that Eq. 3 relates barcode frequency values and the population mean fitness to the mutant relative fitness. Therefore, we must include these nuisance parameters as part of our inference problem. To include these nuisance parameters, let </p><p class="math-container">\[\underline{\bar{s}}_T = (\bar{s}_1, \bar{s}_2, \ldots, \bar{s}_{T-1})^\dagger,
+\tag{14}\]</p><p>be the vector containing the <span>$T-1$</span> population mean fitness we compute from the <span>$T$</span> time points where measurements were taken. We have <span>$T-1$</span> since the value of any <span>$\bar{s}_t$</span> requires cycle numbers <span>$t$</span> and <span>$t+1$</span>. Furthermore, let the matrix <span>$\underline{\underline{F}}$</span> be a <span>$T \times B$</span> matrix containing all frequency values. As with Eq. 12, we can split <span>$\underline{\underline{F}}$</span> into two matrices of the form</p><p class="math-container">\[\underline{\underline{F}} = \left[ 
+\underline{\underline{F}}^N \; \underline{\underline{F}}^M
+\right],
+\tag{15}\]</p><p>to separate the corresponding neutral and non-neutral barcode frequencies. With these nuisance variables in hand, the full inference problem we must solve takes the form</p><p class="math-container">\[\pi(
+    \underline{s}^M, \underline{\bar{s}}_T, \underline{\underline{F}} \mid
+    \underline{\underline{R}}
+) \propto
+\pi(
+    \underline{\underline{R}} \mid
+    \underline{s}^M, \underline{\bar{s}}_T, \underline{\underline{F}}
+)
+\pi(
+    \underline{s}^M, \underline{\bar{s}}_T, \underline{\underline{F}}
+).
+\tag{16}\]</p><p>To recover the marginal distribution over the non-neutral barcodes relative fitness values, we can numerically integrate out all nuisance parameters, i.e.,</p><p class="math-container">\[\pi(\underline{s}^M \mid \underline{\underline{R}}) =
+\int d^{T-1}\underline{\bar{s}}_T
+\int d^{B}\underline{f}_1 \cdots
+\int d^{B}\underline{f}_T
+\;
+\pi(
+    \underline{s}^M, \underline{\bar{s}}_T, \underline{\underline{F}} \mid
+    \underline{\underline{R}}
+).
+\tag{17}\]</p><h3 id="Factorizing-the-posterior-distribution"><a class="docs-heading-anchor" href="#Factorizing-the-posterior-distribution">Factorizing the posterior distribution</a><a id="Factorizing-the-posterior-distribution-1"></a><a class="docs-heading-anchor-permalink" href="#Factorizing-the-posterior-distribution" title="Permalink"></a></h3><p>The left-hand side of Eq. 16is extremely difficult to work with. However, we can take advantage of the structure of our inference problem to rewrite it in a more manageable form. Specifically, the statistical dependencies of our observations and latent variables allow us to factorize the joint distribution into the product of multiple conditional distributions. To gain some intuition about this factorization, let us focus on the inference of the population mean fitness values <span>$\underline{\bar{s}}_T$</span>. Eq. 4 relates the value of the population mean fitness to the neutral lineage frequencies and nothing else. This suggests that when writing the posterior for these population mean fitness parameters, we should be able to condition it only on the neutral lineage frequency values, i.e., <span>$\pi(\underline{\bar{s}}_T \mid \underline{\underline{F}}^N)$</span>. We point the reader to sec-bayes_def for the full mathematical details on this factorization. For our purpose here, it suffices to say we can rewrite the joint probability distribution as a product of conditional distributions of the form</p><p class="math-container">\[\pi(
+    \underline{s}^M, \underline{\bar{s}}_T, \underline{\underline{F}} \mid
+    \underline{\underline{R}}
+) =
+\pi(
+    \underline{s}^M \mid \underline{\bar{s}}_T, \underline{\underline{F}}^M
+)
+\pi(
+    \underline{\bar{s}}_T \mid \underline{\underline{F}}^N
+)
+\pi(\underline{\underline{F}} \mid \underline{\underline{R}}).
+\tag{18}\]</p><p>Written in this form, Eq. 18 captures the three sources of uncertainty listed in sec-fitness_model in each term. Starting from right to left, the first term on the right-hand side of Eq. 18 accounts for the uncertainty when inferring the frequency values given the barcode reads. The second term accounts for the uncertainty in the values of the mean population fitness at different time points. The last term accounts for the uncertainty in the parameter we care about–-the mutants&#39; relative fitnesses.</p><p>In the next sections we will explicitly develop each of the terms in Eq. 18.</p><h3 id="Frequency-uncertainty-\\pi(\\underline{\\underline{F}}-\\mid-\\underline{\\underline{R}})"><a class="docs-heading-anchor" href="#Frequency-uncertainty-\\pi(\\underline{\\underline{F}}-\\mid-\\underline{\\underline{R}})">Frequency uncertainty <span>$\pi(\underline{\underline{F}} \mid \underline{\underline{R}})$</span></a><a id="Frequency-uncertainty-\\pi(\\underline{\\underline{F}}-\\mid-\\underline{\\underline{R}})-1"></a><a class="docs-heading-anchor-permalink" href="#Frequency-uncertainty-\\pi(\\underline{\\underline{F}}-\\mid-\\underline{\\underline{R}})" title="Permalink"></a></h3><p>We begin with the probability of the frequency values given the raw barcode reads. The first assumption is that the inference of the frequency values for time <span>$t$</span> is independent of any other time. Therefore, we can write the joint probability distribution as a product of independent distributions of the form</p><p class="math-container">\[\pi(\underline{\underline{F}} \mid \underline{\underline{R}}) =
+\prod_{t=1}^T \pi(\underline{f}_t \mid \underline{r}_t),
+\tag{19}\]</p><p>where <span>$\underline{f}_t$</span> and <span>$\underline{r}_t$</span> are the <span>$t$</span>-th row of the matrix containing all of the measurements for time <span>$t$</span>. We imagine that when the barcode reads are obtained via sequencing, the quantified number of reads is a Poisson sample from the &quot;true&quot; underlying number of barcodes within the pool. This translates to assuming that the number of reads for each barcode at any time point <span>$r^{(b)}_t$</span> is an independent Poisson random variable, i.e.,</p><p class="math-container">\[r^{(b)}_t \sim \operatorname{Poiss}(\lambda^{(b)}_t),
+\tag{20}\]</p><p>where the symbol &quot;<span>$\sim$</span>&quot; is read &quot;distributed as.&quot; Furthermore, for a Poisson distribution, we have that</p><p class="math-container">\[\lambda^{(b)}_t = \left\langle r^{(b)}_t \right\rangle = 
+\left\langle 
+    \left( r^{(b)}_t - \left\langle r^{(b)}_t \right\rangle \right)^2
+\right\rangle,
+\tag{21}\]</p><p>where <span>$\left\langle \cdot \right\rangle$</span> is the expected value. In other words the Poisson parameter is equal to the mean and variance of the distribution. The Poisson distribution has the convenient property that for two Poisson distributed random variables <span>$X \sim \operatorname{Poiss}(\lambda_x)$</span> and <span>$Y \sim \operatorname{Poiss}(\lambda_y)$</span>, we have that</p><p class="math-container">\[Z \equiv X + Y \sim \operatorname{Poiss}(\lambda_x + \lambda_y).
+\tag{22}\]</p><p>This additivity allows us to write the total number of reads at time <span>$t$</span> <span>$n_t$</span> also as a Poisson-distributed random variable of the form</p><p class="math-container">\[n_t \sim \operatorname{Poiss}\left( \sum_{b=1}^B \lambda^{(b)}_t \right),
+\tag{23}\]</p><p>where the sum is taken over all <span>$B$</span> barcodes.</p><p>If the total number of reads is given by Eq. 23, the array with the number of reads for each barcode at time <span>$t$</span>, <span>$\underline{r}_t$</span> is then distributed as</p><p class="math-container">\[\underline{r}_t \sim \operatorname{Multinomial}(n_t, \underline{f}_t),
+\tag{24}\]</p><p>where each of the <span>$B$</span> entries of the frequency vector <span>$\underline{f}_t$</span> is a function of the <span>$\underline{\lambda}_t$</span> vector, given by</p><p class="math-container">\[f_t^{(b)} \equiv f_t^{(b)}(\underline{\lambda}_t) = 
+\frac{\lambda_t^{(b)}}{\sum_{b&#39;=1}^B \lambda_t^{(b&#39;)}}.
+\tag{25}\]</p><p>In other words, we can think of the <span>$B$</span> barcode counts as independent Poisson samples or as a single multinomial draw with a random number of total draws, <span>$n_t$</span>, and the frequency vector <span>$\underline{f}_t$</span> we are interested in. Notice that Eq. 25 is a deterministic function that connects the Poisson parameters to the frequencies. Therefore, we have the equivalence that</p><p class="math-container">\[\pi(\underline{f}_t \mid \underline{r}_t) = 
+\pi(\underline{\lambda}_t \mid \underline{r}_t),
+\tag{26}\]</p><p>meaning that the uncertainty comes from the <span>$\underline{\lambda}_t$</span> vector. By Bayes theorem, we therefore write</p><p class="math-container">\[\pi(\underline{\lambda}_t \mid n_t, \underline{r}_t) \propto
+\pi(n_t, \underline{r}_t \mid \underline{\lambda}_t) \pi(\underline{\lambda}_t),
+\tag{27}\]</p><p>where we explicitly include the dependence on <span>$n_t$</span>. This does not affect the distribution or brings more uncertainty because <span>$\underline{r}_t$</span> already contains all the information to compute <span>$n_t$</span> since</p><p class="math-container">\[n_t = \sum_{b=1}^B r_t^{(b)}.
+\tag{28}\]</p><p>But adding the variable allows us to factorize Eq. 27 as</p><p class="math-container">\[\pi(\underline{\lambda}_t \mid n_t, \underline{r}_t) \propto
+\pi(\underline{r}_t \mid n_t, \underline{\lambda}_t)
+\pi(n_t \mid \underline{\lambda}_t)
+\pi(\underline{\lambda}_t)
+\tag{29}\]</p><p>We then have</p><p class="math-container">\[\underline{r}_t \mid n_t, \underline{\lambda}_t \sim
+\operatorname{Multinomial}(n_t, \underline{f}_t(\underline{\lambda}_t)).
+\tag{30}\]</p><p>Furthermore, we have</p><p class="math-container">\[n_t \mid \underline{\lambda}_t \sim 
+\operatorname{Poiss}\left(\sum_{b=1}^B \lambda_t^{(b)}\right).
+\tag{31}\]</p><p>Finally, for our prior <span>$\pi(\underline{\lambda}_t)$</span>, we first assume each  parameter is independent, i.e.,</p><p class="math-container">\[\pi(\underline{\lambda}_t) = \prod_{b=1}^B \pi(\lambda_t^{(b)}).
+\tag{32}\]</p><p>A reasonable prior for each <span>$\lambda_t^{(b)}$</span> representing the expected number of reads for barcode <span>$b$</span> should span several orders of magnitude. Furthermore, we assume that no barcode in the dataset ever goes extinct. Thus, no frequency can equal zero, facilitating the computation of the log frequency ratios needed to infer the relative fitness. The log-normal distribution satisfies these constraints; therefore, for the prior, we assume</p><p class="math-container">\[\lambda_t^{(b)} \sim 
+\log\mathcal{N}(\mu_{\lambda_t^{(b)}}, \sigma_{\lambda_t^{(b)}}),
+\tag{33}\]</p><p>with <span>$\mu_{\lambda_t^{(b)}}, \sigma_{\lambda_t^{(b)}}$</span> as the user-defined  parameters that characterize the prior distribution.</p><h4 id="Summary"><a class="docs-heading-anchor" href="#Summary">Summary</a><a id="Summary-1"></a><a class="docs-heading-anchor-permalink" href="#Summary" title="Permalink"></a></h4><p>Putting all the pieces developed in this section together gives a term for our inference of the form</p><p class="math-container">\[\pi(\underline{\underline{F}} \mid \underline{\underline{R}}) \propto
+\prod_{t=1}^T\left\{
+    \pi(\underline{r}_t \mid n_t, \underline{\lambda}_t)
+    \pi(n_t \mid \underline{\lambda}_t)
+    \left[ 
+        \prod_{b=1}^B \pi(\lambda_t^{(b)})
+    \right]
+\right\}
+\tag{34}\]</p><p>where</p><p class="math-container">\[\underline{r}_t \mid n_t, \underline{\lambda}_t \sim
+\operatorname{Multinomial}(n_t, \underline{f}_t(\underline{\lambda}_t)),
+\tag{35}\]</p><p class="math-container">\[n_t \mid \underline{\lambda}_t \sim 
+\operatorname{Poiss}\left(\sum_{b=1}^B \lambda_t^{(b)}\right).
+\tag{36}\]</p><p>and</p><p class="math-container">\[\lambda_t^{(b)} \sim 
+\log\mathcal{N}(\mu_{\lambda_t^{(b)}}, \sigma_{\lambda_t^{(b)}}),
+\tag{37}\]</p><h3 id="Population-mean-fitness-uncertainty-\\pi(\\underline{\\bar{s}}_T-\\mid-\\underline{\\underline{F}},-\\underline{\\underline{R}})"><a class="docs-heading-anchor" href="#Population-mean-fitness-uncertainty-\\pi(\\underline{\\bar{s}}_T-\\mid-\\underline{\\underline{F}},-\\underline{\\underline{R}})">Population mean fitness uncertainty <span>$\pi(\underline{\bar{s}}_T \mid \underline{\underline{F}}, \underline{\underline{R}})$</span></a><a id="Population-mean-fitness-uncertainty-\\pi(\\underline{\\bar{s}}_T-\\mid-\\underline{\\underline{F}},-\\underline{\\underline{R}})-1"></a><a class="docs-heading-anchor-permalink" href="#Population-mean-fitness-uncertainty-\\pi(\\underline{\\bar{s}}_T-\\mid-\\underline{\\underline{F}},-\\underline{\\underline{R}})" title="Permalink"></a></h3><p>Next, we turn our attention to the problem of determining the population mean fitnesses <span>$\underline{\bar{s}}_T$</span>. First, we notice that our fitness model in eq-fitness does not include the value of the raw reads. They enter the calculation indirectly through the inference of the frequency values we developed in sec-bayes<em>freq. This means that we can remove the conditioning of the value of ``\underline{\bar{s}}</em>T`` on the number of reads, obtaining a simpler probability function</p><p class="math-container">\[\pi(
+    \underline{\bar{s}}_T \mid 
+    \underline{\underline{F}}, \underline{\underline{R}}
+) = 
+\pi(
+    \underline{\bar{s}}_T \mid 
+    \underline{\underline{F}}
+).
+\tag{38}\]</p><p>Moreover, our fitness model does not directly explain how the population mean fitness evolves over time. In other words, our model cannot explicitly compute the population mean fitness at time <span>$t+1$</span> from the information we have about time <span>$t$</span>. Given this model limitation, we are led to assume that we must infer each <span>$\bar{s}_t$</span> independently. Expressing this for our inference results in</p><p class="math-container">\[\pi(
+    \underline{\bar{s}}_T \mid 
+    \underline{\underline{F}}
+) =
+\prod_{t=1}^{T-1} \pi(\bar{s}_t \mid \underline{f}_t, \underline{f}_{t+1}),
+\tag{39}\]</p><p>where we split our matrix <span>$\underline{\underline{F}}$</span> for each time point and only kept the conditioning on the relevant frequencies needed to compute the mean fitness at time <span>$t$</span>.</p><p>Although our fitness model in eq-fitness also includes the relative fitness <span>$s^{(m)}$</span>, to infer the population mean fitness we only utilize data from the neutral lineages that, by definition, have a relative fitness <span>$s^{(n)} = 0$</span>. Therefore, the conditioning on Eq. 39can be further simplified by only keeping the frequencies of the neutral lineages, i.e.,</p><p class="math-container">\[\pi(\bar{s}_t \mid \underline{f}_t, \underline{f}_{t+1}) =
+\pi(\bar{s}_t \mid \underline{f}_t^N, \underline{f}_{t+1}^N).
+\tag{40}\]</p><p>Earlier, we emphasized that the frequencies <span>$f_t^{(n)}$</span> do not represent the true frequency of a particular lineage in the population but rather a &quot;normalized number of cells.&quot; Therefore, it is safe to assume each of the <span>$N$</span> neutral lineages&#39; frequencies is changing independently. The correlation of how increasing the frequency of one lineage will decrease the frequency of others is already captured in the model presented in sec-bayes_freq. Thus, we write</p><p class="math-container">\[\pi(\bar{s}_t \mid \underline{f}_t^N, \underline{f}_{t+1}^N) =
+\prod_{n=1}^N \pi(\bar{s}_t \mid f_t^{(n)}, f_{t+1}^{(n)}).
+\tag{41}\]</p><p>Now, we can focus on one of the terms on the right-hand side of Eq. 41. Writing Bayes theorem results in</p><p class="math-container">\[\pi(\bar{s}_t \mid f_t^{(n)}, f_{t+1}^{(n)}) \propto
+\pi(f_t^{(n)}, f_{t+1}^{(n)} \mid \bar{s}_t) \pi(\bar{s}_t).
+\tag{42}\]</p><p>Notice the likelihood defines the joint distribution of neutral barcode frequencies conditioned on the population mean fitness. However, rewriting our fitness model in eq-fitness for a neutral lineage to leave frequencies on one side and fitness on the other results in</p><p class="math-container">\[\frac{f_{t+1}^{(n)}}{f_t^{(n)}} = \mathrm{e}^{- \bar{s}_t\tau}.
+\tag{43}\]</p><p>Eq. 43 implies that our fitness model only relates <strong>the ratio</strong> of frequencies and not the individual values. To get around this complication, we define</p><p class="math-container">\[\gamma_t^{(b)} \equiv \frac{f_{t+1}^{(b)}}{f_t^{(b)}},
+\tag{44}\]</p><p>as the ratio of frequencies between two adjacent time points for any barcode <span>$b$</span>. This allows us to rewrite the joint distribution <span>$\pi(f_t^{(n)}, f_{t+1}^{(n)} \mid \bar{s}_t)$</span> as</p><p class="math-container">\[\pi(f_t^{(n)}, f_{t+1}^{(n)} \mid \bar{s}_t) =
+\pi(f_t^{(n)}, \gamma_{t}^{(n)} \mid \bar{s}_t).
+\tag{45}\]</p><p>Let us rephrase this subtle but necessary change of variables since it is a key part of the inference problem: our series of independence assumptions lead us to Eq. 42that relates the value of the population mean fitness <span>$\bar{s}_t$</span> to the frequency of a neutral barcode at times <span>$t$</span> and <span>$t+1$</span>. However, as shown in Eq. 43, our model functionally relates the ratio of frequencies–-that we defined as <span>$\gamma_t^{(n)}$</span>–-and not the independent frequencies to the mean fitness. Therefore, instead of writing for the likelihood the joint distribution of the frequency values at times <span>$t$</span> and <span>$t+1$</span> conditioned on the mean fitness, we write the joint distribution of the barcode frequency at time <span>$t$</span> and the ratio of the frequencies. These <strong>must be</strong> equivalent joint distributions since there is a one-to-one mapping between <span>$\gamma_t^{(n)}$</span> and <span>$f_{t+1}^{(n)}$</span> for a given value of <span>$f_t^{(n)}$</span>. Another way to phrase this is to say that knowing the frequency at time <span>$t$</span> and at time <span>$t+1$</span> provides the same amount of information as knowing the frequency at time <span>$t$</span> and the ratio of the frequencies. This is because if we want to obtain <span>$f_{t+1}^{(n)}$</span> given this information, we simply compute</p><p class="math-container">\[f_{t+1}^{(n)} = \gamma_t^{(n)} f_t^{(n)}.
+\tag{46}\]</p><p>The real advantage of rewriting the joint distribution as in Eq. 45 comes from splitting this joint distribution as a product of conditional distributions of the form</p><p class="math-container">\[\pi(f_t^{(n)}, \gamma_{t}^{(n)} \mid \bar{s}_t) =
+\pi(f_t^{(n)} \mid \gamma_{t}^{(n)}, \bar{s}_t)
+\pi(\gamma_{t}^{(n)} \mid \bar{s}_t).
+\tag{47}\]</p><p>Written in this form, we can finally propose a probabilistic model for how the mean fitness relates to the frequency ratios we determine in our experiments. The second term on the right-hand side of Eq. 47 relates how the determined frequency ratio <span>$\gamma_t^{(b)}$</span> relates to the mean fitness <span>$\bar{s}_t$</span>. From Eq. 43 and Eq. 44, we can write</p><p class="math-container">\[\ln \gamma_t^{(n)} = - \bar{s}_t + \varepsilon_t^{(n)},
+\tag{48}\]</p><p>where, for simplicity, we set <span>$\tau = 1$</span>. Note that we added an extra term, <span>$\varepsilon_t^{(n)}$</span>, characterizing the deviations of the measurements from the theoretical model. We assume these errors are normally distributed with mean zero and some standard deviation <span>$\sigma_t$</span>, implying that</p><p class="math-container">\[\ln \gamma_t^{(n)} \mid \bar{s}_t, \sigma_t  \sim 
+\mathcal{N}\left(-\bar{s}_t, \sigma_t \right),
+\tag{49}\]</p><p>where we include the nuisance parameter <span>$\sigma_t$</span> to be determined. If we assume the log frequency ratio is normally distributed, this implies the frequency ratio itself is distributed log-normal. This means that</p><p class="math-container">\[\gamma_t^{(n)} \mid \bar{s}_t, \sigma_t  \sim 
+\log \mathcal{N}\left(-\bar{s}_t, \sigma_t \right).
+\tag{50}\]</p><p>Having added the nuisance parameter <span>$\sigma_t$</span> implies that we must update Eq. 42 to</p><p class="math-container">\[\pi(\bar{s}_t, \sigma_t \mid f_t^{(n)}, f_{t+1}^{(n)}) \propto
+\pi(f_t^{(n)}, \gamma_t^{(n)} \mid \bar{s}_t, \sigma_t) 
+\pi(\bar{s}_t) \pi(\sigma_t),
+\tag{51}\]</p><p>where we assume the prior for each parameter is independent, i.e.,</p><p class="math-container">\[\pi(\bar{s}_t, \sigma_t) = \pi(\bar{s}_t) \pi(\sigma_t).
+\tag{52}\]</p><p>For numerical stability, we will select weakly-informative priors for both of these parameters. In the case of the nuisance parameter <span>$\sigma_t$</span>, the prior must be restricted to positive values only, since standard deviations cannot be negative.</p><p>For the first term on the right-hand side of Eq. 47, <span>$\pi(f_t^{(n)} \mid \gamma_{t}^{(n)}, \bar{s}_t)$</span>, we remove the conditioning on the population mean fitness since it does not add any information on top of what the frequency ratio <span>$\gamma_t^{(n)}$</span> already gives. Therefore, we have</p><p class="math-container">\[\pi(f_t^{(n)} \mid \gamma_{t}^{(n)}, \bar{s}_t) =
+\pi(f_t^{(n)} \mid \gamma_{t}^{(n)}).
+\tag{53}\]</p><p>The right-hand side of Eq. 53 asks us to compute the probability of observing a frequency value <span>$f_t^{(n)}$</span> given that we get to observe the ratio <span>$\gamma_{t}^{(n)}$</span>. If the ratio happened to be <span>$\gamma_{t}^{(n)} = 2$</span>, we could have <span>$f_{t+1}^{(n)} = 1$</span> and <span>$f_{t+1}^{(n)} = 0.5$</span>, for example. Although, it would be equally likely that <span>$f_{t+1}^{(n)} = 0.6$</span> and <span>$f_{t+1}^{(n)} = 0.3$</span> or <span>$f_{t+1}^{(n)} = 0.1$</span> and <span>$f_{t+1}^{(n)} = 0.05$</span> for that matter. If we only get to observe the frequency ratio <span>$\gamma_t^{(n)}$</span>, we know that the numerator <span>$f_{t+1}^{(n)}$</span> can only take values between zero and one, all of them being equally likely given only the information on the ratio. As a consequence, the value of the frequency in the denominator <span>$f_{t}^{(n)}$</span> is restricted to fall in the range</p><p class="math-container">\[f_{t}^{(n)} \in \left(0, \frac{1}{\gamma_t^{(n)}} \right].
+\tag{54}\]</p><p>A priori, we do not have any reason to favor any value over any other, therefore it is natural to write</p><p class="math-container">\[f_t^{(n)} \mid \gamma_t^{(n)} \sim 
+\operatorname{Uniform}\left( 0, \frac{1}{\gamma_t^{(n)}} \right).
+\tag{55}\]</p><h4 id="Summary-2"><a class="docs-heading-anchor" href="#Summary-2">Summary</a><a class="docs-heading-anchor-permalink" href="#Summary-2" title="Permalink"></a></h4><p>Putting all the pieces we have developed in this section together results in an inference for the population mean fitness values of the form</p><p class="math-container">\[\pi(
+    \underline{\bar{s}}_T, \underline{\sigma}_T \mid \underline{\underline{F}}
+) \propto
+\prod_{t=1}^{T-1} \left\{
+    \prod_{n=1}^N \left[
+        \pi(f_t^{(n)} \mid \gamma_t^{(n)}) 
+        \pi(\gamma_t^{(n)} \mid \bar{s}_t, \sigma_t)
+    \right]
+    \pi(\bar{s}_t) \pi(\sigma_t)
+\right\},
+\tag{56}\]</p><p>where we have</p><p class="math-container">\[f_t^{(n)} \mid \gamma_t^{(n)} \sim 
+\operatorname{Uniform} \left(0, \frac{1}{\gamma_t^{(n)}} \right),
+\tag{57}\]</p><p class="math-container">\[\gamma_t^{(n)} \mid \bar{s}_t, \sigma_t \sim 
+\log\mathcal{N}(\bar{s}_t, \sigma_t),
+\tag{58}\]</p><p class="math-container">\[\bar{s}_t \sim \mathcal{N}(0, \sigma_{\bar{s}_t}),
+\tag{59}\]</p><p>and</p><p class="math-container">\[\sigma_t \sim \log\mathcal{N}(\mu_{\sigma_t}, \sigma_{\sigma_t}),
+\tag{60}\]</p><p>where <span>$\sigma_{\bar{s}_t}$</span>, <span>$\mu_{\sigma_t}$</span>, and <span>$\sigma_{\sigma_t}$</span> are user-defined parameters.</p><h3 id="Mutant-relative-fitness-uncertainty-\\pi(\\underline{s}M-\\mid-\\underline{\\bar{s}}_T,-\\underline{\\underline{F}},-\\underline{\\underline{R}})"><a class="docs-heading-anchor" href="#Mutant-relative-fitness-uncertainty-\\pi(\\underline{s}M-\\mid-\\underline{\\bar{s}}_T,-\\underline{\\underline{F}},-\\underline{\\underline{R}})">Mutant relative fitness uncertainty <span>$\pi(\underline{s}^M \mid \underline{\bar{s}}_T, \underline{\underline{F}}, \underline{\underline{R}})$</span></a><a id="Mutant-relative-fitness-uncertainty-\\pi(\\underline{s}M-\\mid-\\underline{\\bar{s}}_T,-\\underline{\\underline{F}},-\\underline{\\underline{R}})-1"></a><a class="docs-heading-anchor-permalink" href="#Mutant-relative-fitness-uncertainty-\\pi(\\underline{s}M-\\mid-\\underline{\\bar{s}}_T,-\\underline{\\underline{F}},-\\underline{\\underline{R}})" title="Permalink"></a></h3><p>The last piece of our inference is the piece that we care about the most: the probability distribution of all the mutants&#39; relative fitness, given the inferred population mean fitness and the frequencies. First, we assume that all fitness values are independent of each other. This allows us to write</p><p class="math-container">\[\pi(
+    \underline{s}^M \mid 
+    \underline{\bar{s}}_T, \underline{\underline{F}}, \underline{\underline{R}}
+) = 
+\prod_{m=1}^M \pi(
+    s^{(m)} \mid
+    \underline{\bar{s}}_T, \underline{\underline{F}}, \underline{\underline{R}}
+).
+\tag{61}\]</p><p>Furthermore, as was the case with the population mean fitness, our fitness model relates frequencies, not raw reads. Moreover, the fitness value of mutant <span>$m$</span> only depends on the frequencies of such mutant. Therefore, we can simplify the conditioning to</p><p class="math-container">\[\pi(
+    s^{(m)} \mid
+    \underline{\bar{s}}_T, \underline{\underline{F}}, \underline{\underline{R}}
+) = 
+\pi(s^{(m)} \mid \underline{\bar{s}}_T, \underline{f}^{(m)}),
+\tag{62}\]</p><p>where</p><p class="math-container">\[\underline{f}^{(m)} = (f_0^{(m)}, f_1^{(m)}, \ldots, f_T^{(m)})^\dagger,
+\tag{63}\]</p><p>is the vector containing the frequency time series for mutant <span>$m$</span>. Writing Bayes&#39; theorem for the right-hand side of Eq. 62 results in</p><p class="math-container">\[\pi(s^{(m)} \mid \underline{\bar{s}}_T, \underline{f}^{(m)}) \propto
+\pi(\underline{f}^{(m)} \mid \underline{\bar{s}}_T, s^{(m)})
+\pi(s^{(m)} \mid \underline{\bar{s}}_T).
+\tag{64}\]</p><p>Notice the conditioning on the mean fitness values <span>$\underline{\bar{s}}_T$</span> is not inverted since we already inferred these values.</p><p>Following the logic used in sec-bayes_meanfit, let us define</p><p class="math-container">\[\underline{\gamma}^{(m)} = 
+(\gamma_0^{(m)}, \gamma_1^{(m)}, \ldots, \gamma_{T-1}^{m})^\dagger,
+\tag{65}\]</p><p>where each entry <span>$\gamma_t^{(m)}$</span> is defined by eq-gamma<em>def. In the same way we rewrote the joint distribution between two adjacent time point frequencies to the joint distribution between one of the frequencies and the ratio of both frequencies in eq-joint</em>freq_gamma, we can rewrite the joint distribution of the frequency time series for mutant <span>$m$</span> as</p><p class="math-container">\[\pi(\underline{f}^{(m)} \mid \underline{\bar{s}}_T, s^{(m)}) =
+\pi(f_0^{(m)}, \underline{\gamma}^{(m)} \mid \underline{\bar{s}}_T, s^{(m)}).
+\tag{66}\]</p><p>One can think about Eq. 66 as saying that knowing the individual frequencies at each time point contain equivalent information as knowing the initial frequency and the subsequent ratios of frequencies. This is because if we want to know the value of <span>$f_1^{(m)}$</span> given the ratios, we only need to compute</p><p class="math-container">\[f_1^{(m)} = \gamma_0^{(m)} f_0^{(m)}.
+\tag{67}\]</p><p>Moreover, if we want to know <span>$f_2^{(m)}$</span>, we have</p><p class="math-container">\[f_2^{(m)} = \gamma_1^{(m)} f_1^{(m)} =
+\gamma_1^{(m)} \left(\gamma_0^{(m)} f_0^{(m)}\right),
+\tag{68}\]</p><p>and so on. We can then write the joint distribution on the right-hand side of Eq. 66 as a product of conditional distributions of the form</p><p class="math-container">\[\begin{aligned}
+\pi(f_0^{(m)}, \underline{\gamma}^{(m)} \mid \underline{\bar{s}}_T, s^{(m)}) =
+&amp;\pi(
+    f_0^{(m)} \mid 
+    \gamma_0^{(m)}, \ldots, \gamma_{T-1}^{(m)}, \underline{\bar{s}}_T, s^{(m)}
+) \times \\
+&amp;\pi(
+    \gamma_0^{(m)} \mid 
+    \gamma_1^{(m)}, \ldots, \gamma_{T-1}^{(m)}, \underline{\bar{s}}_T, s^{(m)}
+) \times \\
+&amp;\pi(
+    \gamma_1^{(m)} \mid 
+    \gamma_2^{(m)}, \ldots, \gamma_{T-1}^{(m)}, \underline{\bar{s}}_T, s^{(m)}
+) \times \\
+&amp;\vdots \\
+&amp;\pi(
+    \gamma_{T-2}^{(m)} \mid \gamma_{T-1}^{(m)}, \underline{\bar{s}}_T, s^{(m)}
+) \times \\
+&amp;\pi(\gamma_{T-1}^{(m)} \mid \underline{\bar{s}}_T, s^{(m)}).
+\end{aligned}
+\tag{69}\]</p><p>Writing the fitness model in eq-fitness as</p><p class="math-container">\[\gamma_t^{(m)} = \frac{f_{t+1}^{(m)}}{f_t^{(m)}} = 
+\mathrm{e}^{(s^{(m)} - s_t)\tau},
+\tag{70}\]</p><p>reveals that the value of each of the ratios <span>$\gamma_t^{(m)}$</span> only depends on the corresponding fitness value <span>$\bar{s}_t$</span> and the relative fitness <span>$s^{(m)}$</span>. Therefore, we can remove most of the conditioning on the right-hand side of Eq. 69 resulting in a much simpler joint distribution of the form</p><p class="math-container">\[\begin{aligned}
+\pi(f_0^{(m)}, \underline{\gamma}^{(m)} \mid \underline{\bar{s}}_T, s^{(m)}) =
+&amp;\pi(f_0^{(m)} \mid \gamma_0^{(m)}) \times \\
+&amp;\pi(\gamma_0^{(m)} \mid \bar{s}_0, s^{(m)}) \times \\
+&amp;\pi(\gamma_1^{(m)} \mid \bar{s}_1, s^{(m)}) \times \\
+&amp;\vdots \\
+&amp;\pi(\gamma_{T-2}^{(m)} \mid \bar{s}_{T-2}, s^{(m)}) \times \\
+&amp;\pi(\gamma_{T-1}^{(m)} \mid \bar{s}_{T-1}, s^{(m)}),
+\end{aligned}
+\tag{71}\]</p><p>where for the first term on the right-hand side of Eq. 71 we apply the same logic as in eq-freq<em>cond</em>gamma to remove all other dependencies. We emphasize that although Eq. 71 looks like a series of independent inferences, the value of the relative fitness <span>$s^{(m)}$</span> is shared among all of them. This means that the parameter is not inferred individually for each time point, resulting in different estimates of the parameter, but each time point contributes independently to the inference of a single estimate of <span>$s^{(m)}$</span>.</p><p>Using equivalent arguments to those in sec-bayes_meanfit, we assume</p><p class="math-container">\[f_0^{(m)} \mid \gamma_0^{(m)} \sim 
+\operatorname{Uniform}\left(0, \frac{1}{\gamma_0^{(m)}} \right),
+\tag{72}\]</p><p>and</p><p class="math-container">\[\gamma_t^{(m)} \mid \bar{s}_t, s^{(m)}, \sigma^{(m)} \sim 
+\log\mathcal{N}\left(s^{(m)} - \bar{s}_t, \sigma^{(m)} \right),
+\tag{73}\]</p><p>where we add the nuisance parameter <span>$\sigma^{(m)}$</span> to the inference. Notice that this parameter is not indexed by time. This means that we assume the deviations from the theoretical prediction do not depend on time, but only on the mutant. Adding the nuisance parameter demands us to update Eq. 64to</p><p class="math-container">\[\pi(
+    s^{(m)}, \sigma^{(m)} \mid \underline{\bar{s}}_T, \underline{f}^{(m)}
+) \propto
+\pi(\underline{f}^{(m)} \mid \underline{\bar{s}}_T, s^{(m)}, \sigma^{(m)})
+\pi(s^{(m)}) \pi(\sigma^{(m)}),
+\tag{74}\]</p><p>where we assume independent priors for both parameters. We also removed the conditioning on the values of the mean fitness as knowing such values does not change our prior information about the possible range of values that the parameters can take. As with the priors on sec-bayes_meanfit, we will assign weakly-informative priors to these parameters.</p><h4 id="Summary-3"><a class="docs-heading-anchor" href="#Summary-3">Summary</a><a class="docs-heading-anchor-permalink" href="#Summary-3" title="Permalink"></a></h4><p>With all pieces in place, we write the full inference of the relative fitness values as</p><p class="math-container">\[\pi(
+    \underline{s}^M ,\underline{\sigma}^M \mid 
+    \underline{\bar{s}}_T, \underline{\underline{F}}
+) \propto
+\prod_{m=1}^M \left\{ 
+    \pi(f_0^{(m)} \mid \gamma_0^{(m)})
+    \prod_{t=0}^{T-1} \left[
+        \pi(\gamma_t^{(m)} \mid \bar{s}_t, s^{(m)}, \sigma^{(m)})
+    \right]
+    \pi(s^{(m)}) \pi(\sigma^{(m)})
+\right\},
+\tag{75}\]</p><p>where</p><p class="math-container">\[f_0^{(m)} \mid \gamma_0^{(m)} \sim 
+\operatorname{Uniform}\left(0, \frac{1}{\gamma_0^{(m)}} \right),
+\tag{76}\]</p><p class="math-container">\[\gamma_t^{(m)} \mid \bar{s}_t, s^{(m)}, \sigma^{(m)} \sim 
+\log\mathcal{N}\left(s^{(m)} - \bar{s}_t, \sigma^{(m)} \right),
+\tag{77}\]</p><p class="math-container">\[s^{(m)} \sim \mathcal{N}(0, \sigma_{s^{(m)}}),
+\tag{78}\]</p><p>and</p><p class="math-container">\[\sigma^{(m)} \sim \log\mathcal{N}(\mu_{\sigma^{(m)}}, \sigma_{\sigma^{(m)}}),\]</p><p>where <span>$\sigma_{s^{(m)}}$</span>, <span>$\mu_{\sigma^{(m)}}$</span>, and <span>$\sigma_{\sigma^{(m)}}$</span> are user-defined parameters.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../examples/">« examples</a><a class="docs-footer-nextpage" href="../mcmc/">mcmc »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Thursday 28 December 2023 20:54">Thursday 28 December 2023</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

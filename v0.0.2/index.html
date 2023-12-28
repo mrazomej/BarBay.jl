@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>BarBay · BarBay</title><meta name="title" content="BarBay · BarBay"/><meta property="og:title" content="BarBay · BarBay"/><meta property="twitter:title" content="BarBay · BarBay"/><meta name="description" content="Documentation for BarBay."/><meta property="og:description" content="Documentation for BarBay."/><meta property="twitter:description" content="Documentation for BarBay."/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href><img src="assets/logo.svg" alt="BarBay logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href>BarBay</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>BarBay</a><ul class="internal"><li><a class="tocitem" href="#Contents"><span>Contents</span></a></li><li><a class="tocitem" href="#Example-inference"><span>Example inference</span></a></li><li><a class="tocitem" href="#Inference-output"><span>Inference output</span></a></li><li><a class="tocitem" href="#Validating-the-inference"><span>Validating the inference</span></a></li></ul></li><li><a class="tocitem" href="contributing/">contributing</a></li><li><a class="tocitem" href="examples/">examples</a></li><li><a class="tocitem" href="math/">math</a></li><li><a class="tocitem" href="mcmc/">mcmc</a></li><li><a class="tocitem" href="model/">model</a></li><li><a class="tocitem" href="stats/">stats</a></li><li><a class="tocitem" href="utils/">utils</a></li><li><a class="tocitem" href="vi/">vi</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>BarBay</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>BarBay</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/mrazomej/BarBay.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/mrazomej/BarBay.jl/blob/main/docs/src/index.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="BarBay"><a class="docs-heading-anchor" href="#BarBay">BarBay</a><a id="BarBay-1"></a><a class="docs-heading-anchor-permalink" href="#BarBay" title="Permalink"></a></h1><p>Welcome to the documentation of <code>BarBay.jl</code>! The accompanying paper, <em>Bayesian inference of relative fitness on high-throughput pooled competition assays</em>, explains all of the biological and mathematical background needed to understand this package. Here, we mainly focus on how to use the package, assuming the user already understands the objective of inferring the posterior probability distribution of the relative fitness of mutant strains in a pooled competition assay.</p><p>The package is divided into modules. Here&#39;s a brief description of the content of each module, but please visit their respective documentations to understand what each module is intended for.</p><ul><li><code>utils</code>: Series of miscellaneous functions that make the data wrangling and processing much simpler.</li><li><code>stats</code>: Statistical functions used in the inference problem.</li><li><code>model</code>: <a href="https://turing.ml"><code>Turing.jl</code></a>-based Bayesian models used to infer the population mean fitness via the neutral lineages as well as the mutants&#39; relative fitness.</li><li><code>vi</code>: The main module with which to implement the automatic differentiation variational inference modality of the inference pipeline.</li><li><code>mcmc</code>: The module with which to perform the Markov-Chain Monte Carlo sampling of the posterior distributions.</li></ul><p>If you are interested in the mathematical details or want to get a quick  reminder, please check the <a href="math/#math">math</a> tab.</p><h2 id="Contents"><a class="docs-heading-anchor" href="#Contents">Contents</a><a id="Contents-1"></a><a class="docs-heading-anchor-permalink" href="#Contents" title="Permalink"></a></h2><ul><li><a href="contributing/#contributing">contributing</a></li><li><a href="examples/#examples">examples</a></li><li class="no-marker"><ul><li><a href="examples/#General-package-imports">General package imports</a></li><li><a href="examples/#Selecting-the-AutoDiff-backend">Selecting the AutoDiff backend</a></li><li><a href="examples/#Single-dataset-single-environment-variational-inference">Single dataset single environment variational inference</a></li><li><a href="examples/#Single-dataset-single-environment-MCMC-sampling">Single dataset single environment MCMC sampling</a></li><li><a href="examples/#Multi-environment-single-dataset-variational-inference">Multi-environment single dataset variational inference</a></li><li><a href="examples/#Hierarchical-model-for-multiple-experimental-replicates-variational-inference">Hierarchical model for multiple experimental replicates variational inference</a></li><li><a href="examples/#Hierarchical-model-for-multiple-barcodes-mapping-to-same-genotype-variational-inference">Hierarchical model for multiple barcodes mapping to same genotype variational inference</a></li></ul></li><li><a href="#BarBay">BarBay</a></li><li class="no-marker"><ul><li><a href="#Contents">Contents</a></li><li><a href="#Example-inference">Example inference</a></li><li><a href="#Inference-output">Inference output</a></li><li><a href="#Validating-the-inference">Validating the inference</a></li></ul></li><li><a href="math/#math">math</a></li><li class="no-marker"><ul><li><a href="math/#Preliminaries-on-mathematical-notation">Preliminaries on mathematical notation</a></li><li><a href="math/#Fitness-model">Fitness model</a></li><li><a href="math/#Bayesian-inference">Bayesian inference</a></li></ul></li><li><a href="mcmc/#mcmc">mcmc</a></li><li><a href="model/#model">model</a></li><li class="no-marker"><ul><li><a href="model/#Single-dataset-single-environment">Single-dataset single-environment</a></li><li><a href="model/#Single-dataset-multi-environment">Single-dataset multi-environment</a></li><li><a href="model/#Single-dataset-hierarchical-model-on-genotypes">Single-dataset hierarchical model on genotypes</a></li><li><a href="model/#Multi-replicate-single-environment-hierarchical-model-for-experimental-replicates">Multi-replicate single-environment hierarchical model for experimental replicates</a></li><li><a href="model/#Multi-replicate-multi-environment-hierarchical-model-for-experimental-replicates">Multi-replicate multi-environment hierarchical model for experimental replicates</a></li></ul></li><li><a href="stats/#stats">stats</a></li><li class="no-marker"><ul><li><a href="stats/#Posterior-Predictive-Checks">Posterior Predictive Checks</a></li><li><a href="stats/#Naive-estimates">Naive estimates</a></li><li><a href="stats/#Miscellaneous-statistical-functions">Miscellaneous statistical functions</a></li></ul></li><li><a href="utils/#utils">utils</a></li><li><a href="vi/#vi">vi</a></li><li class="no-marker"><ul><li><a href="vi/#Primer-on-Variational-Inference">Primer on Variational Inference</a></li><li><a href="vi/#vi-module">vi module</a></li></ul></li></ul><h2 id="Example-inference"><a class="docs-heading-anchor" href="#Example-inference">Example inference</a><a id="Example-inference-1"></a><a class="docs-heading-anchor-permalink" href="#Example-inference" title="Permalink"></a></h2><p>To get you going with the package, let&#39;s walk through a basic inference pipeline for one competition assay. Our ultimate goal consists of inferring the relative fitness for each of the barcoded genotypes of interest. To that end, we assume that the frequency time-series obeys the following equation</p><p class="math-container">\[f_{t+1}^{(b)} = f_{t}^{(b)} \mathrm{e}^{\left(s^{(b)} - \bar{s}_t \right)\tau},
+\tag{1}\]</p><p>where <span>$f_{t}^{(b)}$</span> is the frequency of barcode <span>$b$</span> at the end of growth cycle<span>$t$</span>, <span>$s^{(b)}$</span> is the relative fitness of this barcode, <span>$\bar{s}_t$</span> is the population mean fitness at cycle <span>$t$</span>, and <span>$\tau$</span> is the time interval between cycle <span>$t$</span> and <span>$t+1$</span>.</p><p>The first step consists of importing the necessary packages. </p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>We use <code>import</code> rather than the more common <code>using</code> command that most <code>Julia</code> tutorials and packages utilize. We find it better to keep the project organized, but feel free to use whatever is more convenient for you!</p></div></div><pre><code class="language-julia hljs"># Import Bayesian inference package
+import BarBay
+
+# Import libraries to manipulate data
+import DataFrames as DF
+import CSV</code></pre><p>After having imported the libraries, we need to load our dataset into memory.</p><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p><code>BarBay.jl</code> requires the dataset to follow the so-called <a href="http://www.jstatsoft.org/v59/i10/">tidy format</a>. Effectively, what this means is that each observation is stored as a single line in the table. So, instead of having all barcode counts for a particular time point across some row (or column), each barcode count for each time point gets its own line. See the example below to get a sense of what this tidy format implies.</p></div></div><pre><code class="language-julia hljs"># Import data
+data = CSV.read(&quot;/path/to/data/tidy_data.csv&quot;, DF.DataFrame)</code></pre><p>Here you will replace <code>&quot;/path/to/data/&quot;</code> with the directory where your data is stored, and <code>&quot;tidy_data.csv&quot;</code> with the name of the file containing the data. The resulting <code>DataFrame</code> looks something like this:</p><pre><code class="nohighlight hljs">| time | barcode    | count | neutral | freq        |
+|------|------------|-------|---------|-------------|
+| 3    | neutral025 | 12478 | TRUE    | 0.000543716 |
+| 4    | neutral025 | 10252 | TRUE    | 0.00034368  |
+| 5    | neutral025 | 2883  | TRUE    | 6.74E-05    |
+| 1    | mut001     | 1044  | FALSE   | 7.97E-05    |
+| 2    | mut001     | 2010  | FALSE   | 0.000121885 |
+| 3    | mut001     | 766   | FALSE   | 3.34E-05    |
+| 4    | mut001     | 216   | FALSE   | 7.24E-06    |
+| 5    | mut001     | 120   | FALSE   | 2.81E-06    |
+| 1    | mut002     | 51484 | FALSE   | 0.003930243 |</code></pre><p>The relevant columns in this data frame are:</p><ul><li><code>barcode</code>: The unique ID that identifies the barcode. This can be anything that helps you identify each barcode.</li><li><code>count</code>: The number of raw reads for each particular barcode.</li><li><code>time</code>: The time point ID indicating the order in which samples were taken. These must not be in units of time, but simply a serial progression indicating the cycle number.</li><li><code>neutral</code>: Boolean indicator of whether the barcode belongs to a neutral lineage or not.</li></ul><p>Let&#39;s take a look at the data. For this we import the extra package that includes some plotting routines. </p><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>To make the package more modular, we did not include plotting functionalities since this can interfere with the installation of the package on remote servers. Instead, the <a href="https://github.com/mrazomej/bayesian_fitness">accompanying paper repository</a> includes a module (<code>BayesFitUtils</code>) that we can import to create basic plots using <a href="http://makie.juliaplots.org/">Makie.jl</a>. There are other options within the <code>Julia</code> ecosystem that users might be more familiar with for plotting.</p></div></div><p>The <code>BayesFitUtil.viz</code> module has several <a href="https://docs.makie.org/stable/"><code>Makie.jl</code></a>-based functions to easily display the data. Let&#39;s import the necessary plotting libraries</p><pre><code class="language-julia hljs"># Import package with useful plotting functions for our dataset
+import BayesFitUtils
+# Import plotting libraries
+using CairoMakie
+import ColorSchemes</code></pre><p>First, let&#39;s plot the barcode frequency trajectories. For this, we use the convenient [<code>BayesFitUtils.viz.bc_time_series!</code>] function.</p><pre><code class="language-julia hljs"># Initialize figure
+fig = Figure(resolution=(350, 300))
+
+# Add axis
+ax = Axis(
+    fig[1, 1], xlabel=&quot;time [dilution cycle]&quot;, ylabel=&quot;barcode frequency&quot;, yscale=log10
+)
+
+# Plot mutant barcode trajectories
+BayesFitUtils.viz.bc_time_series!(
+    ax,
+    data[.!(data.neutral), :],
+    quant_col=:freq,
+    zero_lim=0,
+    alpha=0.35
+)
+
+# Plot neutral barcode trajectories
+BayesFitUtils.viz.bc_time_series!(
+    ax,
+    data[data.neutral, :],
+    quant_col=:freq,
+    zero_lim=0,
+    color=ColorSchemes.Blues_9[end],
+)</code></pre><p>We highlight the neutral barcodes⸺defined to have relative fitness <span>$s^{(n)}=0$</span>⸺with dark blue lines. The rest of the light-color lines correspond to individual barcodes.</p><p><img src="figs/fig01.svg" alt/></p><p>We can rewrite Eq. (1) as</p><p class="math-container">\[\frac{1}{\tau} \ln \frac{f_{t+1}^{(b)}}{f_{t}^{(b)}} = 
+\left(s^{(b)} - \bar{s}_t \right).
+\tag{2}\]</p><p>In this form, we can se that the relevant quantity we need to infer the values of the population mean fitness <span>$\bar{s}_t$</span> and the barcode relative fitness <span>$s^{(b)}$</span> are not the frequencies themselves, but the log ratio of these frequencies between two adjacent time points. Let&#39;s plot this log frequency ratio using the [<code>BayesFitUtils.viz.logfreq_ratio_time_series!</code>] function.</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>For plotting purposes, we will use a naive estimate of the barcode frequencies by normalizing the number of reads by the total number of reads at each time point. In our inference pipeline, we estimate the frequency  given the number of reads to include the uncertainty when converting one to the other.</p></div></div><pre><code class="language-julia hljs"># Initialize figure
+fig = Figure(resolution=(400, 300))
+
+# Add axis
+ax = Axis(fig[1, 1], xlabel=&quot;time [dilution cycle]&quot;, ylabel=&quot;ln(fₜ₊₁/fₜ)&quot;)
+
+# Plot mutant barcode trajectories
+BayesFitUtils.viz.logfreq_ratio_time_series!(
+    ax,
+    data[.!(data.neutral), :],
+    alpha=0.3
+)
+
+# Plot neutral barcode trajectories
+BayesFitUtils.viz.logfreq_ratio_time_series!(
+    ax,
+    data[data.neutral, :],
+    color=ColorSchemes.Blues_9[end],
+)</code></pre><div class="admonition is-success"><header class="admonition-header">Tip</header><div class="admonition-body"><p>We expect is to see these log-frequency ratios as relatively flat lines. Especially for the neutral lineages.</p></div></div><p><img src="figs/fig02.svg" alt/></p><h3 id="Using-the-neutral-lineages-to-determine-our-priors"><a class="docs-heading-anchor" href="#Using-the-neutral-lineages-to-determine-our-priors">Using the neutral lineages to determine our priors</a><a id="Using-the-neutral-lineages-to-determine-our-priors-1"></a><a class="docs-heading-anchor-permalink" href="#Using-the-neutral-lineages-to-determine-our-priors" title="Permalink"></a></h3><p>One of the feature of Bayesian analysis is that we can include prior information into our inference task that encodes our domain expertise. For analysis with a lot of data, as long as the prior is broad-enough, this becomes less relevant. However, although we have a lot of data for multiple barcodes, we are actually in the low-data regime since for each barcode we typically have on the order of 4-5 time point measurements. Thus, defining appropriate priors is important for our inference pipeline. Unfortunately, we do not necessarily measure each genotype multiple times within the same experiment to get a sense of the expected variation in our measurements. An exception to this are the neutral barcodes. These barcodes represent multiple measurement of allegedly the same reference genotype. Therefore, we can use the variability within these measurements to define the priors for our inference. Let&#39;s now take the neutrals data and obtain these parameters</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p><code>BarBay.jl</code> includes the function <code>naive_prior</code> within the <a href="stats/#stats">stats</a> module to compute priors for some of the parameters based on the neutral lineages data. We point the user to the accompanying paper to see details on these prior selection.</p></div></div><pre><code class="language-julia hljs"># Compute naive priors from neutral strains
+naive_priors = BarBay.stats.naive_prior(data)
+
+# Select standard deviation parameters
+s_pop_prior = hcat(
+    naive_priors[:s_pop_prior],
+    repeat([0.05], length(naive_priors[:s_pop_prior]))
+)
+
+logσ_pop_prior = hcat(
+    naive_priors[:logσ_pop_prior],
+    repeat([1.0], length(naive_priors[:logσ_pop_prior]))
+)
+
+logσ_bc_prior = [StatsBase.mean(naive_priors[:logσ_pop_prior]), 1.0]
+
+logλ_prior = hcat(
+    naive_priors[:logλ_prior],
+    repeat([3.0], length(naive_priors[:logλ_prior]))
+)</code></pre><h3 id="Running-the-inference"><a class="docs-heading-anchor" href="#Running-the-inference">Running the inference</a><a id="Running-the-inference-1"></a><a class="docs-heading-anchor-permalink" href="#Running-the-inference" title="Permalink"></a></h3><p>With these priors in hand, we can run the inference. For this, we use the <a href="vi/#BarBay.vi.advi-Tuple{}"><code>BarBay.vi.advi</code></a> function from the <a href="vi/#vi">vi</a> module. The main parameters we need to define are:</p><ul><li><code>:data</code>: Tidy data frame containing the raw barcode counts.</li><li><code>:outputname</code>: String defining the pattern for the output file. This can be something related to the dataset. For example, the growth media, or the date of the experiment, of whatever metadata used to distinguish different datasets.</li><li><code>:model</code>: Bayesian model from the <a href="model/#model">model</a> module that defines the posterior distribution to be sampled.</li><li><code>:model_kwargs</code>: The parameters required by the <code>model</code> function.</li><li><code>:advi</code>: Indicating the ADVI implementation with the corresponding number of samples and steps.</li><li><code>opt</code>: Optimization algorithm for ADVI.</li></ul><p>To speed-up the computation for a large number of parameters, we will use <a href="https://github.com/JuliaDiff/ReverseDiff.jl"><code>ReverseDiff.jl</code></a> as the automatic differentiation backend, also known as backpropagation (see <a href="https://turing.ml/v0.22/docs/using-turing/autodiff"><code>Turing.jl</code></a> documentation for more information on this). This is generally a good practice if the number of barcodes is large. However, for small datasets, we recommend using <a href="https://github.com/JuliaDiff/ForwardDiff.jl"><code>ForwardDiff.jl</code></a> instead.</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>The AutoDiff backend for ADVI is set using the <code>AdvancedVI</code> module. This is done in the <code>:advi</code> option of the <code>param</code> dictionary. For <code>ForwardDiff.jl</code>, we can do <code>:advi =&gt; Turing.ADVI(n_samples, n_steps)</code>, as <code>ForwardDiff.jl</code> is the default backend. For <code>ReverseDiff.jl</code>, we need to do <code>:advi =&gt; Turing.ADVI{AdvancedVI.ReverseDiffAD{false}}(n_samples, n_steps)</code>, where the <code>false</code> indicates that we won&#39;t use the cache for the random number tape. See the <a href="https://github.com/TuringLang/AdvancedVI.jl/tree/master"><code>AdvancedVI.jl</code></a> repository for more information.</p></div></div><pre><code class="language-julia hljs"># Import library to perform Bayesian inference
+import Turing
+# Import library to set AutoDiff backend for ADVI
+import AdvancedVI
+
+# Import AutoDiff backend
+using ReverseDiff</code></pre><p>For this dataset, we use the <a href="model/#BarBay.model.fitness_normal"><code>BarBay.model.fitness_normal</code></a> model from the <a href="model/#model">model</a> module. Now, we can compile all of the necessary parameters into a dictionary.</p><pre><code class="language-julia hljs"># Define number of samples and steps
+n_samples = 1
+n_steps = 3_000
+
+# Define function parameters
+param = Dict(
+    :data =&gt; data,
+    :outputname =&gt; &quot;./output/advi_meanfield_&quot; *
+                   &quot;$(lpad(n_samples, 2, &quot;0&quot;))samples_$(n_steps)steps&quot;,
+    :model =&gt; BarBay.model.fitness_normal,
+    :model_kwargs =&gt; Dict(
+        :s_pop_prior =&gt; s_pop_prior,
+        :logσ_pop_prior =&gt; logσ_pop_prior,
+        :logσ_bc_prior =&gt; logσ_bc_prior,
+        :s_bc_prior =&gt; [0.0, 1.0],
+        :logλ_prior =&gt; logλ_prior,
+    ),
+    :advi =&gt; Turing.ADVI{AdvancedVI.ReverseDiffAD{false}}(n_samples, n_steps),
+    :opt =&gt; Turing.TruncatedADAGrad(),
+)</code></pre><p>Next, we run the inference.</p><pre><code class="language-julia hljs">BarBay.vi.advi(; param...)</code></pre><h2 id="Inference-output"><a class="docs-heading-anchor" href="#Inference-output">Inference output</a><a id="Inference-output-1"></a><a class="docs-heading-anchor-permalink" href="#Inference-output" title="Permalink"></a></h2><p>After running the inference, the output of is a <code>.csv</code> file of the form</p><pre><code class="nohighlight hljs">| mean                  | std                  | varname   | vartype          | rep | env  | id     |
+|-----------------------|----------------------|-----------|------------------|-----|------|--------|
+| 0.6769813021009923    | 0.019270434240452546 | s̲ₜ[1]    | pop_mean_fitness | R1  | env1 | N/A    |
+| 0.5979391468267903    | 0.023068814619647663 | s̲ₜ[2]    | pop_mean_fitness | R1  | env1 | N/A    |
+| 0.7794031847044068    | 0.021637905105449048 | s̲ₜ[3]    | pop_mean_fitness | R1  | env1 | N/A    |
+| 1.097531601258874     | 0.020140458476711063 | s̲ₜ[4]    | pop_mean_fitness | R1  | env1 | N/A    |
+| -1.1349279694117884   | 0.13764164137709486  | logσ̲ₜ[1] | pop_std          | R1  | env1 | N/A    |
+| -0.8537538300547914   | 0.14427221564497342  | logσ̲ₜ[2] | pop_std          | R1  | env1 | N/A    |
+| -1.0036841099650615   | 0.14850736993662278  | logσ̲ₜ[3] | pop_std          | R1  | env1 | N/A    |
+| -1.0111319869238307   | 0.13429835511246288  | logσ̲ₜ[4] | pop_std          | R1  | env1 | N/A    |
+| -0.023508979117674522 | 0.42814608044575164  | s̲⁽ᵐ⁾[1]  | bc_fitness       | R1  | env1 | mut001 |
+| -0.08443525829413444  | 0.2749553846185592   | s̲⁽ᵐ⁾[2]  | bc_fitness       | R1  | env1 | mut002 |
+| -0.05274382497169921  | 0.1535891599128269   | s̲⁽ᵐ⁾[3]  | bc_fitness       | R1  | env1 | mut003 |
+| 0.14655295685583677   | 0.32454211197027244  | s̲⁽ᵐ⁾[4]  | bc_fitness       | R1  | env1 | mut004 |
+| 0.06093015139986163   | 0.055690708045292796 | s̲⁽ᵐ⁾[5]  | bc_fitness       | R1  | env1 | mut005 |
+| 0.07170404879708663   | 0.2969475992920767   | s̲⁽ᵐ⁾[6]  | bc_fitness       | R1  | env1 | mut006 |
+| 0.03640967790708551   | 0.2664593948070634   | s̲⁽ᵐ⁾[7]  | bc_fitness       | R1  | env1 | mut007 |</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Recall that our implementation of variational inference assumes the true posterior distribution can be approximated by a multivariate Gaussian distribution with a diagonal covariance matrix. Therefore, the marginal posterior distribution for each of the inferred parameters can be fully parametrized with two numbers: the mean and the standard deviation.</p></div></div><p>The columns of this file are</p><ul><li><code>mean</code>: The mean of the marginal posterior distribution for the variable.</li><li><code>std</code>: The standard deviation of the marginal posterior distribution for the variable.</li><li><code>varname</code>: The name of the variable within the <code>Turing.jl</code> model. For the most part, you can ignore this column.</li><li><code>vartype</code>: Description of the type of parameter. The types are:<ul><li><code>pop_mean_fitness</code>: Population mean fitness value <code>s̲ₜ</code>.</li><li><code>pop_error</code>: (Nuisance parameter) Log of standard deviation in the likelihood function for the neutral lineages.</li><li><code>bc_fitness</code>: Mutant relative fitness <code>s⁽ᵐ⁾</code>.</li><li><code>bc_hyperfitness</code>: For hierarchical models, mutant hyperparameter that connects the fitness over multiple experimental replicates or multiple genotypes <code>θ⁽ᵐ⁾</code>.</li><li><code>bc_noncenter</code>: (Nuisance parameter) For hierarchical models, non-centered samples used to connect the experimental replicates to the hyperparameter <code>θ̃⁽ᵐ⁾</code>.</li><li><code>bc_deviations</code>: (Nuisance parameter) For hierarchical models, samples that define the log of the deviation from the hyperparameter fitness value <code>logτ⁽ᵐ⁾</code>.</li><li><code>bc_error</code>: (Nuisance parameter) Log of standard deviation in the likelihood function for the mutant lineages.</li><li><code>freq</code>: (Nuisance parameter) Log of the Poisson parameter used to define the frequency of each lineage.</li></ul></li><li><code>rep</code>: Experimental replicate number.</li><li><code>env</code>: Environment for each parameter.</li><li><code>id</code>: Mutant or neutral strain ID.</li></ul><h2 id="Validating-the-inference"><a class="docs-heading-anchor" href="#Validating-the-inference">Validating the inference</a><a id="Validating-the-inference-1"></a><a class="docs-heading-anchor-permalink" href="#Validating-the-inference" title="Permalink"></a></h2><p>To visualize the performance of the inference pipeline in fitting the fitness model to data, we can compute the so-called posterior predictive checks (PPC). In short, the PPC consists of repeatedly generating synthetic datasets in agreement with the results from the inference results. In other words, we use the resulting parameter values from the ADVI inference to generate possible datasets in agreement with the inferred values.</p><p>The first step consists of loading the inference results into memory</p><pre><code class="language-julia hljs"># Read ADVI results
+df_advi = CSV.read(&quot;/path/to/advi/advi_results.csv&quot;, DF.DataFrame)</code></pre><p>Next, we generate random samples from the posterior distribution. The idea being that we will generate synthetic data for each of these parameter samples  consistent with our data. With a large enough number of samples, we should be able to determine the range where we expect our data to lie.</p><pre><code class="language-julia hljs"># Define number of samples
+n_samples = 10_000
+
+# Sample from posterior MvNormal
+df_samples = DF.DataFrame(
+    Random.rand(
+        Distributions.MvNormal(
+            df_advi.mean, LinearAlgebra.Diagonal(df_advi.std .^ 2)
+        ),
+        n_samples
+    )&#39;,
+    df_advi.varname
+)</code></pre><p>Finally, we can use the <a href="stats/#BarBay.stats.logfreq_ratio_popmean_ppc"><code>BarBay.stats.logfreq_ratio_popmean_ppc</code></a> function for neutral lineages or <a href="stats/#BarBay.stats.logfreq_ratio_bc_ppc"><code>BarBay.stats.logfreq_ratio_bc_ppc</code></a> for non-neutral lineages to generate the corresponding posterior predictive checks. In the code that follows, we embed this ppc sampling within the generation of diagnostic plots.</p><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>We remind users that the custom plotting functions are <strong>not</strong> included in the <code>BarBay.jl</code> package. The following code is only meant to serve as a guidance for users to know how to generate diagnostic plots.</p></div></div><pre><code class="language-julia hljs"># Initialize figure
+fig = Figure(resolution=(600, 600))
+
+# Add grid layout for posterior predictive checks
+gl_ppc = fig[1, 1] = GridLayout()
+
+# Define number of posterior predictive check samples
+n_ppc = 500
+# Define quantiles to compute
+qs = [0.95, 0.675, 0.05]
+
+# Define number of rows and columns
+n_row, n_col = [4, 4]
+
+# List example barcodes to plot
+bc_plot = StatsBase.sample(
+    eachrow(DF.sort(df_fitness, :mean)),
+    n_row * n_col,
+    replace=false,
+    ordered=true
+)
+
+# Initialize plot counter
+counter = 1
+# Loop through rows
+for row in 1:n_row
+    # Loop through columns
+    for col in 1:n_col
+        # Add axis
+        local ax = Axis(gl_ppc[row, col], aspect=AxisAspect(1.25))
+
+        # Check if first first entry
+        if (row == 1) &amp; (col == 1)
+            # Define dictionary with corresponding parameters for variables
+            # needed for the posterior predictive checks
+            param = Dict(
+                :population_mean_fitness =&gt; :s̲ₜ,
+                :population_std_fitness =&gt; :σ̲ₜ,
+            )
+
+            # Define colors
+            local colors = get(
+                ColorSchemes.Purples_9, LinRange(0.5, 1.0, length(qs))
+            )
+
+            # Compute posterior predictive checks
+            local ppc_mat = BarBay.stats.logfreq_ratio_popmean_ppc(
+                df_samples, n_ppc; model=:normal, param=param
+            )
+
+            # Define time
+            t = vec(collect(axes(ppc_mat, 2)) .+ 1)
+
+            # Plot posterior predictive checks
+            BayesFitUtils.viz.ppc_time_series!(
+                ax, qs, ppc_mat; colors=colors, time=t
+            )
+
+            # Plot log-frequency ratio of neutrals
+            BayesFitUtils.viz.logfreq_ratio_time_series!(
+                ax,
+                data[data.neutral, :];
+                freq_col=:freq,
+                color=:black,
+                alpha=1.0,
+                linewidth=1.5
+            )
+
+            # Hide axis decorations
+            hidedecorations!.(ax, grid=false)
+
+            ax.title = &quot;neutral lineages&quot;
+            # ax.titlesize = 18
+
+            counter += 1
+
+            continue
+        end # if
+
+        # Extract data
+        data_bc = DF.sort(
+            data[data.barcode.==bc_plot[counter].id, :], :time
+        )
+
+        # Define colors
+        local colors = get(ColorSchemes.Blues_9, LinRange(0.5, 1.0, length(qs)))
+
+        # Define dictionary with corresponding parameters for variables needed
+        # for the posterior predictive checks
+        local param = Dict(
+            :bc_mean_fitness =&gt; Symbol(bc_plot[counter].varname),
+            :bc_std_fitness =&gt; Symbol(
+                replace(bc_plot[counter].varname, &quot;s&quot; =&gt; &quot;logσ&quot;)
+            ),
+            :population_mean_fitness =&gt; :s̲ₜ,
+        )
+        # Compute posterior predictive checks
+        local ppc_mat = BarBay.stats.logfreq_ratio_bc_ppc(
+            df_samples, n_ppc; model=:normal, param=param
+        )
+        # Plot posterior predictive checks
+        BayesFitUtils.viz.ppc_time_series!(
+            ax, qs, ppc_mat; colors=colors
+        )
+
+        # Add scatter of data
+        scatterlines!(ax, diff(log.(data_bc.freq)), color=:black, linewidth=2.0)
+
+        # Define fitness ranges to display in title
+        vals = [
+            round(bc_plot[counter].mean; sigdigits=2),
+            round(bc_plot[counter].std; sigdigits=2),
+        ]
+
+        # Add title
+        ax.title = &quot;s⁽ᵐ⁾= $(vals[1])±$(vals[2])&quot;
+
+        ## == Plot format == ##
+
+        # Hide axis decorations
+        hidedecorations!.(ax, grid=false)
+
+        # Update counter
+        global counter += 1
+    end  # for
+end # for
+
+# Add x-axis label
+Label(gl_ppc[end, :, Bottom()], &quot;time points&quot;, fontsize=22)
+# Add y-axis label
+Label(gl_ppc[:, 1, Left()], &quot;ln(fₜ₊₁/fₜ)&quot;, rotation=π / 2, fontsize=22)
+# Set spacing
+rowgap!(gl_ppc, 0)
+colgap!(gl_ppc, 4)</code></pre><p><img src="figs/fig03.svg" alt/></p><p>These are examples of the posterior predictive checks for all neutral lineages (upper left panel) and a subset of representative mutant lineages. Shaded regions represent the 95%, 68%, and 5% credible regions for the data. The reported errors above the plot represent the 68% credible region on the mutant relative fitness marginal distribution.</p><p>As we can see, the data lies within the quantiles, suggesting the inference worked and the model is able to capture the general trend of the barcode trajectories!</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="contributing/">contributing »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Thursday 28 December 2023 20:54">Thursday 28 December 2023</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
