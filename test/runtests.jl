@@ -5,9 +5,7 @@ using DataFrames
 using StatsBase
 using Turing
 using AdvancedVI
-using Enzyme
 using ReverseDiff
-using Zygote
 
 println("Testing utility functions...")
 # ---------------------------------------------------------------------------- #
