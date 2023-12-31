@@ -1,7 +1,7 @@
 name = "BarBay"
 uuid = "3e4a4fdd-3c42-44bf-ab95-e818c96fb7a6"
 authors = ["Manuel Razo-Mejia"]
-version = "0.0.2"
+version = "0.0.3"
 
 [deps]
 AdvancedVI = "b5ca4192-6429-45e5-a2d9-87aec30a685c"
