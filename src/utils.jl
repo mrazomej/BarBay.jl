@@ -1,4 +1,8 @@
 ##
+
+# Import basic libraries
+import Logging
+
 # Import package to handle dataframes
 import DataFrames as DF
 import CSV
@@ -11,7 +15,9 @@ import Random
 ## =============================================================================
 
 """
-    _extract_timepoints(data::DF.AbstractDataFrame, time_col::Symbol, rm_T0::Bool, verbose::Bool)
+    _extract_timepoints(
+        data::DF.AbstractDataFrame, time_col::Symbol, rm_T0::Bool, verbose::Bool
+    )
 
 Internal function that extracts unique time points from a given DataFrame `data`
 based on the specified `time_col`. If `rm_T0` is set to true, the function
@@ -40,9 +46,7 @@ function _extract_timepoints(
 
     # Remove T0 if indicated
     if rm_T0
-        if verbose
-            println("Deleting T0 as requested...")
-        end # if 
+        Logging.@info "Deleting T0 as requested..." verbose = verbose
         data = data[.!(data[:, time_col] .== first(timepoints)), :]
     end # if
 
@@ -51,6 +55,347 @@ function _extract_timepoints(
 
     return timepoints
 end # function
+
+# ------------------------------------------------------------------------------
+# Helper functions for processing barcode data
+# ------------------------------------------------------------------------------
+
+"""
+Process neutral barcode data from a single replicate experiment.
+"""
+function _process_neutral_barcodes_single(
+    data::DF.AbstractDataFrame,
+    neutral_col::Symbol,
+    id_col::Symbol,
+    time_col::Symbol,
+    count_col::Symbol,
+    timepoints::Vector
+)::Tuple{Matrix{Int64},Vector}
+    # Group data by unique neutral barcode
+    data_group = DF.groupby(data[data[:, neutral_col], :], id_col)
+
+    # Extract group keys for neutral barcodes
+    neutral_ids = first.(values.(keys(data_group)))
+
+    # Check that all barcodes were measured at all points
+    if any([size(d, 1) for d in data_group] .!= length(timepoints))
+        error("""
+            Not all neutral barcodes have reported counts in all time points.
+            Please check your data to ensure:
+                - No missing timepoints for any barcode
+                - Consistent time series length across barcodes
+            Current timepoints: $(join(timepoints, ", "))
+            """)
+    end
+
+    # Initialize array to save counts for each neutral at time t
+    R̲̲⁽ⁿ⁾ = Matrix{Int64}(undef, length(timepoints), length(data_group))
+
+    # Loop through each unique barcode
+    for (i, d) in enumerate(data_group)
+        # Sort data by timepoint
+        DF.sort!(d, time_col)
+        # Extract data
+        R̲̲⁽ⁿ⁾[:, i] = d[:, count_col]
+    end
+
+    return R̲̲⁽ⁿ⁾, neutral_ids
+end
+
+"""
+Process mutant barcode data from a single replicate experiment.
+"""
+function _process_mutant_barcodes_single(
+    data::DF.AbstractDataFrame,
+    neutral_col::Symbol,
+    id_col::Symbol,
+    time_col::Symbol,
+    count_col::Symbol,
+    timepoints::Vector
+)::Tuple{Matrix{Int64},Vector}
+    # Group data by unique mutant barcode
+    data_group = DF.groupby(data[.!data[:, neutral_col], :], id_col)
+
+    # Extract group keys for mutant barcodes
+    bc_ids = first.(values.(keys(data_group)))
+
+    # Check that all barcodes were measured at all points
+    if any([size(d, 1) for d in data_group] .!= length(timepoints))
+        error("""
+            Not all mutant barcodes have reported counts in all time points.
+            Please check your data to ensure:
+                - No missing timepoints for any barcode
+                - Consistent time series length across barcodes
+            Current timepoints: $(join(timepoints, ", "))
+            """)
+    end
+
+    # Initialize array to save counts for each mutant at time t
+    R̲̲⁽ᵐ⁾ = Matrix{Int64}(undef, length(timepoints), length(data_group))
+
+    # Loop through each unique barcode
+    for (i, d) in enumerate(data_group)
+        # Sort data by timepoint
+        DF.sort!(d, time_col)
+        # Extract data
+        R̲̲⁽ᵐ⁾[:, i] = d[:, count_col]
+    end
+
+    return R̲̲⁽ᵐ⁾, bc_ids
+end
+
+# ------------------------------------------------------------------------------
+# Helper functions for processing barcode data from multiple replicates
+# ------------------------------------------------------------------------------
+
+"""
+Process neutral barcode data from multiple replicate experiments.
+"""
+function _process_neutral_barcodes_multi(
+    data::DF.AbstractDataFrame,
+    neutral_col::Symbol,
+    id_col::Symbol,
+    time_col::Symbol,
+    count_col::Symbol,
+    rep_col::Symbol,
+    timepoints::Vector
+)::Tuple{Array{Int64,3},Vector}
+    # Extract neutral data
+    data_neutral = @view data[data[:, neutral_col], :]
+    # Extract unique neutral IDs
+    neutral_ids = unique(data_neutral[:, id_col])
+    # Extract unique reps
+    reps = unique(data_neutral[:, rep_col])
+
+    # Initialize array to save counts for each neutral at time t
+    R̲̲⁽ⁿ⁾ = Array{Int64,3}(
+        undef, length(timepoints), length(neutral_ids), length(reps)
+    )
+
+    # Loop through each unique neutral ID
+    for (j, id) in enumerate(neutral_ids)
+        # Loop through each unique rep
+        for (k, rep) in enumerate(reps)
+            # Extract data
+            d = data_neutral[
+                (data_neutral[:, id_col].==id).&(data_neutral[:, rep_col].==rep),
+                :]
+            # Sort data by timepoint
+            DF.sort!(d, time_col)
+            # Extract data
+            R̲̲⁽ⁿ⁾[:, j, k] = d[:, count_col]
+        end
+    end
+
+    return R̲̲⁽ⁿ⁾, neutral_ids
+end
+
+# ------------------------------------------------------------------------------
+
+"""
+Process mutant barcode data from multiple replicate experiments.
+"""
+function _process_mutant_barcodes_multi(
+    data::DF.AbstractDataFrame,
+    neutral_col::Symbol,
+    id_col::Symbol,
+    time_col::Symbol,
+    count_col::Symbol,
+    rep_col::Symbol,
+    timepoints::Vector
+)::Tuple{Array{Int64,3},Vector}
+    # Extract mutant data
+    data_mut = @view data[.!data[:, neutral_col], :]
+    # Extract unique IDs
+    bc_ids = sort(unique(data_mut[:, id_col]))
+    # Extract unique reps
+    reps = sort(unique(data_mut[:, rep_col]))
+
+    # Initialize array to save counts for each mutant at time t
+    R̲̲⁽ᵐ⁾ = Array{Int64,3}(
+        undef, length(timepoints), length(bc_ids), length(reps)
+    )
+
+    # Loop through each unique id
+    for (j, id) in enumerate(bc_ids)
+        # Loop through each unique rep
+        for (k, rep) in enumerate(reps)
+            # Extract data
+            d = data_mut[
+                (data_mut[:, id_col].==id).&(data_mut[:, rep_col].==rep),
+                :]
+            # Sort data by timepoint
+            DF.sort!(d, time_col)
+            # Extract data
+            R̲̲⁽ᵐ⁾[:, j, k] = d[:, count_col]
+        end
+    end
+
+    return R̲̲⁽ᵐ⁾, bc_ids
+end
+
+# ------------------------------------------------------------------------------
+# Helper functions for processing barcode data from multiple replicates with
+# different timepoints
+# ------------------------------------------------------------------------------
+
+"""
+Process neutral barcode data from multiple replicates with different timepoints.
+"""
+function _process_neutral_barcodes_multi_varying(
+    data_rep::DF.GroupedDataFrame,
+    neutral_col::Symbol,
+    id_col::Symbol,
+    time_col::Symbol,
+    count_col::Symbol,
+    n_rep_time::Vector{Int}
+)::Tuple{Vector{Matrix{Int64}},Vector}
+    # Initialize Vector to save matrix for each replicate
+    R̲̲⁽ⁿ⁾ = Vector{Matrix{Int64}}(undef, length(n_rep_time))
+    neutral_ids = Vector{Any}(undef, 0)
+
+    # Loop through replicates
+    for (rep, d_rep) in enumerate(data_rep)
+        # Group data by unique neutral barcode
+        data_group = DF.groupby(d_rep[d_rep[:, neutral_col], :], id_col)
+
+        # Extract group keys for first replicate only
+        if rep == 1
+            neutral_ids = first.(values.(keys(data_group)))
+        end
+
+        # Check that all barcodes were measured at all points
+        if any([size(d, 1) for d in data_group] .!= n_rep_time[rep])
+            error("""
+                Not all neutral barcodes have reported counts in all time points
+                for replicate $rep.
+                Please check your data to ensure:
+                    - No missing timepoints for any barcode
+                    - Consistent time series length across barcodes
+                Expected timepoints: $(n_rep_time[rep])
+                """)
+        end
+
+        # Initialize array to save counts for each mutant at time t
+        R̲̲⁽ⁿ⁾[rep] = Matrix{Int64}(
+            undef, n_rep_time[rep], length(data_group)
+        )
+
+        # Loop through each unique barcode
+        for (i, d) in enumerate(data_group)
+            # Sort data by timepoint
+            DF.sort!(d, time_col)
+            # Extract data
+            R̲̲⁽ⁿ⁾[rep][:, i] = d[:, count_col]
+        end
+    end
+
+    return R̲̲⁽ⁿ⁾, neutral_ids
+end
+
+# ------------------------------------------------------------------------------
+
+"""
+Process mutant barcode data from multiple replicates with different timepoints.
+"""
+function _process_mutant_barcodes_multi_varying(
+    data_rep::DF.GroupedDataFrame,
+    neutral_col::Symbol,
+    id_col::Symbol,
+    time_col::Symbol,
+    count_col::Symbol,
+    n_rep_time::Vector{Int}
+)::Tuple{Vector{Matrix{Int64}},Vector}
+    # Initialize Vector to save matrix for each replicate
+    R̲̲⁽ᵐ⁾ = Vector{Matrix{Int64}}(undef, length(n_rep_time))
+    bc_ids = Vector{Any}(undef, 0)
+
+    # Loop through replicates
+    for (rep, d_rep) in enumerate(data_rep)
+        # Group data by unique mutant barcode
+        data_group = DF.groupby(d_rep[.!d_rep[:, neutral_col], :], id_col)
+
+        # Extract group keys for first replicate only
+        if rep == 1
+            bc_ids = first.(values.(keys(data_group)))
+        end
+
+        # Check that all barcodes were measured at all points
+        if any([size(d, 1) for d in data_group] .!= n_rep_time[rep])
+            error("""
+                Not all mutant barcodes have reported counts in all time points
+                for replicate $rep.
+                Please check your data to ensure:
+                    - No missing timepoints for any barcode
+                    - Consistent time series length across barcodes
+                Expected timepoints: $(n_rep_time[rep])
+                """)
+        end
+
+        # Initialize array to save counts for each mutant at time t
+        R̲̲⁽ᵐ⁾[rep] = Matrix{Int64}(
+            undef, n_rep_time[rep], length(data_group)
+        )
+
+        # Loop through each unique barcode
+        for (i, d) in enumerate(data_group)
+            # Sort data by timepoint
+            DF.sort!(d, time_col)
+            # Extract data
+            R̲̲⁽ᵐ⁾[rep][:, i] = d[:, count_col]
+        end
+    end
+
+    return R̲̲⁽ᵐ⁾, bc_ids
+end
+
+# Modified _extract_R for single replicate case
+function _extract_R(
+    data::DF.AbstractDataFrame,
+    id_col::Symbol,
+    time_col::Symbol,
+    count_col::Symbol,
+    neutral_col::Symbol,
+    rep_col::Nothing,
+    env_col::Nothing,
+    genotype_col::Nothing,
+    rm_T0::Bool,
+    verbose::Bool
+)
+    # Extract unique time points
+    timepoints = _extract_timepoints(data, time_col, rm_T0, verbose)
+
+    # Process neutral barcodes
+    R̲̲⁽ⁿ⁾, neutral_ids = _process_neutral_barcodes_single(
+        data, neutral_col, id_col, time_col, count_col, timepoints
+    )
+
+    # Process mutant barcodes
+    R̲̲⁽ᵐ⁾, bc_ids = _process_mutant_barcodes_single(
+        data, neutral_col, id_col, time_col, count_col, timepoints
+    )
+
+    # Concatenate neutral and mutant data matrices
+    R̲̲ = hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)
+
+    # Compute total counts for each run
+    n̲ₜ = vec(sum(R̲̲, dims=2))
+
+    return Dict(
+        :bc_count => R̲̲,
+        :bc_total => n̲ₜ,
+        :n_neutral => size(R̲̲⁽ⁿ⁾, 2),
+        :n_bc => size(R̲̲⁽ᵐ⁾, 2),
+        :bc_ids => bc_ids,
+        :neutral_ids => neutral_ids,
+        :envs => ["env1"],
+        :n_env => 1,
+        :n_rep => 1,
+        :n_time => length(timepoints),
+        :genotypes => "N/A",
+        :n_geno => 0
+    )
+end
 
 # ------------------------------------------------------------------------------
 
