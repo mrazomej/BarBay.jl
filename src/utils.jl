@@ -14,43 +14,78 @@ import Random
 
 ## =============================================================================
 
+
+@doc raw"""
+    DataArrays
+
+Structure to store processed barcode count data and associated metadata for
+fitness inference.
+
+# Fields
+- `bc_count`: Raw barcode counts. Can be:
+    - `Matrix{Int64}` for single replicate/environment data
+    - `Array{Int64,3}` for multiple replicates/environments
+    - `Vector{Matrix{Int64}}` for varying timepoints across replicates
+- `bc_total`: Total population size per timepoint. Format matches `bc_count`:
+    - `Vector{Int64}` for single replicate
+    - `Matrix{Int64}` for multiple replicates
+    - `Vector{Vector{Int64}}` for varying timepoints
+- `n_neutral`: Number of neutral barcodes
+- `n_bc`: Total number of barcodes (neutral + mutant)
+- `bc_ids`: Vector of mutant barcode identifiers
+- `neutral_ids`: Vector of neutral barcode identifiers
+- `envs`: Environmental conditions. Can be:
+    - `String` for single environment
+    - `Vector{<:Any}` for multiple environments
+    - `Vector{Vector{<:Any}}` for nested environment conditions
+- `n_env`: Number of unique environments
+- `n_rep`: Number of experimental replicates
+- `n_time`: Number of timepoints. Can be:
+    - `Int` when consistent across replicates
+    - `Vector{Int}` when varying across replicates
+- `genotypes`: Genotype identifiers. Can be:
+    - `String` for single genotype
+    - `Vector{<:Any}` for multiple genotypes
+- `n_geno`: Number of unique genotypes
+"""
+struct DataArrays
+    bc_count::Union{Matrix{Int64},Array{Int64,3},Vector{Matrix{Int64}}}
+    bc_total::Union{Vector{Int64},Matrix{Int64},Vector{Vector{Int64}}}
+    n_neutral::Int
+    n_bc::Int
+    bc_ids::Vector
+    neutral_ids::Vector
+    envs::Union{String,Vector{<:Any},Vector{Vector{<:Any}}}
+    n_env::Int
+    n_rep::Int
+    n_time::Union{Int,Vector{Int}}
+    genotypes::Union{String,Vector{<:Any}}
+    n_geno::Int
+end
+
+## =============================================================================
+
 """
     _extract_timepoints(
-        data::DF.AbstractDataFrame, time_col::Symbol, rm_T0::Bool, verbose::Bool
+        data::DF.AbstractDataFrame, time_col::Symbol
     )
 
 Internal function that extracts unique time points from a given DataFrame `data`
-based on the specified `time_col`. If `rm_T0` is set to true, the function
-removes the first time point (T0) from the data. The `verbose` flag controls the
-display of operation messages.
+based on the specified `time_col`.
 
 # Arguments
 - `data::DF.AbstractDataFrame`: The input DataFrame from which to extract time
   points.
 - `time_col::Symbol`: The column in `data` that contains the time points.
-- `rm_T0::Bool`: A flag indicating whether to remove the first time point (T0)
-  from the data.
-- `verbose::Bool`: A flag indicating whether to display operation messages.
 
 # Returns
 - `timepoints`: A sorted array of unique time points extracted from `data`.
 """
 function _extract_timepoints(
     data::DF.AbstractDataFrame,
-    time_col::Symbol,
-    rm_T0::Bool,
-    verbose::Bool
+    time_col::Symbol
 )
     # Extract unique time points
-    timepoints = sort(unique(data[:, time_col]))
-
-    # Remove T0 if indicated
-    if rm_T0
-        Logging.@info "Deleting T0 as requested..." verbose = verbose
-        data = data[.!(data[:, time_col] .== first(timepoints)), :]
-    end # if
-
-    # Re-extract unique time points
     timepoints = sort(unique(data[:, time_col]))
 
     return timepoints
@@ -349,7 +384,31 @@ function _process_mutant_barcodes_multi_varying(
     return R̲̲⁽ᵐ⁾, bc_ids
 end
 
-# Modified _extract_R for single replicate case
+# ============================================================================
+# Base case: Single condition, with neutrals
+# ============================================================================
+
+@doc raw"""
+    _extract_R(
+        data::DF.AbstractDataFrame, id_col::Symbol, time_col::Symbol,
+        count_col::Symbol, neutral_col::Symbol, rep_col::Nothing, 
+        env_col::Nothing, genotype_col::Nothing
+    )
+
+Base case extractor for single condition experiment with neutral lineages.
+This handles the simplest case where:
+- There is a single experimental condition
+- Has neutral lineages (neutral_col is provided)
+- No replicates (rep_col is Nothing)
+- No environment variations (env_col is Nothing)
+- No genotype groupings (genotype_col is Nothing)
+
+# Returns
+- `DataArrays`: Struct containing processed barcode data including:
+    - Single matrix for counts
+    - Single vector for totals
+    - Basic metadata (no replicates, environments, or genotypes)
+"""
 function _extract_R(
     data::DF.AbstractDataFrame,
     id_col::Symbol,
@@ -358,159 +417,63 @@ function _extract_R(
     neutral_col::Symbol,
     rep_col::Nothing,
     env_col::Nothing,
-    genotype_col::Nothing,
-    rm_T0::Bool,
-    verbose::Bool
-)
+    genotype_col::Nothing
+)::DataArrays
     # Extract unique time points
-    timepoints = _extract_timepoints(data, time_col, rm_T0, verbose)
+    timepoints = _extract_timepoints(data, time_col)
 
-    # Process neutral barcodes
+    # Process neutral and mutant barcodes
     R̲̲⁽ⁿ⁾, neutral_ids = _process_neutral_barcodes_single(
         data, neutral_col, id_col, time_col, count_col, timepoints
     )
-
-    # Process mutant barcodes
     R̲̲⁽ᵐ⁾, bc_ids = _process_mutant_barcodes_single(
         data, neutral_col, id_col, time_col, count_col, timepoints
     )
 
-    # Concatenate neutral and mutant data matrices
+    # Concatenate matrices and compute totals
     R̲̲ = hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)
-
-    # Compute total counts for each run
     n̲ₜ = vec(sum(R̲̲, dims=2))
 
-    return Dict(
-        :bc_count => R̲̲,
-        :bc_total => n̲ₜ,
-        :n_neutral => size(R̲̲⁽ⁿ⁾, 2),
-        :n_bc => size(R̲̲⁽ᵐ⁾, 2),
-        :bc_ids => bc_ids,
-        :neutral_ids => neutral_ids,
-        :envs => ["env1"],
-        :n_env => 1,
-        :n_rep => 1,
-        :n_time => length(timepoints),
-        :genotypes => "N/A",
-        :n_geno => 0
+    return DataArrays(
+        R̲̲,                    # bc_count
+        n̲ₜ,                   # bc_total
+        size(R̲̲⁽ⁿ⁾, 2),       # n_neutral
+        size(R̲̲⁽ᵐ⁾, 2),       # n_bc
+        bc_ids,               # bc_ids
+        neutral_ids,          # neutral_ids
+        "env1",              # envs
+        1,                   # n_env
+        1,                   # n_rep
+        length(timepoints),  # n_time
+        "N/A",              # genotypes
+        0                    # n_geno
     )
 end
 
-# ------------------------------------------------------------------------------
+# ============================================================================
+# Case: Single condition, no neutrals
+# ============================================================================
 
-"""
-Internal function to extract information from dataframe.
-
-# Nothign Columns
-- `rep_col`, 
-- `env_col`,
-- `genotype_col` 
-"""
-function _extract_R(
-    data::DF.AbstractDataFrame,
-    id_col::Symbol,
-    time_col::Symbol,
-    count_col::Symbol,
-    neutral_col::Symbol,
-    rep_col::Nothing,
-    env_col::Nothing,
-    genotype_col::Nothing,
-    rm_T0::Bool,
-    verbose::Bool
-)
-    # Extract unique time points
-    timepoints = _extract_timepoints(data, time_col, rm_T0, verbose)
-
-    ## %%%%%%%%%%% Neutral barcodes data %%%%%%%%%%% ##
-
-    # Group data by unique mutant barcode
-    data_group = DF.groupby(data[data[:, neutral_col], :], id_col)
-
-    # Extract group keys
-    neutral_ids = first.(values.(keys(data_group)))
-
-    # Check that all barcodes were measured at all points
-    if any([size(d, 1) for d in data_group] .!= length(timepoints))
-        error("Not all neutral barcodes have reported counts in all time points")
-    end # if
-
-    # Initialize array to save counts for each mutant at time t
-    R̲̲⁽ⁿ⁾ = Matrix{Int64}(
-        undef, length(timepoints), length(data_group)
+@doc raw"""
+    _extract_R(
+        data::DF.AbstractDataFrame, id_col::Symbol, time_col::Symbol,
+        count_col::Symbol, neutral_col::Nothing, rep_col::Nothing, 
+        env_col::Nothing, genotype_col::Nothing
     )
 
-    # Loop through each unique barcode
-    for (i, d) in enumerate(data_group)
-        # Sort data by timepoint
-        DF.sort!(d, time_col)
-        # Extract data
-        R̲̲⁽ⁿ⁾[:, i] = d[:, count_col]
-    end # for
+Extractor for single condition experiment without neutral lineages.
+This handles the case where:
+- There is a single experimental condition
+- No neutral lineages (neutral_col is Nothing)
+- No replicates (rep_col is Nothing)
+- No environment variations (env_col is Nothing)
+- No genotype groupings (genotype_col is Nothing)
 
-    ## %%%%%%%%%%% Mutant barcodes data %%%%%%%%%%% ##
-
-    # Group data by unique mutant barcode
-    data_group = DF.groupby(data[.!data[:, neutral_col], :], id_col)
-
-    # Extract group keys
-    bc_ids = first.(values.(keys(data_group)))
-
-    # Check that all barcodes were measured at all points
-    if any([size(d, 1) for d in data_group] .!= length(timepoints))
-        error("Not all mutant barcodes have reported counts in all time points")
-    end # if
-
-    # Initialize array to save counts for each mutant at time t
-    R̲̲⁽ᵐ⁾ = Matrix{Int64}(
-        undef, length(timepoints), length(data_group)
-    )
-
-    # Loop through each unique barcode
-    for (i, d) in enumerate(data_group)
-        # Sort data by timepoint
-        DF.sort!(d, time_col)
-        # Extract data
-        R̲̲⁽ᵐ⁾[:, i] = d[:, count_col]
-    end # for
-
-    ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
-
-    # Concatenate neutral and mutant data matrices
-    R̲̲ = hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)
-
-    # Compute total counts for each run
-    n̲ₜ = vec(sum(R̲̲, dims=2))
-
-    # Define number of replicates
-    n_rep = 1
-
-    return Dict(
-        :bc_count => R̲̲,
-        :bc_total => n̲ₜ,
-        :n_neutral => size(R̲̲⁽ⁿ⁾, 2),
-        :n_bc => size(R̲̲⁽ᵐ⁾, 2),
-        :bc_ids => bc_ids,
-        :neutral_ids => neutral_ids,
-        :envs => ["env1"],
-        :n_env => 1,
-        :n_rep => n_rep,
-        :n_time => length(timepoints),
-        :genotypes => "N/A",
-        :n_geno => 0
-    )
-end # function
-
-# ------------------------------------------------------------------------------
-
-"""
-Internal function to extract information from dataframe.
-
-# Nothign Columns
-- `neutral_col`,
-- `rep_col`, 
-- `env_col`,
-- `genotype_col` 
+# Returns
+- `DataArrays`: Struct containing processed barcode data including:
+    - Single matrix for counts
+    - Single vector for totals
+    - Basic metadata (no neutrals, replicates, environments, or genotypes)
 """
 function _extract_R(
     data::DF.AbstractDataFrame,
@@ -520,74 +483,62 @@ function _extract_R(
     neutral_col::Nothing,
     rep_col::Nothing,
     env_col::Nothing,
-    genotype_col::Nothing,
-    rm_T0::Bool,
-    verbose::Bool
-)
+    genotype_col::Nothing
+)::DataArrays
     # Extract unique time points
-    timepoints = _extract_timepoints(data, time_col, rm_T0, verbose)
+    timepoints = _extract_timepoints(data, time_col)
 
-    ## %%%%%%%%%%% Mutant barcodes data %%%%%%%%%%% ##
-
-    # Group data by unique mutant barcode
-    data_group = DF.groupby(data, id_col)
-
-    # Extract group keys
-    bc_ids = first.(values.(keys(data_group)))
-
-    # Check that all barcodes were measured at all points
-    if any([size(d, 1) for d in data_group] .!= length(timepoints))
-        error("Not all mutant barcodes have reported counts in all time points")
-    end # if
-
-    # Initialize array to save counts for each mutant at time t
-    R̲̲⁽ᵐ⁾ = Matrix{Int64}(
-        undef, length(timepoints), length(data_group)
+    # Process all barcodes as mutants
+    R̲̲⁽ᵐ⁾, bc_ids = _process_mutant_barcodes_single(
+        data, nothing, id_col, time_col, count_col, timepoints
     )
 
-    # Loop through each unique barcode
-    for (i, d) in enumerate(data_group)
-        # Sort data by timepoint
-        DF.sort!(d, time_col)
-        # Extract data
-        R̲̲⁽ᵐ⁾[:, i] = d[:, count_col]
-    end # for
+    # Calculate totals
+    n̲ₜ = vec(sum(R̲̲⁽ᵐ⁾, dims=2))
 
-    ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
-
-    # No neutrals mean all barcodes are mutants
-    R̲̲ = R̲̲⁽ᵐ⁾
-
-    # Compute total counts for each run
-    n̲ₜ = vec(sum(R̲̲, dims=2))
-
-    # Define number of replicates
-    n_rep = 1
-
-    return Dict(
-        :bc_count => R̲̲,
-        :bc_total => n̲ₜ,
-        :n_neutral => 0,
-        :n_bc => size(R̲̲⁽ᵐ⁾, 2),
-        :bc_ids => bc_ids,
-        :neutral_ids => [],
-        :envs => ["env1"],
-        :n_env => 1,
-        :n_rep => n_rep,
-        :n_time => length(timepoints),
-        :genotypes => "N/A",
-        :n_geno => 0
+    return DataArrays(
+        R̲̲⁽ᵐ⁾,                # bc_count
+        n̲ₜ,                   # bc_total
+        0,                    # n_neutral
+        size(R̲̲⁽ᵐ⁾, 2),       # n_bc
+        bc_ids,               # bc_ids
+        Vector{Any}(),        # neutral_ids
+        "env1",              # envs
+        1,                   # n_env
+        1,                   # n_rep
+        length(timepoints),  # n_time
+        "N/A",              # genotypes
+        0                    # n_geno
     )
-end # function
+end
 
-# ------------------------------------------------------------------------------
+# ============================================================================
+# Case: Multiple replicates
+# ============================================================================
 
-"""
-Internal function to extract information from dataframe.
+@doc raw"""
+    _extract_R(
+        data::DF.AbstractDataFrame, id_col::Symbol, time_col::Symbol,
+        count_col::Symbol, neutral_col::Symbol, rep_col::Symbol, 
+        env_col::Nothing, genotype_col::Nothing
+    )
 
-# Nothign Columns
-- `env_col`,
-- `genotype_col` 
+Extractor for experiments with multiple replicates.
+This handles cases where:
+- Multiple experimental replicates exist (rep_col is provided)
+- Has neutral lineages (neutral_col is provided)
+- No environment variations (env_col is Nothing)
+- No genotype groupings (genotype_col is Nothing)
+
+Can handle both cases where:
+- All replicates have same number of timepoints (returns 3D array)
+- Replicates have different timepoints (returns vector of matrices)
+
+# Returns
+- `DataArrays`: Struct containing processed barcode data including:
+    - Either 3D array or vector of matrices for counts
+    - Matrix or vector of vectors for totals
+    - Metadata including replicate information
 """
 function _extract_R(
     data::DF.AbstractDataFrame,
@@ -597,445 +548,226 @@ function _extract_R(
     neutral_col::Symbol,
     rep_col::Symbol,
     env_col::Nothing,
-    genotype_col::Nothing,
-    rm_T0::Bool,
-    verbose::Bool
-)
+    genotype_col::Nothing
+)::DataArrays
     # Extract unique time points
-    timepoints = _extract_timepoints(data, time_col, rm_T0, verbose)
-
-    ## === Check if all replicates have the same number of time points === #
+    timepoints = _extract_timepoints(data, time_col)
 
     # Group data by replicate
     data_rep_group = DF.groupby(data, rep_col)
-    # Define number of replicates
     n_rep = length(data_rep_group)
-    # Define number of time points per replicate
     n_rep_time = [length(unique(d[:, time_col])) for d in data_rep_group]
 
     if length(unique(n_rep_time)) == 1
-
-        ## %%%%%%%%%%% Neutral barcodes data %%%%%%%%%%% ##
-
-        # Extract neutral data
-        data_neutral = @view data[data[:, neutral_col], :]
-        # Extract unique time points
-        timepoints = sort(unique(data_neutral[:, time_col]))
-        # Extract unique IDs
-        neutral_ids = unique(data_neutral[:, id_col])
-        # Extract unique reps
-        reps = unique(data_neutral[:, rep_col])
-
-        # Initialize array to save counts for each mutant at time t
-        R̲̲⁽ⁿ⁾ = Array{Int64,3}(
-            undef, length(timepoints), length(neutral_ids), length(reps)
+        # All replicates have same timepoints - use 3D array
+        R̲̲⁽ⁿ⁾, neutral_ids = _process_neutral_barcodes_multi(
+            data, neutral_col, id_col, time_col, count_col, rep_col, timepoints
+        )
+        R̲̲⁽ᵐ⁾, bc_ids = _process_mutant_barcodes_multi(
+            data, neutral_col, id_col, time_col, count_col, rep_col, timepoints
         )
 
-        # Loop through each unique id
-        for (j, id) in enumerate(neutral_ids)
-            # Loop through each unique rep
-            for (k, rep) in enumerate(reps)
-                # Extract data
-                d = data_neutral[
-                    (data_neutral[:, id_col].==id).&(data_neutral[:, rep_col].==rep),
-                    :]
-                # Sort data by timepoint
-                DF.sort!(d, time_col)
-                # Extract data
-                R̲̲⁽ⁿ⁾[:, j, k] = d[:, count_col]
-            end # for
-        end # for
-
-        ## %%%%%%%%%%% Mutant barcodes data %%%%%%%%%%% ##
-
-        # Extract neutral data
-        data_mut = @view data[.!data[:, neutral_col], :]
-        # Extract unique time points
-        timepoints = sort(unique(data_mut[:, time_col]))
-        # Extract unique IDs
-        bc_ids = sort(unique(data_mut[:, id_col]))
-        # Extract unique reps
-        reps = sort(unique(data_mut[:, rep_col]))
-
-        # Initialize array to save counts for each mutant at time t
-        R̲̲⁽ᵐ⁾ = Array{Int64,3}(
-            undef, length(timepoints), length(bc_ids), length(reps)
-        )
-
-        # Loop through each unique id
-        for (j, id) in enumerate(bc_ids)
-            # Loop through each unique rep
-            for (k, rep) in enumerate(reps)
-                # Extract data
-                d = data_mut[
-                    (data_mut[:, id_col].==id).&(data_mut[:, rep_col].==rep),
-                    :]
-                # Sort data by timepoint
-                DF.sort!(d, time_col)
-                # Extract data
-                R̲̲⁽ᵐ⁾[:, j, k] = d[:, count_col]
-            end # for
-        end # for
-
-        ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
-
-        # Concatenate neutral and mutant data matrices
         R̲̲ = cat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾; dims=2)
-
-        # Compute total counts for each run
-        n̲ₜ = reshape(sum(R̲̲, dims=2), length(timepoints), length(reps))
-
-    else # if length(unique(n_rep_time)) ≠ 1
-        # Initialize Vector to save matrix for each replicate
-        R̲̲ = Vector{Matrix{Int64}}(undef, length(n_rep_time))
-
-        # Loop through replicates
-        for (rep, d_rep) in enumerate(data_rep_group)
-            ## %%%%%%%%%%% Neutral barcodes data %%%%%%%%%%% ##
-
-            # Group data by unique mutant barcode
-            data_group = DF.groupby(d_rep[d_rep[:, neutral_col], :], id_col)
-
-            # Extract group keys
-            neutral_ids = first.(values.(keys(data_group)))
-
-            # Check that all barcodes were measured at all points
-            if any([size(d, 1) for d in data_group] .!= n_rep_time[rep])
-                error("Not all neutral barcodes have reported counts in all time points")
-            end # if
-
-            # Initialize array to save counts for each mutant at time t
-            R̲̲⁽ⁿ⁾ = Matrix{Int64}(
-                undef, n_rep_time[rep], length(data_group)
-            )
-
-            # Loop through each unique barcode
-            for (i, d) in enumerate(data_group)
-                # Sort data by timepoint
-                DF.sort!(d, time_col)
-                # Extract data
-                R̲̲⁽ⁿ⁾[:, i] = d[:, count_col]
-            end # for
-
-            ## %%%%%%%%%%% Mutant barcodes data %%%%%%%%%%% ##
-
-            # Group data by unique mutant barcode
-            data_group = DF.groupby(
-                d_rep[.!d_rep[:, neutral_col], :], id_col
-            )
-
-            # Extract group keys
-            bc_ids = first.(values.(keys(data_group)))
-
-            # Check that all barcodes were measured at all points
-            if any([size(d, 1) for d in data_group] .!= n_rep_time[rep])
-                error("Not all mutant barcodes have reported counts in all time points")
-            end # if
-
-            # Initialize array to save counts for each mutant at time t
-            R̲̲⁽ᵐ⁾ = Matrix{Int64}(
-                undef, n_rep_time[rep], length(data_group)
-            )
-
-            # Loop through each unique barcode
-            for (i, d) in enumerate(data_group)
-                # Sort data by timepoint
-                DF.sort!(d, time_col)
-                # Extract data
-                R̲̲⁽ᵐ⁾[:, i] = d[:, count_col]
-            end # for
-
-            ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
-
-            # Concatenate neutral and mutant data matrices
-            R̲̲[rep] = hcat(R̲̲⁽ⁿ⁾, R̲̲⁽ᵐ⁾)
-
-        end # for
-        # Compute total counts for each run
-        n̲ₜ = vec.(sum.(R̲̲, dims=2))
-    end #if
-
-    return Dict(
-        :bc_count => R̲̲,
-        :bc_total => n̲ₜ,
-        :n_neutral => size(R̲̲⁽ⁿ⁾, 2),
-        :n_bc => size(R̲̲⁽ᵐ⁾, 2),
-        :bc_ids => bc_ids,
-        :neutral_ids => neutral_ids,
-        :envs => ["env1"],
-        :n_env => 1,
-        :n_rep => n_rep,
-        :n_time => n_rep_time,
-        :genotypes => "N/A",
-        :n_geno => 0
-    )
-end # function
-
-# ------------------------------------------------------------------------------
-
-"""
-Internal function to extract information from dataframe.
-
-# Nothign Columns
-- `neutral_col`,
-- `env_col`,
-- `genotype_col`
-"""
-function _extract_R(
-    data::DF.AbstractDataFrame,
-    id_col::Symbol,
-    time_col::Symbol,
-    count_col::Symbol,
-    neutral_col::Nothing,
-    rep_col::Symbol,
-    env_col::Nothing,
-    genotype_col::Nothing,
-    rm_T0::Bool,
-    verbose::Bool
-)
-    # Extract unique time points
-    timepoints = _extract_timepoints(data, time_col, rm_T0, verbose)
-
-    ## === Check if all replicates have the same number of time points === #
-
-    # Group data by replicate
-    data_rep_group = DF.groupby(data, rep_col)
-    # Define number of replicates
-    n_rep = length(data_rep_group)
-    # Define number of time points per replicate
-    n_rep_time = [length(unique(d[:, time_col])) for d in data_rep_group]
-
-    if length(unique(n_rep_time)) == 1
-        ## %%%%%%%%%%% Mutant barcodes data %%%%%%%%%%% ##
-
-        # Extract mutant data
-        data_mut = data
-        # Extract unique time points
-        timepoints = sort(unique(data_mut[:, time_col]))
-        # Extract unique IDs
-        bc_ids = sort(unique(data_mut[:, id_col]))
-        # Extract unique reps
-        reps = sort(unique(data_mut[:, rep_col]))
-
-        # Initialize array to save counts for each mutant at time t
-        R̲̲⁽ᵐ⁾ = Array{Int64,3}(
-            undef, length(timepoints), length(bc_ids), length(reps)
+        n̲ₜ = reshape(sum(R̲̲, dims=2), length(timepoints), n_rep)
+    else
+        # Replicates have different timepoints - use vector of matrices
+        R̲̲⁽ⁿ⁾, neutral_ids = _process_neutral_barcodes_multi_varying(
+            data_rep_group, neutral_col, id_col, time_col, count_col, n_rep_time
+        )
+        R̲̲⁽ᵐ⁾, bc_ids = _process_mutant_barcodes_multi_varying(
+            data_rep_group, neutral_col, id_col, time_col, count_col, n_rep_time
         )
 
-        # Loop through each unique id
-        for (j, id) in enumerate(bc_ids)
-            # Loop through each unique rep
-            for (k, rep) in enumerate(reps)
-                # Extract data
-                d = data_mut[
-                    (data_mut[:, id_col].==id).&(data_mut[:, rep_col].==rep),
-                    :]
-                # Sort data by timepoint
-                DF.sort!(d, time_col)
-                # Extract data
-                R̲̲⁽ᵐ⁾[:, j, k] = d[:, count_col]
-            end # for
-        end # for
-
-        ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
-
-        # Since there are no neutral barcodes, all barcodes are mutants
-        R̲̲ = R̲̲⁽ᵐ⁾
-
-        # Compute total counts for each run
-        n̲ₜ = reshape(sum(R̲̲, dims=2), length(timepoints), length(reps))
-
-    else # if length(unique(n_rep_time)) ≠ 1
-        # Initialize Vector to save matrix for each replicate
-        R̲̲ = Vector{Matrix{Int64}}(undef, length(n_rep_time))
-
-        # Loop through replicates
-        for (rep, d_rep) in enumerate(data_rep_group)
-            ## %%%%%%%%%%% Mutant barcodes data %%%%%%%%%%% ##
-
-            # Group data by unique mutant barcode
-            data_group = DF.groupby(d_rep, id_col)
-
-            # Extract group keys
-            bc_ids = first.(values.(keys(data_group)))
-
-            # Check that all barcodes were measured at all points
-            if any([size(d, 1) for d in data_group] .!= n_rep_time[rep])
-                error("Not all mutant barcodes have reported counts in all time points")
-            end # if
-
-            # Initialize array to save counts for each mutant at time t
-            R̲̲⁽ᵐ⁾ = Matrix{Int64}(
-                undef, n_rep_time[rep], length(data_group)
-            )
-
-            # Loop through each unique barcode
-            for (i, d) in enumerate(data_group)
-                # Sort data by timepoint
-                DF.sort!(d, time_col)
-                # Extract data
-                R̲̲⁽ᵐ⁾[:, i] = d[:, count_col]
-            end # for
-
-            ## %%%%%%%%%%% Total barcodes data %%%%%%%%%%% ##
-
-            # Since there are no neutral barcodes, all barcodes are mutants
-            R̲̲[rep] = R̲̲⁽ᵐ⁾
-
-        end # for
-        # Compute total counts for each run
+        R̲̲ = [hcat(R̲̲⁽ⁿ⁾[i], R̲̲⁽ᵐ⁾[i]) for i in 1:n_rep]
         n̲ₜ = vec.(sum.(R̲̲, dims=2))
-    end #if
+    end
 
-    return Dict(
-        :bc_count => R̲̲,
-        :bc_total => n̲ₜ,
-        :n_neutral => 0,
-        :n_bc => size(R̲̲[1], 2),
-        :bc_ids => bc_ids,
-        :neutral_ids => [],
-        :envs => ["env1"],
-        :n_env => 1,
-        :n_rep => n_rep,
-        :n_time => n_rep_time,
-        :genotypes => "N/A",
-        :n_geno => 0
+    return DataArrays(
+        R̲̲,                    # bc_count
+        n̲ₜ,                   # bc_total
+        size(R̲̲⁽ⁿ⁾[1], 2),    # n_neutral
+        size(R̲̲⁽ᵐ⁾[1], 2),    # n_bc
+        bc_ids,               # bc_ids
+        neutral_ids,          # neutral_ids
+        "env1",              # envs
+        1,                   # n_env
+        n_rep,               # n_rep
+        n_rep_time,          # n_time
+        "N/A",              # genotypes
+        0                    # n_geno
     )
-end # function
+end
 
-# ------------------------------------------------------------------------------
+# ============================================================================
+# Case: Multiple environments
+# ============================================================================
 
-"""
-Internal function to extract information from dataframe.
+@doc raw"""
+    _extract_R(
+        data::DF.AbstractDataFrame, id_col::Symbol, time_col::Symbol,
+        count_col::Symbol, neutral_col::Symbol, rep_col::Nothing, 
+        env_col::Symbol, genotype_col::Nothing
+    )
 
-# Nothign Columns
-- `neutral_col` (Optional),
-- `rep_col`,
-- `genotype_col`,
+Extractor for experiments with multiple environments.
+This handles cases where:
+- Multiple environments exist (env_col is provided)
+- May or may not have neutral lineages (neutral_col is Union{Symbol,Nothing})
+- No replicates (rep_col is Nothing)
+- No genotype groupings (genotype_col is Nothing)
+
+# Returns
+- `DataArrays`: Struct containing processed barcode data including:
+    - Standard count data
+    - Environment information
 """
 function _extract_R(
     data::DF.AbstractDataFrame,
     id_col::Symbol,
     time_col::Symbol,
     count_col::Symbol,
-    neutral_col::Union{Nothing,Symbol},
+    neutral_col::Symbol,
     rep_col::Nothing,
     env_col::Symbol,
-    genotype_col::Nothing,
-    rm_T0::Bool,
-    verbose::Bool
-)
-    # Run the function without the `env_col` argument
-    data_dict = _extract_R(
-        data,
-        id_col,
-        time_col,
-        count_col,
-        neutral_col,
-        rep_col,
-        nothing,
-        genotype_col,
-        rm_T0,
-        verbose
+    genotype_col::Nothing
+)::DataArrays
+    # First process without environment information
+    base_arrays = _extract_R(
+        data, id_col, time_col, count_col, neutral_col,
+        rep_col, nothing, genotype_col
     )
 
-    # collect environments for single-replicate case
+    # Extract environment information
     envs = collect(
         sort(unique(data[:, [time_col, env_col]]), time_col)[:, env_col]
     )
-    # Define number of environments
     n_env = length(unique(envs))
 
-    # Modify the dictionary to include environments
-    data_dict[:envs] = envs
-    data_dict[:n_env] = n_env
+    # Create new DataArrays with environment information
+    return DataArrays(
+        base_arrays.bc_count,    # bc_count
+        base_arrays.bc_total,    # bc_total
+        base_arrays.n_neutral,   # n_neutral
+        base_arrays.n_bc,        # n_bc
+        base_arrays.bc_ids,      # bc_ids
+        base_arrays.neutral_ids, # neutral_ids
+        envs,                   # envs
+        n_env,                  # n_env
+        base_arrays.n_rep,      # n_rep
+        base_arrays.n_time,     # n_time
+        base_arrays.genotypes,  # genotypes
+        base_arrays.n_geno      # n_geno
+    )
+end
 
-    return data_dict
-end # function
+# ============================================================================
+# Case: Multiple environments and replicates
+# ============================================================================
 
-# ------------------------------------------------------------------------------
+@doc raw"""
+    _extract_R(
+        data::DF.AbstractDataFrame, id_col::Symbol, time_col::Symbol,
+        count_col::Symbol, neutral_col::Symbol, rep_col::Symbol, 
+        env_col::Symbol, genotype_col::Nothing
+    )
 
-"""
-Internal function to extract information from dataframe.
+Extractor for experiments with both multiple environments and replicates.
+This handles the most complex case where:
+- Multiple environments exist (env_col is provided)
+- Multiple replicates exist (rep_col is provided)
+- No genotype groupings (genotype_col is Nothing)
 
-# Nothign Columns
-- `neutral_col` (Optional),
-- `genotype_col`,
+Can handle cases where replicates have different numbers of timepoints.
+
+# Returns
+- `DataArrays`: Struct containing processed barcode data including:
+- Count data (3D array or vector of matrices)
+- Environment and replicate information
 """
 function _extract_R(
     data::DF.AbstractDataFrame,
     id_col::Symbol,
     time_col::Symbol,
     count_col::Symbol,
-    neutral_col::Union{Nothing,Symbol},
+    neutral_col::Symbol,
     rep_col::Symbol,
     env_col::Symbol,
-    genotype_col::Nothing,
-    rm_T0::Bool,
-    verbose::Bool
-)
-    # Run the function without the `env_col` argument
-    data_dict = _extract_R(
-        data,
-        id_col,
-        time_col,
-        count_col,
-        neutral_col,
-        rep_col,
-        nothing,
-        genotype_col,
-        rm_T0,
-        verbose
+    genotype_col::Nothing
+)::DataArrays
+    # First process with just replicate information
+    base_arrays = _extract_R(
+        data, id_col, time_col, count_col, neutral_col,
+        rep_col, nothing, genotype_col
     )
 
     # Group data by replicate
     data_rep = DF.groupby(data, rep_col)
-    # collect environments for multi-replicate with different number of time
-    # points
+
+    # Extract environment information
     envs = [
         collect(sort(unique(d[:, [time_col, env_col]]), time_col)[:, env_col])
         for d in data_rep
     ]
-    # Define number of environments
     n_env = length(unique(reduce(vcat, envs)))
-    # Check if all replicates have same environments
+
+    # If all replicates have same environments, simplify list
     if length(unique(envs)) == 1
         envs = first(envs)
-    end # if
+    end
 
-    # Modify the dictionary to include environments
-    data_dict[:envs] = envs
-    data_dict[:n_env] = n_env
+    # Create new DataArrays with environment information
+    return DataArrays(
+        base_arrays.bc_count,    # bc_count
+        base_arrays.bc_total,    # bc_total
+        base_arrays.n_neutral,   # n_neutral
+        base_arrays.n_bc,        # n_bc
+        base_arrays.bc_ids,      # bc_ids
+        base_arrays.neutral_ids, # neutral_ids
+        envs,                   # envs
+        n_env,                  # n_env
+        base_arrays.n_rep,      # n_rep
+        base_arrays.n_time,     # n_time
+        base_arrays.genotypes,  # genotypes
+        base_arrays.n_geno      # n_geno
+    )
+end
 
-    return data_dict
-end # function
+# ============================================================================
+# Case: Single replicate with genotypes
+# ============================================================================
 
-# ------------------------------------------------------------------------------
+@doc raw"""
+    _extract_R(
+        data::DF.AbstractDataFrame, id_col::Symbol, time_col::Symbol,
+        count_col::Symbol, neutral_col::Symbol, rep_col::Nothing, 
+        env_col::Nothing, genotype_col::Symbol
+    )
 
+Extractor for experiments with genotype groupings.
+This handles cases where:
+- Single replicate (rep_col is Nothing)
+- No environment variations (env_col is Nothing)
+- Has genotype groupings (genotype_col is provided)
+
+# Returns
+- `DataArrays`: Struct containing processed barcode data including:
+    - Standard count data
+    - Genotype grouping information
+"""
 function _extract_R(
     data::DF.AbstractDataFrame,
     id_col::Symbol,
     time_col::Symbol,
     count_col::Symbol,
-    neutral_col::Union{Nothing,Symbol},
+    neutral_col::Symbol,
     rep_col::Nothing,
     env_col::Nothing,
-    genotype_col::Symbol,
-    rm_T0::Bool,
-    verbose::Bool
-)
-    # Run the function without the `genotype_col` argument
+    genotype_col::Symbol
+)::DataArrays
+    # First process without genotype information
     data_dict = _extract_R(
-        data,
-        id_col,
-        time_col,
-        count_col,
-        neutral_col,
-        rep_col,
-        env_col,
-        nothing,
-        rm_T0,
-        verbose
+        data, id_col, time_col, count_col, neutral_col,
+        rep_col, env_col, nothing
     )
 
     # Generate dictionary from bc to genotype
@@ -1043,19 +775,218 @@ function _extract_R(
         values.(keys(DF.groupby(data, [id_col, genotype_col])))
     )
     # Extract genotypes in the order they will be used in the inference
-    genotypes = [bc_geno_dict[m] for m in bc_ids]
+    genotypes = [bc_geno_dict[m] for m in data_dict.bc_ids]
     # Compute number of genotypes
     n_genotypes = length(unique(genotypes))
 
-    # Modify the dictionary to include genotypes
-    data_dict[:genotypes] = genotypes
-    data_dict[:n_geno] = n_genotypes
+    return DataArrays(
+        data_dict.bc_count,    # bc_count
+        data_dict.bc_total,    # bc_total
+        data_dict.n_neutral,   # n_neutral
+        data_dict.n_bc,        # n_bc
+        data_dict.bc_ids,      # bc_ids
+        data_dict.neutral_ids, # neutral_ids
+        data_dict.envs,       # envs
+        data_dict.n_env,      # n_env
+        data_dict.n_rep,      # n_rep
+        data_dict.n_time,     # n_time
+        genotypes,            # genotypes
+        n_genotypes          # n_geno
+    )
+end
 
-    return data_dict
-end # function
+# ============================================================================
+# Case: Multiple replicates with genotypes
+# ============================================================================
 
+@doc raw"""
+    _extract_R(
+        data::DF.AbstractDataFrame, id_col::Symbol, time_col::Symbol,
+        count_col::Symbol, neutral_col::Symbol, rep_col::Symbol, 
+        env_col::Nothing, genotype_col::Symbol
+    )
 
-# ------------------------------------------------------------------------------
+Extractor for experiments with both replicates and genotype groupings.
+This handles cases where:
+- Multiple replicates exist (rep_col is provided)
+- No environment variations (env_col is Nothing)
+- Has genotype groupings (genotype_col is provided)
+
+# Returns
+- `DataArrays`: Struct containing processed barcode data including:
+    - Count data (3D array or vector of matrices)
+    - Replicate and genotype information
+"""
+function _extract_R(
+    data::DF.AbstractDataFrame,
+    id_col::Symbol,
+    time_col::Symbol,
+    count_col::Symbol,
+    neutral_col::Symbol,
+    rep_col::Symbol,
+    env_col::Nothing,
+    genotype_col::Symbol
+)::DataArrays
+    # First process with replicate information
+    data_dict = _extract_R(
+        data, id_col, time_col, count_col, neutral_col,
+        rep_col, env_col, nothing
+    )
+
+    # Generate dictionary from bc to genotype
+    bc_geno_dict = Dict(
+        values.(keys(DF.groupby(data, [id_col, genotype_col])))
+    )
+    # Extract genotypes in the order they will be used in the inference
+    genotypes = [bc_geno_dict[m] for m in data_dict.bc_ids]
+    # Compute number of genotypes
+    n_genotypes = length(unique(genotypes))
+
+    return DataArrays(
+        data_dict.bc_count,    # bc_count
+        data_dict.bc_total,    # bc_total
+        data_dict.n_neutral,   # n_neutral
+        data_dict.n_bc,        # n_bc
+        data_dict.bc_ids,      # bc_ids
+        data_dict.neutral_ids, # neutral_ids
+        data_dict.envs,       # envs
+        data_dict.n_env,      # n_env
+        data_dict.n_rep,      # n_rep
+        data_dict.n_time,     # n_time
+        genotypes,            # genotypes
+        n_genotypes          # n_geno
+    )
+end
+
+# ============================================================================
+# Case: Multiple environments with genotypes
+# ============================================================================
+
+@doc raw"""
+    _extract_R(
+        data::DF.AbstractDataFrame, id_col::Symbol, time_col::Symbol,
+        count_col::Symbol, neutral_col::Symbol, rep_col::Nothing, 
+        env_col::Symbol, genotype_col::Symbol
+    )
+
+Extractor for experiments with both environments and genotype groupings.
+This handles cases where:
+- Multiple environments exist (env_col is provided)
+- No replicates (rep_col is Nothing)
+- Has genotype groupings (genotype_col is provided)
+
+# Returns
+- `DataArrays`: Struct containing processed barcode data including:
+    - Standard count data
+    - Environment and genotype information
+"""
+function _extract_R(
+    data::DF.AbstractDataFrame,
+    id_col::Symbol,
+    time_col::Symbol,
+    count_col::Symbol,
+    neutral_col::Symbol,
+    rep_col::Nothing,
+    env_col::Symbol,
+    genotype_col::Symbol
+)::DataArrays
+    # First process with environment information
+    data_dict = _extract_R(
+        data, id_col, time_col, count_col, neutral_col,
+        rep_col, env_col, nothing
+    )
+
+    # Generate dictionary from bc to genotype
+    bc_geno_dict = Dict(
+        values.(keys(DF.groupby(data, [id_col, genotype_col])))
+    )
+    # Extract genotypes in the order they will be used in the inference
+    genotypes = [bc_geno_dict[m] for m in data_dict.bc_ids]
+    # Compute number of genotypes
+    n_genotypes = length(unique(genotypes))
+
+    return DataArrays(
+        data_dict.bc_count,    # bc_count
+        data_dict.bc_total,    # bc_total
+        data_dict.n_neutral,   # n_neutral
+        data_dict.n_bc,        # n_bc
+        data_dict.bc_ids,      # bc_ids
+        data_dict.neutral_ids, # neutral_ids
+        data_dict.envs,       # envs
+        data_dict.n_env,      # n_env
+        data_dict.n_rep,      # n_rep
+        data_dict.n_time,     # n_time
+        genotypes,            # genotypes
+        n_genotypes          # n_geno
+    )
+end
+
+# ============================================================================
+# Case: Multiple environments, replicates, and genotypes
+# ============================================================================
+
+@doc raw"""
+    _extract_R(
+        data::DF.AbstractDataFrame, id_col::Symbol, time_col::Symbol,
+        count_col::Symbol, neutral_col::Symbol, rep_col::Symbol, 
+        env_col::Symbol, genotype_col::Symbol
+    )
+
+Extractor for the most complex case with environments, replicates, and
+genotypes. This handles cases where:
+- Multiple environments exist (env_col is provided)
+- Multiple replicates exist (rep_col is provided)
+- Has genotype groupings (genotype_col is provided)
+
+# Returns
+- `DataArrays`: Struct containing processed barcode data including:
+    - Count data (3D array or vector of matrices)
+    - Environment, replicate, and genotype information
+"""
+function _extract_R(
+    data::DF.AbstractDataFrame,
+    id_col::Symbol,
+    time_col::Symbol,
+    count_col::Symbol,
+    neutral_col::Symbol,
+    rep_col::Symbol,
+    env_col::Symbol,
+    genotype_col::Symbol
+)::DataArrays
+    # First process with environment and replicate information
+    data_dict = _extract_R(
+        data, id_col, time_col, count_col, neutral_col,
+        rep_col, env_col, nothing
+    )
+
+    # Generate dictionary from bc to genotype
+    bc_geno_dict = Dict(
+        values.(keys(DF.groupby(data, [id_col, genotype_col])))
+    )
+    # Extract genotypes in the order they will be used in the inference
+    genotypes = [bc_geno_dict[m] for m in data_dict.bc_ids]
+    # Compute number of genotypes
+    n_genotypes = length(unique(genotypes))
+
+    return DataArrays(
+        data_dict.bc_count,    # bc_count
+        data_dict.bc_total,    # bc_total
+        data_dict.n_neutral,   # n_neutral
+        data_dict.n_bc,        # n_bc
+        data_dict.bc_ids,      # bc_ids
+        data_dict.neutral_ids, # neutral_ids
+        data_dict.envs,       # envs
+        data_dict.n_env,      # n_env
+        data_dict.n_rep,      # n_rep
+        data_dict.n_time,     # n_time
+        genotypes,            # genotypes
+        n_genotypes          # n_geno
+    )
+end
+
+# ============================================================================
+# Main function to preprocess data
+# ============================================================================
 
 @doc raw"""
 `data_to_arrays(data; kwargs)`
@@ -1085,19 +1016,9 @@ for the models in the `model` submodule.
 - `genotype_col::Union{Nothing,Symbol}=nothing`: Column indicating the genotype
   each barcode belongs to when fitting a hierarchical model on genotypes.
   Default is `nothing`.
-- `rm_T0::Bool=false`: Optional argument to remove the first time point from the
-  inference. The data from this first time point is commonly of much lower
-  quality. Therefore, removing this first time point might result in a better
-  inference.
-- `verbose::Bool=true`: Boolean indicating if printing statements should be
-  made.
 
 # Returns
-- `data_arrays::Dict`: Dictionary with the following elements:
-    - `bc_ids`: List of barcode IDs in the order they are used for the
-      inference.
-    - `neutral_ids`: List of neutral barcode IDs in the order they are used for
-      the inference.
+- `data_arrays::DataArrays`: Struct containing the following elements:
     - `bc_count`: Count time series for each barcode. The options can be:
         - `Matrix{Int64}`: (n_time) × (n_bc) matrix with counts. Rows are time
           points, and columns are barcodes.
@@ -1111,18 +1032,24 @@ for the models in the `model` submodule.
         - `Matrix{Int64}`: Equivalent to summing each row of each slice of the
           tensor.
         - `Vector{Vector{Int64}}`: Equivalent to summing each matrix row.
-    - `n_rep`: Number of experimental replicates.
-    - `n_time`: Number of time points. The options can be:
-        - `Int64`: Number of time points on a single replicate or multiple
-          replicates.
-        - `Vector{Int64}`: Number of time points per replicate when replicates
-          have different lengths.
+    - `n_neutral`: Number of neutral barcodes.
+    - `n_bc`: Number of non-neutral barcodes.
+    - `bc_ids`: List of barcode IDs in the order they are used for the
+      inference.
+    - `neutral_ids`: List of neutral barcode IDs in the order they are used for
+      the inference.
     - `envs`: List of environments. The options can be:
         - `String`: Single placeholder `env1`
         - `Vector{<:Any}`: Environments in the order they were measured.
         - `vector{Vector{<:Any}}`: Environments per replicate when replicates
           have a different number of time points.
     - `n_env`: Number of environmental conditions.
+    - `n_rep`: Number of experimental replicates.
+    - `n_time`: Number of time points. The options can be:
+        - `Int64`: Number of time points on a single replicate or multiple
+          replicates.
+        - `Vector{Int64}`: Number of time points per replicate when replicates
+          have different lengths.
     - `genotypes`: List of genotypes for each of the non-neutral barcodes. The
       options can be:
         - `N/A`: String when no genotype information is given.
@@ -1139,10 +1066,22 @@ function data_to_arrays(
     neutral_col::Symbol=:neutral,
     rep_col::Union{Nothing,Symbol}=nothing,
     env_col::Union{Nothing,Symbol}=nothing,
-    genotype_col::Union{Nothing,Symbol}=nothing,
-    rm_T0::Bool=false,
-    verbose::Bool=true
+    genotype_col::Union{Nothing,Symbol}=nothing
 )
+    # Check that all *_col arguments exist in the dataframe if non-nothing
+    for x_col in [id_col, time_col, count_col, neutral_col, rep_col, env_col, genotype_col]
+        if typeof(x_col) <: Symbol
+            if !(string(x_col) in names(data))
+                error("Column $x_col does not exist in the dataframe")
+            end # if
+        end # if
+    end # for
+
+    # Check that neutral_col is of type Bool
+    if !(typeof(data[!, neutral_col]) <: Vector{Bool})
+        error("Column $neutral_col must be of type Bool")
+    end # if
+
     # Extract information from dataframe with internal function. Note: multiple
     # dispatch is used to call the correct function based on the columns
     # provided.
@@ -1154,17 +1093,17 @@ function data_to_arrays(
         neutral_col,
         rep_col,
         env_col,
-        genotype_col,
-        rm_T0,
-        verbose
+        genotype_col
     )
 end # function
 
 # ------------------------------------------------------------------------------
 
 @doc raw"""
-`advi_to_df(data::DataFrames.AbstractDataFrame, dist::Distribution.Sampleable,
-           vars::Vector{<:Any}; kwargs)`
+    advi_to_df(
+        data::DataFrames.AbstractDataFrame, dist::Distribution.Sampleable,
+        vars::Vector{<:Any}; kwargs
+    )
 
 Convert the output of automatic differentiation variational inference (ADVI) to
 a tidy dataframe.
@@ -1187,10 +1126,6 @@ a tidy dataframe.
 - `neutral_col::Symbol=:neutral`: Name of the column in `data` defining whether
   the barcode belongs to a neutral lineage or not. The column must contain
   entries of type `Bool`.
-- `rm_T0::Bool=false`: Optional argument to remove the first time point from the
-  inference. The data from this first time point is commonly of much lower
-  quality. Therefore, removing this first time point might result in a better
-  inference.
 - `n_samples::Int=10_000`: Number of posterior samples to draw used for
   hierarchical models. Default is 10,000.
 
@@ -1239,7 +1174,6 @@ function advi_to_df(
     rep_col::Union{Nothing,Symbol}=nothing,
     env_col::Union{Nothing,Symbol}=nothing,
     genotype_col::Union{Nothing,Symbol}=nothing,
-    rm_T0::Bool=false,
     n_samples::Int=10_000
 )
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
@@ -1255,8 +1189,7 @@ function advi_to_df(
         neutral_col=neutral_col,
         rep_col=rep_col,
         env_col=env_col,
-        genotype_col=genotype_col,
-        rm_T0=rm_T0
+        genotype_col=genotype_col
     )
 
     # Extract number of neutral and mutant lineages

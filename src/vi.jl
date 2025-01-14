@@ -103,7 +103,7 @@ function advi(;
         error("Hierarchical models for experimental replicates require argument `:rep_col`")
     end # if
 
-    # Check if model is hierarchical for experimental replicates
+    # Check if model is multi-environment
     if occursin("multienv", "$(model)") & (typeof(env_col) <: Nothing)
         error("Models with multiple environments require argument `:env_col`")
     end # if
