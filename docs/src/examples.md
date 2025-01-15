@@ -49,13 +49,13 @@ we use the `:advi` keyword argument in the `BarBay.vi.advi` function. For
 `ForwardDiff`, we use
 
 ```julia
-:advi => Turing.ADVI(n_samples, n_steps)
+:advi => Turing.ADVI(n_samples, n_steps, Turing.AutoForwardDiff())
 ```
 
 as `ForwardDiff` is the default backend. For `ReverseDiff`, we use
 
 ```julia
-:advi => Turing.ADVI{AdvancedVI.ReverseDiffAD{false}}(n_samples, n_steps)
+:advi => Turing.ADVI(n_samples, n_steps, Turing.AutoReverseDiff(false))
 ```
 
 where the `false` indicates that we are not using the cache for the random
@@ -155,7 +155,7 @@ param = Dict(
         :s_bc_prior => [0.0, 1.0],
         :logλ_prior => logλ_prior,
     ),
-    :advi => Turing.ADVI(n_samples, n_steps),
+    :advi => Turing.ADVI(n_samples, n_steps, Turing.AutoForwardDiff()),
     :opt => Turing.TruncatedADAGrad()
 )
 
@@ -348,7 +348,7 @@ param = Dict(
         :logλ_prior => logλ_prior,
     ),
     :env_col => :env,
-    :advi => Turing.ADVI(n_samples, n_steps),
+    :advi => Turing.ADVI(n_samples, n_steps, Turing.AutoForwardDiff()),
     :opt => Turing.TruncatedADAGrad()
 )
 
@@ -452,7 +452,7 @@ param = Dict(
         :logλ_prior => logλ_prior,
         :logτ_prior => [-2.0, 0.5],
     ),
-    :advi => Turing.ADVI(n_samples, n_steps),
+    :advi => Turing.ADVI(n_samples, n_steps, Turing.AutoForwardDiff()),
     :opt => Turing.TruncatedADAGrad(),
     :rep_col => :rep,
     :fullrank => false
@@ -558,7 +558,7 @@ param = Dict(
         :logλ_prior => logλ_prior,
     ),
     :genotype_col => :genotype,
-    :advi => Turing.ADVI(n_samples, n_steps),
+    :advi => Turing.ADVI(n_samples, n_steps, Turing.AutoForwardDiff()),
     :opt => Turing.TruncatedADAGrad()
 )
 

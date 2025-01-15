@@ -284,11 +284,12 @@ of barcodes is large. However, for small datasets, we recommend using
 !!! note
     The AutoDiff backend for ADVI is set using the `AdvancedVI` module. This is
     done in the `:advi` option of the `param` dictionary. For `ForwardDiff.jl`,
-    we can do `:advi => Turing.ADVI(n_samples, n_steps)`, as `ForwardDiff.jl` is
-    the default backend. For `ReverseDiff.jl`, we need to do
-    `:advi => Turing.ADVI{AdvancedVI.ReverseDiffAD{false}}(n_samples, n_steps)`,
-    where the `false` indicates that we won't use the cache for the random
-    number tape. See the
+    we can do `:advi => Turing.ADVI(n_samples, n_steps,
+    Turing.AutoForwardDiff())`, as `ForwardDiff.jl` is the default backend. For
+    `ReverseDiff.jl`, we need to do `:advi =>
+    Turing.ADVI(n_samples, n_steps, Turing.AutoReverseDiff(false))`, where the
+    `false` indicates that we won't use the cache for the random number tape.
+    See the
     [`AdvancedVI.jl`](https://github.com/TuringLang/AdvancedVI.jl/tree/master)
     repository for more information.
 
@@ -324,7 +325,7 @@ param = Dict(
         :s_bc_prior => [0.0, 1.0],
         :logλ_prior => logλ_prior,
     ),
-    :advi => Turing.ADVI{AdvancedVI.ReverseDiffAD{false}}(n_samples, n_steps),
+    :advi => Turing.ADVI(n_samples, n_steps, Turing.AutoReverseDiff(false)),
     :opt => Turing.TruncatedADAGrad(),
 )
 ```
