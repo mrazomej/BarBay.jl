@@ -1,6 +1,7 @@
 @testset "BarBay.jl" begin
     include("utils_tests.jl")
     include("vi_tests.jl")
+    include("stats_tests.jl")
 end
 
 # ---------------------------------------------------------------------------- #
