@@ -87,3 +87,5 @@ Manifest.toml
 
 # Ignore directories in repo
 test/data/
+
+/.luarc.json

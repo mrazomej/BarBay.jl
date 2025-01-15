@@ -1,3 +1,6 @@
+# Import logging for progress updates
+import Logging
+
 # Import libraries relevant for Bayesian inference
 import Turing
 import DynamicPPL
@@ -15,6 +18,20 @@ using ..utils: data_to_arrays, advi_to_df
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 # Running MCMC for full joint fitness inference π(s̲⁽ᵐ⁾, s̲ₜ | data)
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Import libraries relevant for Bayesian inference
+import Turing
+import DynamicPPL
+
+# Import package to handle DataFrames
+import DataFrames as DF
+import CSV
+
+# Import needed function from the stats.jl module
+using ..stats: build_getq
+
+# Import needed function from the utils module
+using ..utils: data_to_arrays, advi_to_df
 
 @doc raw"""
     advi(; kwargs)
@@ -34,7 +51,7 @@ respective keyword arguments:
 - `time_col`: Indicates the measurement time point.
 - `count_col`: Contains the raw barcode count.
 - `neutral_col`: Indicates if the barcode is from a neutral lineage. Additional
-optional columns include `rep_col`, `env_col`, and `genotype_col`.
+  optional columns include `rep_col`, `env_col`, and `genotype_col`.
 
 # Keyword Arguments
 - `data::DF.AbstractDataFrame`: Tidy dataframe with data for sampling the
@@ -51,7 +68,6 @@ optional columns include `rep_col`, `env_col`, and `genotype_col`.
 - `rep_col::Union{Nothing,Symbol}=nothing`: Column for experimental replicate.
 - `env_col::Union{Nothing,Symbol}=nothing`: Column for environment.
 - `genotype_col::Union{Nothing,Symbol}=nothing`: Column for genotype.
-- `rm_T0::Bool=false`: Option to remove the first time point from inference.
 - `advi::Turing.AdvancedVI.VariationalInference=Turing.ADVI{Turing.AutoReverseDiff(true)}(1,
     10_000)`, A default instance of `Turing.AdvancedVI.VariationalInference`
     with the following parameters:
@@ -85,16 +101,15 @@ function advi(;
     rep_col::Union{Nothing,Symbol}=nothing,
     env_col::Union{Nothing,Symbol}=nothing,
     genotype_col::Union{Nothing,Symbol}=nothing,
-    rm_T0::Bool=false,
     advi::Turing.AdvancedVI.VariationalInference=Turing.ADVI{Turing.AutoReverseDiff(true)}(1, 10_000),
     opt::Union{Turing.AdvancedVI.TruncatedADAGrad,Turing.AdvancedVI.DecayedADAGrad}=Turing.Variational.TruncatedADAGrad(),
     verbose::Bool=true
 )
     # Define output filename
-    fname = "$(outputname).csv"
+    fname = isnothing(outputname) ? nothing : "$(outputname).csv"
 
     # Check if file has been processed before
-    if isfile(fname)
+    if !isnothing(fname) && isfile(fname)
         error("$(fname) was already processed")
     end # if
 
@@ -110,9 +125,12 @@ function advi(;
 
     ## %%%%%%%%%%% Preprocessing data %%%%%%%%%%% ##
 
-    println("Pre-processing data...")
-    # Convert from tidy dataframe to model inputs
-    data_dict = data_to_arrays(
+    if verbose
+        Logging.@info "Pre-processing data..."
+    end # if
+
+    # Convert from tidy dataframe to model inputs using DataArrays struct
+    data_arrays = data_to_arrays(
         data;
         id_col=id_col,
         time_col=time_col,
@@ -120,22 +138,19 @@ function advi(;
         neutral_col=neutral_col,
         rep_col=rep_col,
         env_col=env_col,
-        genotype_col=genotype_col,
-        rm_T0=rm_T0,
-        verbose=verbose
+        genotype_col=genotype_col
     )
 
     ## %%%%%%%%%%% Variational Inference with ADVI %%%%%%%%%%% ##
+
     if verbose
-        println("Initialize Variational Inference Optimization...\n")
+        Logging.@info "Initialize Variational Inference Optimization..."
     end # if
 
-
-    # Check if model is multi-environment to manually add the list of
-    # environments
+    # Check if model is multi-environment to manually add the list of environments
     if occursin("multienv", "$(model)")
         # Initialize empty dictionary that accepts any type
-        mk = Dict{Symbol,Any}(:envs => data_dict[:envs])
+        mk = Dict{Symbol,Any}(:envs => data_arrays.envs)
         # Loop through elements of model_kwargs
         for (key, item) in model_kwargs
             # Add element to flexible dictionary
@@ -143,12 +158,12 @@ function advi(;
         end # for
         # Change mk name to model_kwargs
         model_kwargs = mk
-    end
+    end # if
 
     # Check if model is hierarchical on genotypes to manually add genotype list
     if occursin("genotype", "$(model)")
         # Initialize empty dictionary that accepts any type
-        mk = Dict{Symbol,Any}(:genotypes => data_dict[:genotypes])
+        mk = Dict{Symbol,Any}(:genotypes => data_arrays.genotypes)
         # Loop through elements of model_kwargs
         for (key, item) in model_kwargs
             # Add element to flexible dictionary
@@ -160,10 +175,10 @@ function advi(;
 
     # Define model
     bayes_model = model(
-        data_dict[:bc_count],
-        data_dict[:bc_total],
-        data_dict[:n_neutral],
-        data_dict[:n_bc];
+        data_arrays.bc_count,
+        data_arrays.bc_total,
+        data_arrays.n_neutral,
+        data_arrays.n_bc;
         model_kwargs...
     )
 
@@ -190,7 +205,7 @@ function advi(;
     # Optimize meanfield variational distribution
     q = Turing.vi(bayes_model, advi; optimizer=opt)
 
-    if typeof(outputname) <: Nothing
+    if isnothing(outputname)
         return advi_to_df(
             data,
             q,
@@ -201,8 +216,7 @@ function advi(;
             neutral_col=neutral_col,
             rep_col=rep_col,
             env_col=env_col,
-            genotype_col=genotype_col,
-            rm_T0=rm_T0
+            genotype_col=genotype_col
         )
     else
         # Convert and save output as tidy dataframe
@@ -218,10 +232,9 @@ function advi(;
                 neutral_col=neutral_col,
                 rep_col=rep_col,
                 env_col=env_col,
-                genotype_col=genotype_col,
-                rm_T0=rm_T0
+                genotype_col=genotype_col
             )
         )
+        return nothing
     end # if
-
 end # function
