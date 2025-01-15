@@ -9,9 +9,6 @@ import DynamicPPL
 import DataFrames as DF
 import CSV
 
-# Import needed function from the stats.jl module
-using ..stats: build_getq
-
 # Import needed function from the utils module
 using ..utils: data_to_arrays, advi_to_df
 
@@ -26,9 +23,6 @@ import DynamicPPL
 # Import package to handle DataFrames
 import DataFrames as DF
 import CSV
-
-# Import needed function from the stats.jl module
-using ..stats: build_getq
 
 # Import needed function from the utils module
 using ..utils: data_to_arrays, advi_to_df
@@ -147,7 +141,8 @@ function advi(;
         Logging.@info "Initialize Variational Inference Optimization..."
     end # if
 
-    # Check if model is multi-environment to manually add the list of environments
+    # Check if model is multi-environment to manually add the list of
+    # environments
     if occursin("multienv", "$(model)")
         # Initialize empty dictionary that accepts any type
         mk = Dict{Symbol,Any}(:envs => data_arrays.envs)
